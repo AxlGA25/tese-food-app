@@ -17,7 +17,6 @@ Aplicación multiplataforma diseñada para optimizar los tiempos de receso de lo
 ## 👥 Equipo de Desarrollo
 * Axel Guerrero Alonso
 * Dana Patricia Calderón García 
-*(Nota: Aquí puedes agregar o quitar integrantes según cómo se dividan el proyecto)*
 
 ## 📦 Historial de Versiones (Changelog)
 Aquí se documentará el progreso del proyecto hacia la entrega final del 2 de diciembre.
