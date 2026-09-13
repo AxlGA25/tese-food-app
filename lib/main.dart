@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart'; // Letras bonitas
+import 'package:google_fonts/google_fonts.dart';
 import 'package:animate_do/animate_do.dart';
-import 'dart:math'; // NUEVO: Para generar el código aleatorio
-import 'dart:async'; // Animaciones mágicas
+import 'dart:math';
+import 'dart:async';
 
 void main() {
   runApp(const TeseHambreadosApp());
@@ -29,7 +29,6 @@ class TeseHambreadosApp extends StatelessWidget {
           secondary: colorAmarilloTese,
         ),
         useMaterial3: true,
-        // ¡Aplicamos la fuente Poppins a toda la app!
         textTheme: GoogleFonts.poppinsTextTheme(Theme.of(context).textTheme),
       ),
       home: const DecisionScreen(),
@@ -38,7 +37,7 @@ class TeseHambreadosApp extends StatelessWidget {
 }
 
 // ==========================================
-// 1. PANTALLA DE DECISIÓN
+// 1. PANTALLA DE DECISIÓN (Con Logo Real)
 // ==========================================
 class DecisionScreen extends StatelessWidget {
   const DecisionScreen({super.key});
@@ -53,15 +52,18 @@ class DecisionScreen extends StatelessWidget {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
+              // AQUI VA EL LOGO DE LA APP
               BounceInDown(
-                // Animación de rebote al entrar
-                child: const Icon(
-                  Icons.fastfood,
-                  size: 100,
-                  color: colorVerdeTese,
+                child: Hero(
+                  tag: 'logo_app',
+                  child: Image.asset(
+                    'assets/logo_tesehambreado.png',
+                    height: 180,
+                    fit: BoxFit.contain,
+                  ),
                 ),
               ),
-              const SizedBox(height: 10),
+              const SizedBox(height: 20),
               FadeIn(
                 delay: const Duration(milliseconds: 500),
                 child: Text(
@@ -80,8 +82,7 @@ class DecisionScreen extends StatelessWidget {
                   style: TextStyle(fontSize: 16, color: Colors.grey),
                 ),
               ),
-              const SizedBox(height: 60),
-
+              const SizedBox(height: 50),
               FadeInUp(
                 delay: const Duration(milliseconds: 1000),
                 child: ElevatedButton.icon(
@@ -97,10 +98,9 @@ class DecisionScreen extends StatelessWidget {
                   style: ElevatedButton.styleFrom(
                     backgroundColor: colorAmarilloTese,
                     minimumSize: const Size(double.infinity, 60),
-                    elevation: 5,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(20),
-                    ), // Más redondeado
+                    ),
                   ),
                   onPressed:
                       () => Navigator.push(
@@ -143,7 +143,7 @@ class DecisionScreen extends StatelessWidget {
 }
 
 // ==========================================
-// 2. LOGIN ESTUDIANTE
+// 2. LOGIN ESTUDIANTE (Patito Pidiendo)
 // ==========================================
 class LoginEstudianteScreen extends StatelessWidget {
   const LoginEstudianteScreen({super.key});
@@ -161,8 +161,13 @@ class LoginEstudianteScreen extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
+            // AQUI VA EL PATITO LOGIN
             ZoomIn(
-              child: const Icon(Icons.person, size: 80, color: colorVerdeTese),
+              child: Image.asset(
+                'assets/patito_login.png',
+                height: 180,
+                fit: BoxFit.contain,
+              ),
             ),
             const SizedBox(height: 30),
             FadeInLeft(
@@ -229,7 +234,6 @@ class Platillo {
   final String nombre;
   final String local;
   final double precio;
-
   Platillo({
     required this.id,
     required this.nombre,
@@ -239,11 +243,10 @@ class Platillo {
 }
 
 // ==========================================
-// 3. CATÁLOGO ESTUDIANTE (Interactivo y animado)
+// 3. CATÁLOGO ESTUDIANTE
 // ==========================================
 class CatalogoEstudianteScreen extends StatefulWidget {
   const CatalogoEstudianteScreen({super.key});
-
   @override
   State<CatalogoEstudianteScreen> createState() =>
       _CatalogoEstudianteScreenState();
@@ -251,7 +254,6 @@ class CatalogoEstudianteScreen extends StatefulWidget {
 
 class _CatalogoEstudianteScreenState extends State<CatalogoEstudianteScreen> {
   List<Platillo> carrito = [];
-
   final List<Platillo> menuDisponibles = [
     Platillo(
       id: '1',
@@ -277,19 +279,12 @@ class _CatalogoEstudianteScreenState extends State<CatalogoEstudianteScreen> {
       local: 'Jugos TESE',
       precio: 25.0,
     ),
-    Platillo(
-      id: '5',
-      nombre: 'Papas a la Francesa',
-      local: 'Kiosko Sistemas',
-      precio: 30.0,
-    ),
   ];
 
   void _agregarAlCarrito(Platillo p) {
     setState(() {
       carrito.add(p);
     });
-    // Pequeña vibración visual (Feedback)
     ScaffoldMessenger.of(context).clearSnackBars();
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -299,7 +294,7 @@ class _CatalogoEstudianteScreenState extends State<CatalogoEstudianteScreen> {
         ),
         backgroundColor: colorVerdeTese,
         duration: const Duration(milliseconds: 800),
-        behavior: SnackBarBehavior.floating, // Flotante para verse moderno
+        behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
       ),
     );
@@ -336,8 +331,7 @@ class _CatalogoEstudianteScreenState extends State<CatalogoEstudianteScreen> {
         itemBuilder: (context, index) {
           final platillo = menuDisponibles[index];
           return FadeInUp(
-            // <-- Animación de entrada en lista
-            delay: Duration(milliseconds: 100 * index), // Escalado
+            delay: Duration(milliseconds: 100 * index),
             child: Card(
               elevation: 4,
               shadowColor: Colors.black26,
@@ -397,17 +391,10 @@ class _CatalogoEstudianteScreenState extends State<CatalogoEstudianteScreen> {
           );
         },
       ),
-      // BOTÓN FLOTANTE CON BURBUJA DE NOTIFICACIÓN
       floatingActionButton: FloatingActionButton.extended(
         backgroundColor: colorVerdeTese,
         onPressed: () {
-          if (carrito.isEmpty) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Tu carrito está vacío')),
-            );
-            return;
-          }
-          // Navegar a la pantalla del carrito y actualizar al volver
+          if (carrito.isEmpty) return;
           Navigator.push(
             context,
             MaterialPageRoute(
@@ -434,7 +421,7 @@ class _CatalogoEstudianteScreenState extends State<CatalogoEstudianteScreen> {
 }
 
 // ==========================================
-// 4. CARRITO (Modificado para generar código)
+// 4. CARRITO
 // ==========================================
 class CarritoScreen extends StatefulWidget {
   final List<Platillo> carrito;
@@ -476,11 +463,10 @@ class _CarritoScreenState extends State<CarritoScreen> {
                         return Dismissible(
                           key: UniqueKey(),
                           direction: DismissDirection.endToStart,
-                          onDismissed: (direction) {
-                            setState(() {
-                              widget.carrito.removeAt(index);
-                            });
-                          },
+                          onDismissed:
+                              (direction) => setState(() {
+                                widget.carrito.removeAt(index);
+                              }),
                           background: Container(
                             color: Colors.red,
                             alignment: Alignment.centerRight,
@@ -566,11 +552,8 @@ class _CarritoScreenState extends State<CarritoScreen> {
                           widget.carrito.isEmpty
                               ? null
                               : () {
-                                // 1. GENERAMOS EL CÓDIGO ALEATORIO AQUÍ
                                 String codigoGenerado =
                                     '#TESE-${Random().nextInt(9000) + 1000}';
-
-                                // 2. VIAJAMOS A LA SALA DE ESPERA MANDÁNDOLE EL CÓDIGO
                                 Navigator.pushAndRemoveUntil(
                                   context,
                                   MaterialPageRoute(
@@ -603,11 +586,10 @@ class _CarritoScreenState extends State<CarritoScreen> {
 }
 
 // ==========================================
-// 5. SALA DE ESPERA (Simulador de Base de Datos)
+// 5. SALA DE ESPERA (Con Patitos Dinámicos)
 // ==========================================
 class SalaEsperaScreen extends StatefulWidget {
-  final String codigoPedido; // Recibimos el código
-
+  final String codigoPedido;
   const SalaEsperaScreen({super.key, required this.codigoPedido});
 
   @override
@@ -615,7 +597,7 @@ class SalaEsperaScreen extends StatefulWidget {
 }
 
 class _SalaEsperaScreenState extends State<SalaEsperaScreen> {
-  int estadoActual = 0; // 0: Recibido, 1: Cocinando, 2: Listo
+  int estadoActual = 0;
 
   @override
   void initState() {
@@ -623,13 +605,12 @@ class _SalaEsperaScreenState extends State<SalaEsperaScreen> {
     _simularAvancePedido();
   }
 
-  // ¡Esto simula a Firebase! Cambia el estado cada 4 segundos mágicamente
   void _simularAvancePedido() async {
     await Future.delayed(const Duration(seconds: 4));
-    if (mounted) setState(() => estadoActual = 1); // Pasa a Preparando
+    if (mounted) setState(() => estadoActual = 1);
 
     await Future.delayed(const Duration(seconds: 4));
-    if (mounted) setState(() => estadoActual = 2); // Pasa a Listo
+    if (mounted) setState(() => estadoActual = 2);
   }
 
   @override
@@ -637,84 +618,107 @@ class _SalaEsperaScreenState extends State<SalaEsperaScreen> {
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
-        title: const Text(
-          'Rastreo de Pedido',
-          style: TextStyle(color: colorVerdeTese, fontWeight: FontWeight.bold),
+        title: Text(
+          'Orden: ${widget.codigoPedido}',
+          style: const TextStyle(
+            color: colorVerdeTese,
+            fontWeight: FontWeight.bold,
+            fontSize: 24,
+          ),
         ),
         backgroundColor: Colors.white,
         elevation: 0,
         centerTitle: true,
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(24.0),
+      body: AnimatedSwitcher(
+        duration: const Duration(milliseconds: 800), // Fade suave
+        child: _construirPantallaPorEstado(estadoActual),
+      ),
+    );
+  }
+
+  Widget _construirPantallaPorEstado(int estado) {
+    if (estado == 0) {
+      return _PantallaEstadoFull(
+        key: const ValueKey(0),
+        titulo: 'Pedido Recibido',
+        subtitulo: 'Esperando que la cafetería confirme tu orden...',
+        cargando: true,
+        imagenAsset: 'assets/patito_recibido.png', // PATITO 1
+      );
+    } else if (estado == 1) {
+      return _PantallaEstadoFull(
+        key: const ValueKey(1),
+        titulo: 'En Preparación',
+        subtitulo: '¡El chef ya está preparando tus hambreados!',
+        cargando: true,
+        imagenAsset: 'assets/patito_chef.png', // PATITO 2
+      );
+    } else {
+      return _PantallaEstadoFull(
+        key: const ValueKey(2),
+        titulo: '¡Ya está listo!',
+        subtitulo:
+            'Acércate a la ventanilla y muestra tu código para recoger tu comida.',
+        cargando: false,
+        mostrarBoton: true,
+        imagenAsset: 'assets/patito_listo.png', // PATITO 3
+      );
+    }
+  }
+}
+
+// PLANTILLA DE ESTADO GIGANTE (Con Imagen Variable)
+class _PantallaEstadoFull extends StatelessWidget {
+  final String titulo;
+  final String subtitulo;
+  final bool cargando;
+  final bool mostrarBoton;
+  final String imagenAsset; // Nueva variable para la imagen
+
+  const _PantallaEstadoFull({
+    super.key,
+    required this.titulo,
+    required this.subtitulo,
+    required this.cargando,
+    this.mostrarBoton = false,
+    required this.imagenAsset,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 24.0),
         child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            // CÓDIGO DE ORDEN GIGANTE
-            FadeInDown(
-              child: Container(
-                padding: const EdgeInsets.symmetric(
-                  vertical: 20,
-                  horizontal: 40,
-                ),
-                decoration: BoxDecoration(
-                  color: colorVerdeTese.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: colorVerdeTese, width: 2),
-                ),
-                child: Column(
-                  children: [
-                    const Text(
-                      'TU CÓDIGO DE RECOLECCIÓN',
-                      style: TextStyle(
-                        color: Colors.grey,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    Text(
-                      widget.codigoPedido,
-                      style: const TextStyle(
-                        fontSize: 40,
-                        fontWeight: FontWeight.w900,
-                        color: colorVerdeTese,
-                      ),
-                    ),
-                  ],
-                ),
+            // AQUI SE INYECTA LA IMAGEN DEL PATITO
+            Image.asset(imagenAsset, height: 250, fit: BoxFit.contain),
+
+            const SizedBox(height: 40),
+            Text(
+              titulo,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                fontSize: 32,
+                fontWeight: FontWeight.w900,
+                color: colorVerdeTese,
               ),
             ),
-            const SizedBox(height: 50),
-
-            // LÍNEA DE TIEMPO (ESTADOS)
-            _construirEstado(
-              titulo: 'Pedido Recibido',
-              subtitulo: 'Esperando confirmación del local.',
-              icono: Icons.receipt_long,
-              estaActivo: estadoActual >= 0,
-              estaCargando: estadoActual == 0,
-            ),
-            _construirLineaConectora(estaActivo: estadoActual >= 1),
-
-            _construirEstado(
-              titulo: 'En Preparación',
-              subtitulo: '¡Tus hambreados se están cocinando!',
-              icono: Icons.soup_kitchen,
-              estaActivo: estadoActual >= 1,
-              estaCargando: estadoActual == 1,
-            ),
-            _construirLineaConectora(estaActivo: estadoActual >= 2),
-
-            _construirEstado(
-              titulo: '¡Listo para recoger!',
-              subtitulo: 'Muestra tu código en la ventanilla.',
-              icono: Icons.check_circle,
-              estaActivo: estadoActual >= 2,
-              estaCargando: false,
+            const SizedBox(height: 10),
+            Text(
+              subtitulo,
+              textAlign: TextAlign.center,
+              style: const TextStyle(fontSize: 18, color: Colors.grey),
             ),
 
-            const Spacer(),
+            const SizedBox(height: 40),
 
-            // BOTÓN (Solo aparece cuando está listo)
-            if (estadoActual == 2)
+            if (cargando)
+              const CircularProgressIndicator(color: colorAmarilloTese),
+
+            if (mostrarBoton)
               ZoomIn(
                 child: ElevatedButton(
                   style: ElevatedButton.styleFrom(
@@ -745,82 +749,6 @@ class _SalaEsperaScreenState extends State<SalaEsperaScreen> {
           ],
         ),
       ),
-    );
-  }
-
-  // WIDGETS AUXILIARES PARA DIBUJAR LA LÍNEA DE TIEMPO (TIMELINE)
-  Widget _construirEstado({
-    required String titulo,
-    required String subtitulo,
-    required IconData icono,
-    required bool estaActivo,
-    required bool estaCargando,
-  }) {
-    return Row(
-      children: [
-        // Circulito con ícono
-        Container(
-          height: 60,
-          width: 60,
-          decoration: BoxDecoration(
-            color: estaActivo ? colorVerdeTese : Colors.grey[300],
-            shape: BoxShape.circle,
-            boxShadow:
-                estaActivo
-                    ? [
-                      BoxShadow(
-                        color: colorVerdeTese.withOpacity(0.4),
-                        blurRadius: 10,
-                      ),
-                    ]
-                    : [],
-          ),
-          child:
-              estaCargando
-                  ? const Padding(
-                    padding: EdgeInsets.all(16.0),
-                    child: CircularProgressIndicator(
-                      color: Colors.white,
-                      strokeWidth: 3,
-                    ),
-                  )
-                  : Icon(icono, color: Colors.white, size: 30),
-        ),
-        const SizedBox(width: 20),
-        // Textos
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                titulo,
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: estaActivo ? Colors.black : Colors.grey,
-                ),
-              ),
-              Text(
-                subtitulo,
-                style: TextStyle(
-                  fontSize: 14,
-                  color: estaActivo ? Colors.black54 : Colors.grey,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _construirLineaConectora({required bool estaActivo}) {
-    return Container(
-      margin: const EdgeInsets.only(left: 28), // Alineado con el círculo
-      height: 40,
-      width: 4,
-      color: estaActivo ? colorVerdeTese : Colors.grey[300],
-      alignment: Alignment.centerLeft,
     );
   }
 }
