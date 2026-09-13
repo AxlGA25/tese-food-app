@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart'; // Letras bonitas
-import 'package:animate_do/animate_do.dart'; // Animaciones mágicas
+import 'package:animate_do/animate_do.dart';
+import 'dart:math'; // NUEVO: Para generar el código aleatorio
+import 'dart:async'; // Animaciones mágicas
 
 void main() {
   runApp(const TeseHambreadosApp());
@@ -432,7 +434,7 @@ class _CatalogoEstudianteScreenState extends State<CatalogoEstudianteScreen> {
 }
 
 // ==========================================
-// 4. CARRITO (Con función "Swipe to Delete")
+// 4. CARRITO (Modificado para generar código)
 // ==========================================
 class CarritoScreen extends StatefulWidget {
   final List<Platillo> carrito;
@@ -471,7 +473,6 @@ class _CarritoScreenState extends State<CarritoScreen> {
                       itemCount: widget.carrito.length,
                       itemBuilder: (context, index) {
                         final item = widget.carrito[index];
-                        // WIDGET MÁGICO: Permite deslizar para borrar
                         return Dismissible(
                           key: UniqueKey(),
                           direction: DismissDirection.endToStart,
@@ -515,7 +516,6 @@ class _CarritoScreenState extends State<CarritoScreen> {
                       },
                     ),
           ),
-          // Resumen de pago flotante
           FadeInUp(
             child: Container(
               padding: const EdgeInsets.all(24),
@@ -566,18 +566,24 @@ class _CarritoScreenState extends State<CarritoScreen> {
                           widget.carrito.isEmpty
                               ? null
                               : () {
+                                // 1. GENERAMOS EL CÓDIGO ALEATORIO AQUÍ
+                                String codigoGenerado =
+                                    '#TESE-${Random().nextInt(9000) + 1000}';
+
+                                // 2. VIAJAMOS A LA SALA DE ESPERA MANDÁNDOLE EL CÓDIGO
                                 Navigator.pushAndRemoveUntil(
                                   context,
                                   MaterialPageRoute(
                                     builder:
-                                        (context) =>
-                                            const PedidoExitosoScreen(),
+                                        (context) => SalaEsperaScreen(
+                                          codigoPedido: codigoGenerado,
+                                        ),
                                   ),
                                   (route) => false,
                                 );
                               },
                       child: const Text(
-                        'Confirmar Pedido',
+                        'Hacer Pedido',
                         style: TextStyle(
                           color: Colors.white,
                           fontSize: 18,
@@ -597,83 +603,224 @@ class _CarritoScreenState extends State<CarritoScreen> {
 }
 
 // ==========================================
-// 5. PANTALLA DE ÉXITO (Súper satisfactoria)
+// 5. SALA DE ESPERA (Simulador de Base de Datos)
 // ==========================================
-class PedidoExitosoScreen extends StatelessWidget {
-  const PedidoExitosoScreen({super.key});
+class SalaEsperaScreen extends StatefulWidget {
+  final String codigoPedido; // Recibimos el código
+
+  const SalaEsperaScreen({super.key, required this.codigoPedido});
+
+  @override
+  State<SalaEsperaScreen> createState() => _SalaEsperaScreenState();
+}
+
+class _SalaEsperaScreenState extends State<SalaEsperaScreen> {
+  int estadoActual = 0; // 0: Recibido, 1: Cocinando, 2: Listo
+
+  @override
+  void initState() {
+    super.initState();
+    _simularAvancePedido();
+  }
+
+  // ¡Esto simula a Firebase! Cambia el estado cada 4 segundos mágicamente
+  void _simularAvancePedido() async {
+    await Future.delayed(const Duration(seconds: 4));
+    if (mounted) setState(() => estadoActual = 1); // Pasa a Preparando
+
+    await Future.delayed(const Duration(seconds: 4));
+    if (mounted) setState(() => estadoActual = 2); // Pasa a Listo
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: colorVerdeTese,
-      body: Center(
+      backgroundColor: Colors.white,
+      appBar: AppBar(
+        title: const Text(
+          'Rastreo de Pedido',
+          style: TextStyle(color: colorVerdeTese, fontWeight: FontWeight.bold),
+        ),
+        backgroundColor: Colors.white,
+        elevation: 0,
+        centerTitle: true,
+      ),
+      body: Padding(
+        padding: const EdgeInsets.all(24.0),
         child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            ElasticIn(
-              // Rebote loco de éxito
+            // CÓDIGO DE ORDEN GIGANTE
+            FadeInDown(
               child: Container(
-                padding: const EdgeInsets.all(20),
+                padding: const EdgeInsets.symmetric(
+                  vertical: 20,
+                  horizontal: 40,
+                ),
                 decoration: BoxDecoration(
-                  color: colorAmarilloTese,
-                  shape: BoxShape.circle,
-                  boxShadow: [BoxShadow(color: Colors.black26, blurRadius: 15)],
+                  color: colorVerdeTese.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: colorVerdeTese, width: 2),
                 ),
-                child: const Icon(Icons.check, size: 100, color: Colors.white),
-              ),
-            ),
-            const SizedBox(height: 30),
-            FadeInUp(
-              delay: const Duration(milliseconds: 300),
-              child: const Text(
-                '¡Pedido Confirmado!',
-                style: TextStyle(
-                  fontSize: 30,
-                  fontWeight: FontWeight.w900,
-                  color: Colors.white,
+                child: Column(
+                  children: [
+                    const Text(
+                      'TU CÓDIGO DE RECOLECCIÓN',
+                      style: TextStyle(
+                        color: Colors.grey,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    Text(
+                      widget.codigoPedido,
+                      style: const TextStyle(
+                        fontSize: 40,
+                        fontWeight: FontWeight.w900,
+                        color: colorVerdeTese,
+                      ),
+                    ),
+                  ],
                 ),
-              ),
-            ),
-            const SizedBox(height: 10),
-            FadeInUp(
-              delay: const Duration(milliseconds: 500),
-              child: const Text(
-                'Tus hambreados favoritos\nestán siendo preparados.',
-                textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 16, color: Colors.white70),
               ),
             ),
             const SizedBox(height: 50),
-            FadeIn(
-              delay: const Duration(milliseconds: 1000),
-              child: ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 40,
-                    vertical: 15,
-                  ),
-                ),
-                onPressed:
-                    () => Navigator.pushReplacement(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => const CatalogoEstudianteScreen(),
-                      ),
+
+            // LÍNEA DE TIEMPO (ESTADOS)
+            _construirEstado(
+              titulo: 'Pedido Recibido',
+              subtitulo: 'Esperando confirmación del local.',
+              icono: Icons.receipt_long,
+              estaActivo: estadoActual >= 0,
+              estaCargando: estadoActual == 0,
+            ),
+            _construirLineaConectora(estaActivo: estadoActual >= 1),
+
+            _construirEstado(
+              titulo: 'En Preparación',
+              subtitulo: '¡Tus hambreados se están cocinando!',
+              icono: Icons.soup_kitchen,
+              estaActivo: estadoActual >= 1,
+              estaCargando: estadoActual == 1,
+            ),
+            _construirLineaConectora(estaActivo: estadoActual >= 2),
+
+            _construirEstado(
+              titulo: '¡Listo para recoger!',
+              subtitulo: 'Muestra tu código en la ventanilla.',
+              icono: Icons.check_circle,
+              estaActivo: estadoActual >= 2,
+              estaCargando: false,
+            ),
+
+            const Spacer(),
+
+            // BOTÓN (Solo aparece cuando está listo)
+            if (estadoActual == 2)
+              ZoomIn(
+                child: ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: colorAmarilloTese,
+                    minimumSize: const Size(double.infinity, 55),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(15),
                     ),
-                child: const Text(
-                  'Volver al inicio',
-                  style: TextStyle(
-                    color: colorVerdeTese,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 16,
+                  ),
+                  onPressed:
+                      () => Navigator.pushReplacement(
+                        context,
+                        MaterialPageRoute(
+                          builder:
+                              (context) => const CatalogoEstudianteScreen(),
+                        ),
+                      ),
+                  child: const Text(
+                    'Volver al Menú',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                 ),
               ),
-            ),
           ],
         ),
       ),
+    );
+  }
+
+  // WIDGETS AUXILIARES PARA DIBUJAR LA LÍNEA DE TIEMPO (TIMELINE)
+  Widget _construirEstado({
+    required String titulo,
+    required String subtitulo,
+    required IconData icono,
+    required bool estaActivo,
+    required bool estaCargando,
+  }) {
+    return Row(
+      children: [
+        // Circulito con ícono
+        Container(
+          height: 60,
+          width: 60,
+          decoration: BoxDecoration(
+            color: estaActivo ? colorVerdeTese : Colors.grey[300],
+            shape: BoxShape.circle,
+            boxShadow:
+                estaActivo
+                    ? [
+                      BoxShadow(
+                        color: colorVerdeTese.withOpacity(0.4),
+                        blurRadius: 10,
+                      ),
+                    ]
+                    : [],
+          ),
+          child:
+              estaCargando
+                  ? const Padding(
+                    padding: EdgeInsets.all(16.0),
+                    child: CircularProgressIndicator(
+                      color: Colors.white,
+                      strokeWidth: 3,
+                    ),
+                  )
+                  : Icon(icono, color: Colors.white, size: 30),
+        ),
+        const SizedBox(width: 20),
+        // Textos
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                titulo,
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: estaActivo ? Colors.black : Colors.grey,
+                ),
+              ),
+              Text(
+                subtitulo,
+                style: TextStyle(
+                  fontSize: 14,
+                  color: estaActivo ? Colors.black54 : Colors.grey,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _construirLineaConectora({required bool estaActivo}) {
+    return Container(
+      margin: const EdgeInsets.only(left: 28), // Alineado con el círculo
+      height: 40,
+      width: 4,
+      color: estaActivo ? colorVerdeTese : Colors.grey[300],
+      alignment: Alignment.centerLeft,
     );
   }
 }
