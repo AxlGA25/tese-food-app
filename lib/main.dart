@@ -13,6 +13,7 @@ void main() {
 // ==========================================
 const Color colorVerdeTese = Color(0xFF0F4C3A);
 const Color colorAmarilloTese = Color(0xFFF9A826);
+const Color colorExito = Color(0xFF00A650);
 
 class TeseHambreadosApp extends StatelessWidget {
   const TeseHambreadosApp({super.key});
@@ -37,7 +38,7 @@ class TeseHambreadosApp extends StatelessWidget {
 }
 
 // ==========================================
-// 1. PANTALLA DE DECISIÓN (Con Logo Real)
+// 1. PANTALLA DE DECISIÓN
 // ==========================================
 class DecisionScreen extends StatelessWidget {
   const DecisionScreen({super.key});
@@ -52,10 +53,9 @@ class DecisionScreen extends StatelessWidget {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              // AQUI VA EL LOGO DE LA APP
               BounceInDown(
                 child: Hero(
-                  tag: 'logo_app',
+                  tag: 'logo_tesehambreado',
                   child: Image.asset(
                     'assets/logo_tesehambreado.png',
                     height: 180,
@@ -131,7 +131,7 @@ class DecisionScreen extends StatelessWidget {
                       borderRadius: BorderRadius.circular(20),
                     ),
                   ),
-                  onPressed: () {},
+                  onPressed: () {}, // PRONTO HAREMOS ESTA PANTALLA
                 ),
               ),
             ],
@@ -143,7 +143,7 @@ class DecisionScreen extends StatelessWidget {
 }
 
 // ==========================================
-// 2. LOGIN ESTUDIANTE (Patito Pidiendo)
+// 2. LOGIN ESTUDIANTE
 // ==========================================
 class LoginEstudianteScreen extends StatelessWidget {
   const LoginEstudianteScreen({super.key});
@@ -151,41 +151,278 @@ class LoginEstudianteScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Colors.white,
       appBar: AppBar(
-        title: const Text('Acceso'),
+        title: const Text('Atrás'),
         backgroundColor: Colors.transparent,
         elevation: 0,
       ),
-      body: Padding(
+      body: Center(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 10),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              FadeInDown(
+                child: Text(
+                  'Inicio de Sesión',
+                  style: GoogleFonts.poppins(
+                    fontSize: 28,
+                    fontWeight: FontWeight.bold,
+                    color: colorVerdeTese,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 20),
+              ZoomIn(
+                child: Image.asset(
+                  'assets/patito_login.png',
+                  height: 160,
+                  fit: BoxFit.contain,
+                ),
+              ),
+              const SizedBox(height: 30),
+              FadeInLeft(
+                child: TextField(
+                  decoration: InputDecoration(
+                    labelText: 'Matrícula',
+                    prefixIcon: const Icon(Icons.badge),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(15),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+              FadeInRight(
+                child: TextField(
+                  obscureText: true,
+                  decoration: InputDecoration(
+                    labelText: 'Contraseña',
+                    prefixIcon: const Icon(Icons.lock),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(15),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 30),
+              FadeInUp(
+                child: ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: colorVerdeTese,
+                    minimumSize: const Size(double.infinity, 55),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(15),
+                    ),
+                  ),
+                  onPressed:
+                      () => Navigator.pushReplacement(
+                        context,
+                        MaterialPageRoute(
+                          builder:
+                              (context) => const CatalogoEstudianteScreen(),
+                        ),
+                      ),
+                  child: const Text(
+                    'Ingresar',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 10),
+              // BOTÓN PARA IR AL REGISTRO NUEVO
+              FadeInUp(
+                delay: const Duration(milliseconds: 300),
+                child: TextButton(
+                  onPressed:
+                      () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder:
+                              (context) => const RegistroEstudianteScreen(),
+                        ),
+                      ),
+                  child: const Text(
+                    '¿No tienes cuenta? Crear una',
+                    style: TextStyle(
+                      color: colorAmarilloTese,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ==========================================
+// 2.5 REGISTRO DE ESTUDIANTE (¡NUEVO!)
+// ==========================================
+class RegistroEstudianteScreen extends StatefulWidget {
+  const RegistroEstudianteScreen({super.key});
+
+  @override
+  State<RegistroEstudianteScreen> createState() =>
+      _RegistroEstudianteScreenState();
+}
+
+class _RegistroEstudianteScreenState extends State<RegistroEstudianteScreen> {
+  String? carreraSeleccionada;
+  final List<String> carrerasTese = [
+    'Ing. en Sistemas Computacionales',
+    'Ing. Informática',
+    'Ing. Electrónica',
+    'Ing. Industrial',
+    'Contaduría',
+    'Otra',
+  ];
+
+  void _simularRegistro() async {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Creando tu cuenta... 🦆'),
+        backgroundColor: colorAmarilloTese,
+      ),
+    );
+    await Future.delayed(const Duration(seconds: 2));
+    if (!mounted) return;
+    // Si se registra con éxito, lo mandamos directo a ver la comida
+    Navigator.pushAndRemoveUntil(
+      context,
+      MaterialPageRoute(builder: (context) => const CatalogoEstudianteScreen()),
+      (route) => false,
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.white,
+      appBar: AppBar(
+        title: const Text(
+          'Nuevo Estudiante',
+          style: TextStyle(color: colorVerdeTese, fontWeight: FontWeight.bold),
+        ),
+        backgroundColor: Colors.white,
+        elevation: 0,
+        iconTheme: const IconThemeData(color: colorVerdeTese),
+      ),
+      body: SingleChildScrollView(
         padding: const EdgeInsets.all(24.0),
         child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            // AQUI VA EL PATITO LOGIN
-            ZoomIn(
-              child: Image.asset(
-                'assets/patito_login.png',
-                height: 180,
-                fit: BoxFit.contain,
+            // FOTO DE PERFIL (Placeholder)
+            FadeInDown(
+              child: Stack(
+                alignment: Alignment.bottomRight,
+                children: [
+                  CircleAvatar(
+                    radius: 60,
+                    backgroundColor: Colors.grey[200],
+                    child: const Icon(
+                      Icons.person,
+                      size: 80,
+                      color: Colors.grey,
+                    ),
+                  ),
+                  Container(
+                    decoration: const BoxDecoration(
+                      color: colorAmarilloTese,
+                      shape: BoxShape.circle,
+                    ),
+                    child: IconButton(
+                      icon: const Icon(Icons.camera_alt, color: Colors.white),
+                      onPressed: () {},
+                    ),
+                  ),
+                ],
               ),
             ),
             const SizedBox(height: 30),
+
+            // FORMULARIOS
             FadeInLeft(
+              delay: const Duration(milliseconds: 100),
               child: TextField(
                 decoration: InputDecoration(
-                  labelText: 'No. Control',
+                  labelText: 'Nombre Completo',
+                  prefixIcon: const Icon(Icons.text_fields),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(15),
                   ),
                 ),
               ),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 15),
+
             FadeInRight(
+              delay: const Duration(milliseconds: 200),
+              child: TextField(
+                keyboardType: TextInputType.number,
+                decoration: InputDecoration(
+                  labelText: 'Matrícula',
+                  prefixIcon: const Icon(Icons.badge),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(15),
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 15),
+
+            // DROPDOWN PARA CARRERA
+            FadeInLeft(
+              delay: const Duration(milliseconds: 300),
+              child: DropdownButtonFormField<String>(
+                decoration: InputDecoration(
+                  labelText: 'Carrera',
+                  prefixIcon: const Icon(Icons.school),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(15),
+                  ),
+                ),
+                value: carreraSeleccionada,
+                items:
+                    carrerasTese
+                        .map((c) => DropdownMenuItem(value: c, child: Text(c)))
+                        .toList(),
+                onChanged: (val) => setState(() => carreraSeleccionada = val),
+              ),
+            ),
+            const SizedBox(height: 15),
+
+            FadeInRight(
+              delay: const Duration(milliseconds: 400),
+              child: TextField(
+                keyboardType: TextInputType.phone,
+                decoration: InputDecoration(
+                  labelText: 'Teléfono',
+                  prefixIcon: const Icon(Icons.phone),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(15),
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 15),
+
+            FadeInLeft(
+              delay: const Duration(milliseconds: 500),
               child: TextField(
                 obscureText: true,
                 decoration: InputDecoration(
-                  labelText: 'Contraseña',
+                  labelText: 'Crear Contraseña',
+                  prefixIcon: const Icon(Icons.lock),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(15),
                   ),
@@ -193,7 +430,9 @@ class LoginEstudianteScreen extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 30),
+
             FadeInUp(
+              delay: const Duration(milliseconds: 600),
               child: ElevatedButton(
                 style: ElevatedButton.styleFrom(
                   backgroundColor: colorVerdeTese,
@@ -202,15 +441,9 @@ class LoginEstudianteScreen extends StatelessWidget {
                     borderRadius: BorderRadius.circular(15),
                   ),
                 ),
-                onPressed:
-                    () => Navigator.pushReplacement(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => const CatalogoEstudianteScreen(),
-                      ),
-                    ),
+                onPressed: _simularRegistro,
                 child: const Text(
-                  'Ingresar',
+                  'Registrarme',
                   style: TextStyle(
                     color: Colors.white,
                     fontSize: 18,
@@ -227,7 +460,7 @@ class LoginEstudianteScreen extends StatelessWidget {
 }
 
 // ==========================================
-// ESTRUCTURA DE DATOS
+// ESTRUCTURA DE DATOS (Platillo)
 // ==========================================
 class Platillo {
   final String id;
@@ -586,7 +819,7 @@ class _CarritoScreenState extends State<CarritoScreen> {
 }
 
 // ==========================================
-// 5. SALA DE ESPERA (Con Patitos Dinámicos)
+// 5. SALA DE ESPERA
 // ==========================================
 class SalaEsperaScreen extends StatefulWidget {
   final String codigoPedido;
@@ -615,24 +848,35 @@ class _SalaEsperaScreenState extends State<SalaEsperaScreen> {
 
   @override
   Widget build(BuildContext context) {
+    Color colorFondo = estadoActual == 2 ? colorExito : Colors.white;
+    Color colorTextoTop = estadoActual == 2 ? Colors.white : colorVerdeTese;
+
     return Scaffold(
-      backgroundColor: Colors.white,
+      extendBodyBehindAppBar: true,
       appBar: AppBar(
         title: Text(
           'Orden: ${widget.codigoPedido}',
-          style: const TextStyle(
-            color: colorVerdeTese,
+          style: TextStyle(
+            color: colorTextoTop,
             fontWeight: FontWeight.bold,
             fontSize: 24,
           ),
         ),
-        backgroundColor: Colors.white,
+        backgroundColor: Colors.transparent,
         elevation: 0,
         centerTitle: true,
       ),
-      body: AnimatedSwitcher(
-        duration: const Duration(milliseconds: 800), // Fade suave
-        child: _construirPantallaPorEstado(estadoActual),
+      body: AnimatedContainer(
+        duration: const Duration(milliseconds: 800),
+        color: colorFondo,
+        width: double.infinity,
+        height: double.infinity,
+        child: SafeArea(
+          child: AnimatedSwitcher(
+            duration: const Duration(milliseconds: 800),
+            child: _construirPantallaPorEstado(estadoActual),
+          ),
+        ),
       ),
     );
   }
@@ -644,7 +888,9 @@ class _SalaEsperaScreenState extends State<SalaEsperaScreen> {
         titulo: 'Pedido Recibido',
         subtitulo: 'Esperando que la cafetería confirme tu orden...',
         cargando: true,
-        imagenAsset: 'assets/patito_recibido.png', // PATITO 1
+        imagenAsset: 'assets/patito_recibido.png',
+        colorTextoTitulo: colorVerdeTese,
+        colorTextoSub: Colors.grey,
       );
     } else if (estado == 1) {
       return _PantallaEstadoFull(
@@ -652,7 +898,9 @@ class _SalaEsperaScreenState extends State<SalaEsperaScreen> {
         titulo: 'En Preparación',
         subtitulo: '¡El chef ya está preparando tus hambreados!',
         cargando: true,
-        imagenAsset: 'assets/patito_chef.png', // PATITO 2
+        imagenAsset: 'assets/patito_chef.png',
+        colorTextoTitulo: colorVerdeTese,
+        colorTextoSub: Colors.grey,
       );
     } else {
       return _PantallaEstadoFull(
@@ -662,19 +910,22 @@ class _SalaEsperaScreenState extends State<SalaEsperaScreen> {
             'Acércate a la ventanilla y muestra tu código para recoger tu comida.',
         cargando: false,
         mostrarBoton: true,
-        imagenAsset: 'assets/patito_listo.png', // PATITO 3
+        imagenAsset: 'assets/patito_listo.png',
+        colorTextoTitulo: Colors.white,
+        colorTextoSub: Colors.white70,
       );
     }
   }
 }
 
-// PLANTILLA DE ESTADO GIGANTE (Con Imagen Variable)
 class _PantallaEstadoFull extends StatelessWidget {
   final String titulo;
   final String subtitulo;
   final bool cargando;
   final bool mostrarBoton;
-  final String imagenAsset; // Nueva variable para la imagen
+  final String imagenAsset;
+  final Color colorTextoTitulo;
+  final Color colorTextoSub;
 
   const _PantallaEstadoFull({
     super.key,
@@ -683,6 +934,8 @@ class _PantallaEstadoFull extends StatelessWidget {
     required this.cargando,
     this.mostrarBoton = false,
     required this.imagenAsset,
+    required this.colorTextoTitulo,
+    required this.colorTextoSub,
   });
 
   @override
@@ -693,36 +946,31 @@ class _PantallaEstadoFull extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            // AQUI SE INYECTA LA IMAGEN DEL PATITO
             Image.asset(imagenAsset, height: 250, fit: BoxFit.contain),
-
             const SizedBox(height: 40),
             Text(
               titulo,
               textAlign: TextAlign.center,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 32,
                 fontWeight: FontWeight.w900,
-                color: colorVerdeTese,
+                color: colorTextoTitulo,
               ),
             ),
             const SizedBox(height: 10),
             Text(
               subtitulo,
               textAlign: TextAlign.center,
-              style: const TextStyle(fontSize: 18, color: Colors.grey),
+              style: TextStyle(fontSize: 18, color: colorTextoSub),
             ),
-
             const SizedBox(height: 40),
-
             if (cargando)
               const CircularProgressIndicator(color: colorAmarilloTese),
-
             if (mostrarBoton)
               ZoomIn(
                 child: ElevatedButton(
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: colorAmarilloTese,
+                    backgroundColor: Colors.white,
                     minimumSize: const Size(double.infinity, 55),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(15),
@@ -739,7 +987,7 @@ class _PantallaEstadoFull extends StatelessWidget {
                   child: const Text(
                     'Volver al Menú',
                     style: TextStyle(
-                      color: Colors.white,
+                      color: colorExito,
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
                     ),
