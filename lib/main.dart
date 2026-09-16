@@ -1,3 +1,4 @@
+import 'cafeteria.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:animate_do/animate_do.dart';
@@ -577,7 +578,7 @@ class _CatalogoEstudianteScreenState extends State<CatalogoEstudianteScreen> {
                 leading: Container(
                   padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(
-                    color: colorAmarilloTese.withOpacity(0.2),
+                    color: colorAmarilloTese.withValues(alpha: 0.2),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: const Icon(
