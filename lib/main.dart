@@ -1,17 +1,14 @@
-import 'cafeteria.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:animate_do/animate_do.dart';
 import 'dart:math';
 import 'dart:async';
+import 'cafeteria.dart';
 
 void main() {
   runApp(const TeseHambreadosApp());
 }
 
-// ==========================================
-// PALETA DE COLORES
-// ==========================================
 const Color colorVerdeTese = Color(0xFF0F4C3A);
 const Color colorAmarilloTese = Color(0xFFF9A826);
 const Color colorExito = Color(0xFF00A650);
@@ -38,9 +35,6 @@ class TeseHambreadosApp extends StatelessWidget {
   }
 }
 
-// ==========================================
-// 1. PANTALLA DE DECISIÓN
-// ==========================================
 class DecisionScreen extends StatelessWidget {
   const DecisionScreen({super.key});
 
@@ -56,9 +50,9 @@ class DecisionScreen extends StatelessWidget {
             children: [
               BounceInDown(
                 child: Hero(
-                  tag: 'logo_tesehambreado',
+                  tag: 'logo_app',
                   child: Image.asset(
-                    'assets/logo_tesehambreado.png',
+                    'assets/logo_app.png',
                     height: 180,
                     fit: BoxFit.contain,
                   ),
@@ -132,7 +126,13 @@ class DecisionScreen extends StatelessWidget {
                       borderRadius: BorderRadius.circular(20),
                     ),
                   ),
-                  onPressed: () {}, // PRONTO HAREMOS ESTA PANTALLA
+                  onPressed:
+                      () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const LoginLocalScreen(),
+                        ),
+                      ),
                 ),
               ),
             ],
@@ -143,9 +143,6 @@ class DecisionScreen extends StatelessWidget {
   }
 }
 
-// ==========================================
-// 2. LOGIN ESTUDIANTE
-// ==========================================
 class LoginEstudianteScreen extends StatelessWidget {
   const LoginEstudianteScreen({super.key});
 
@@ -236,7 +233,6 @@ class LoginEstudianteScreen extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 10),
-              // BOTÓN PARA IR AL REGISTRO NUEVO
               FadeInUp(
                 delay: const Duration(milliseconds: 300),
                 child: TextButton(
@@ -266,9 +262,6 @@ class LoginEstudianteScreen extends StatelessWidget {
   }
 }
 
-// ==========================================
-// 2.5 REGISTRO DE ESTUDIANTE (¡NUEVO!)
-// ==========================================
 class RegistroEstudianteScreen extends StatefulWidget {
   const RegistroEstudianteScreen({super.key});
 
@@ -283,7 +276,7 @@ class _RegistroEstudianteScreenState extends State<RegistroEstudianteScreen> {
     'Ing. en Sistemas Computacionales',
     'Ing. Informática',
     'Ing. Electrónica',
-    'Ing. Industrial',
+    'Arquitectura',
     'Contaduría',
     'Otra',
   ];
@@ -297,7 +290,6 @@ class _RegistroEstudianteScreenState extends State<RegistroEstudianteScreen> {
     );
     await Future.delayed(const Duration(seconds: 2));
     if (!mounted) return;
-    // Si se registra con éxito, lo mandamos directo a ver la comida
     Navigator.pushAndRemoveUntil(
       context,
       MaterialPageRoute(builder: (context) => const CatalogoEstudianteScreen()),
@@ -322,7 +314,6 @@ class _RegistroEstudianteScreenState extends State<RegistroEstudianteScreen> {
         padding: const EdgeInsets.all(24.0),
         child: Column(
           children: [
-            // FOTO DE PERFIL (Placeholder)
             FadeInDown(
               child: Stack(
                 alignment: Alignment.bottomRight,
@@ -350,8 +341,6 @@ class _RegistroEstudianteScreenState extends State<RegistroEstudianteScreen> {
               ),
             ),
             const SizedBox(height: 30),
-
-            // FORMULARIOS
             FadeInLeft(
               delay: const Duration(milliseconds: 100),
               child: TextField(
@@ -365,7 +354,6 @@ class _RegistroEstudianteScreenState extends State<RegistroEstudianteScreen> {
               ),
             ),
             const SizedBox(height: 15),
-
             FadeInRight(
               delay: const Duration(milliseconds: 200),
               child: TextField(
@@ -380,8 +368,6 @@ class _RegistroEstudianteScreenState extends State<RegistroEstudianteScreen> {
               ),
             ),
             const SizedBox(height: 15),
-
-            // DROPDOWN PARA CARRERA
             FadeInLeft(
               delay: const Duration(milliseconds: 300),
               child: DropdownButtonFormField<String>(
@@ -401,7 +387,6 @@ class _RegistroEstudianteScreenState extends State<RegistroEstudianteScreen> {
               ),
             ),
             const SizedBox(height: 15),
-
             FadeInRight(
               delay: const Duration(milliseconds: 400),
               child: TextField(
@@ -416,7 +401,6 @@ class _RegistroEstudianteScreenState extends State<RegistroEstudianteScreen> {
               ),
             ),
             const SizedBox(height: 15),
-
             FadeInLeft(
               delay: const Duration(milliseconds: 500),
               child: TextField(
@@ -431,7 +415,6 @@ class _RegistroEstudianteScreenState extends State<RegistroEstudianteScreen> {
               ),
             ),
             const SizedBox(height: 30),
-
             FadeInUp(
               delay: const Duration(milliseconds: 600),
               child: ElevatedButton(
@@ -460,9 +443,6 @@ class _RegistroEstudianteScreenState extends State<RegistroEstudianteScreen> {
   }
 }
 
-// ==========================================
-// ESTRUCTURA DE DATOS (Platillo)
-// ==========================================
 class Platillo {
   final String id;
   final String nombre;
@@ -476,9 +456,6 @@ class Platillo {
   });
 }
 
-// ==========================================
-// 3. CATÁLOGO ESTUDIANTE
-// ==========================================
 class CatalogoEstudianteScreen extends StatefulWidget {
   const CatalogoEstudianteScreen({super.key});
   @override
@@ -654,9 +631,6 @@ class _CatalogoEstudianteScreenState extends State<CatalogoEstudianteScreen> {
   }
 }
 
-// ==========================================
-// 4. CARRITO
-// ==========================================
 class CarritoScreen extends StatefulWidget {
   final List<Platillo> carrito;
   const CarritoScreen({super.key, required this.carrito});
@@ -819,9 +793,6 @@ class _CarritoScreenState extends State<CarritoScreen> {
   }
 }
 
-// ==========================================
-// 5. SALA DE ESPERA
-// ==========================================
 class SalaEsperaScreen extends StatefulWidget {
   final String codigoPedido;
   const SalaEsperaScreen({super.key, required this.codigoPedido});
@@ -832,7 +803,6 @@ class SalaEsperaScreen extends StatefulWidget {
 
 class _SalaEsperaScreenState extends State<SalaEsperaScreen> {
   int estadoActual = 0;
-
   @override
   void initState() {
     super.initState();
@@ -842,7 +812,6 @@ class _SalaEsperaScreenState extends State<SalaEsperaScreen> {
   void _simularAvancePedido() async {
     await Future.delayed(const Duration(seconds: 4));
     if (mounted) setState(() => estadoActual = 1);
-
     await Future.delayed(const Duration(seconds: 4));
     if (mounted) setState(() => estadoActual = 2);
   }
@@ -851,7 +820,6 @@ class _SalaEsperaScreenState extends State<SalaEsperaScreen> {
   Widget build(BuildContext context) {
     Color colorFondo = estadoActual == 2 ? colorExito : Colors.white;
     Color colorTextoTop = estadoActual == 2 ? Colors.white : colorVerdeTese;
-
     return Scaffold(
       extendBodyBehindAppBar: true,
       appBar: AppBar(
@@ -920,14 +888,9 @@ class _SalaEsperaScreenState extends State<SalaEsperaScreen> {
 }
 
 class _PantallaEstadoFull extends StatelessWidget {
-  final String titulo;
-  final String subtitulo;
-  final bool cargando;
-  final bool mostrarBoton;
-  final String imagenAsset;
-  final Color colorTextoTitulo;
-  final Color colorTextoSub;
-
+  final String titulo, subtitulo, imagenAsset;
+  final bool cargando, mostrarBoton;
+  final Color colorTextoTitulo, colorTextoSub;
   const _PantallaEstadoFull({
     super.key,
     required this.titulo,
@@ -938,7 +901,6 @@ class _PantallaEstadoFull extends StatelessWidget {
     required this.colorTextoTitulo,
     required this.colorTextoSub,
   });
-
   @override
   Widget build(BuildContext context) {
     return Center(
