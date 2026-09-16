@@ -640,6 +640,8 @@ class CarritoScreen extends StatefulWidget {
 }
 
 class _CarritoScreenState extends State<CarritoScreen> {
+  String metodoPago = 'Efectivo';
+
   @override
   Widget build(BuildContext context) {
     double total = widget.carrito.fold(0, (suma, item) => suma + item.precio);
@@ -729,7 +731,110 @@ class _CarritoScreenState extends State<CarritoScreen> {
               ),
               child: SafeArea(
                 child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    const Text(
+                      'Método de pago al recoger:',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: InkWell(
+                            onTap:
+                                () => setState(() => metodoPago = 'Efectivo'),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(vertical: 12),
+                              decoration: BoxDecoration(
+                                color:
+                                    metodoPago == 'Efectivo'
+                                        ? colorVerdeTese.withValues(alpha: 0.1)
+                                        : Colors.white,
+                                border: Border.all(
+                                  color:
+                                      metodoPago == 'Efectivo'
+                                          ? colorVerdeTese
+                                          : Colors.grey[300]!,
+                                ),
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: Column(
+                                children: [
+                                  Icon(
+                                    Icons.payments,
+                                    color:
+                                        metodoPago == 'Efectivo'
+                                            ? colorVerdeTese
+                                            : Colors.grey,
+                                  ),
+                                  Text(
+                                    'Efectivo',
+                                    style: TextStyle(
+                                      color:
+                                          metodoPago == 'Efectivo'
+                                              ? colorVerdeTese
+                                              : Colors.grey,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 15),
+                        Expanded(
+                          child: InkWell(
+                            onTap:
+                                () => setState(
+                                  () => metodoPago = 'Terminal Bancaria',
+                                ),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(vertical: 12),
+                              decoration: BoxDecoration(
+                                color:
+                                    metodoPago == 'Terminal Bancaria'
+                                        ? colorVerdeTese.withValues(alpha: 0.1)
+                                        : Colors.white,
+                                border: Border.all(
+                                  color:
+                                      metodoPago == 'Terminal Bancaria'
+                                          ? colorVerdeTese
+                                          : Colors.grey[300]!,
+                                ),
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: Column(
+                                children: [
+                                  Icon(
+                                    Icons.credit_card,
+                                    color:
+                                        metodoPago == 'Terminal Bancaria'
+                                            ? colorVerdeTese
+                                            : Colors.grey,
+                                  ),
+                                  Text(
+                                    'Tarjeta',
+                                    style: TextStyle(
+                                      color:
+                                          metodoPago == 'Terminal Bancaria'
+                                              ? colorVerdeTese
+                                              : Colors.grey,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const Divider(height: 40),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
@@ -774,7 +879,7 @@ class _CarritoScreenState extends State<CarritoScreen> {
                                 );
                               },
                       child: const Text(
-                        'Hacer Pedido',
+                        'Confirmar Pedido',
                         style: TextStyle(
                           color: Colors.white,
                           fontSize: 18,
