@@ -109,8 +109,19 @@ class ComandaDummy {
   final String idPedido;
   final String alumno;
   final String detalle;
+  final String metodoPago;
+  final String notas;
+  final double total;
   int estado;
-  ComandaDummy(this.idPedido, this.alumno, this.detalle, this.estado);
+  ComandaDummy(
+    this.idPedido,
+    this.alumno,
+    this.detalle,
+    this.metodoPago,
+    this.notas,
+    this.total,
+    this.estado,
+  );
 }
 
 class PlatilloLocal {
@@ -136,10 +147,29 @@ class _DashboardNavegacionLocalState extends State<DashboardNavegacionLocal> {
       '#TESE-4029',
       'Axel Guerrero',
       '1x Hamb. Clásica\n1x Jugo Naranja',
+      'Terminal Bancaria',
+      'Sin cebolla ni tomate',
+      90.0,
       0,
     ),
-    ComandaDummy('#TESE-8112', 'Dana Patricia', '2x Chilaquiles Verdes', 1),
-    ComandaDummy('#TESE-1993', 'Profe. Informática', '1x Orden Tacos', 2),
+    ComandaDummy(
+      '#TESE-8112',
+      'Dana Patricia',
+      '2x Chilaquiles Verdes',
+      'Efectivo',
+      'Con extra queso',
+      90.0,
+      1,
+    ),
+    ComandaDummy(
+      '#TESE-1993',
+      'Profe. Informática',
+      '1x Orden Tacos',
+      'Efectivo',
+      'Salsa aparte',
+      40.0,
+      2,
+    ),
   ];
 
   final List<PlatilloLocal> miMenu = [
@@ -152,6 +182,175 @@ class _DashboardNavegacionLocalState extends State<DashboardNavegacionLocal> {
     setState(() {
       miMenu.add(nuevoPlatillo);
     });
+  }
+
+  void _mostrarDetallePedido(
+    ComandaDummy comanda,
+    int index,
+    Color colorEstado,
+    String textoBoton,
+  ) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder:
+          (context) => Container(
+            decoration: const BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.only(
+                topLeft: Radius.circular(30),
+                topRight: Radius.circular(30),
+              ),
+            ),
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Center(
+                  child: Container(
+                    width: 50,
+                    height: 5,
+                    decoration: BoxDecoration(
+                      color: Colors.grey[300],
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 20),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      comanda.idPedido,
+                      style: TextStyle(
+                        fontSize: 28,
+                        fontWeight: FontWeight.w900,
+                        color: colorEstado,
+                      ),
+                    ),
+                    Text(
+                      '\$${comanda.total.toStringAsFixed(2)}',
+                      style: const TextStyle(
+                        fontSize: 24,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.blueGrey,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 20),
+                Row(
+                  children: [
+                    const CircleAvatar(
+                      backgroundColor: Colors.blueGrey,
+                      child: Icon(Icons.person, color: Colors.white),
+                    ),
+                    const SizedBox(width: 15),
+                    Text(
+                      comanda.alumno,
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+                const Divider(height: 30),
+                const Text(
+                  'Artículos:',
+                  style: TextStyle(fontSize: 16, color: Colors.grey),
+                ),
+                const SizedBox(height: 5),
+                Text(
+                  comanda.detalle,
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 20),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.amber[50],
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: Colors.amber),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Notas del cliente:',
+                        style: TextStyle(fontSize: 14, color: Colors.amber),
+                      ),
+                      Text(
+                        comanda.notas,
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.black87,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 20),
+                Row(
+                  children: [
+                    Icon(
+                      comanda.metodoPago == 'Efectivo'
+                          ? Icons.payments
+                          : Icons.credit_card,
+                      color: Colors.blueGrey,
+                    ),
+                    const SizedBox(width: 10),
+                    Text(
+                      'Pago con: ${comanda.metodoPago}',
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 30),
+                SizedBox(
+                  width: double.infinity,
+                  height: 55,
+                  child: ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: colorEstado,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(15),
+                      ),
+                    ),
+                    onPressed: () {
+                      Navigator.pop(context);
+                      setState(() {
+                        if (comanda.estado < 2) {
+                          comanda.estado++;
+                        } else {
+                          pedidosActivos.removeAt(index);
+                        }
+                      });
+                    },
+                    child: Text(
+                      textoBoton,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+    );
   }
 
   @override
@@ -228,91 +427,106 @@ class _DashboardNavegacionLocalState extends State<DashboardNavegacionLocal> {
         }
 
         return FadeInUp(
-          child: Card(
-            margin: const EdgeInsets.only(bottom: 16),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(15),
-              side: BorderSide(color: colorEstado, width: 2),
-            ),
-            child: Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        comanda.idPedido,
-                        style: TextStyle(
-                          fontSize: 22,
-                          fontWeight: FontWeight.w900,
-                          color: colorEstado,
+          child: GestureDetector(
+            onTap:
+                () => _mostrarDetallePedido(
+                  comanda,
+                  index,
+                  colorEstado,
+                  textoBoton,
+                ),
+            child: Card(
+              margin: const EdgeInsets.only(bottom: 16),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(15),
+                side: BorderSide(color: colorEstado, width: 2),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          comanda.idPedido,
+                          style: TextStyle(
+                            fontSize: 22,
+                            fontWeight: FontWeight.w900,
+                            color: colorEstado,
+                          ),
                         ),
-                      ),
-                      Chip(
-                        avatar: Icon(
-                          iconoEstado,
-                          color: Colors.white,
-                          size: 18,
+                        Chip(
+                          avatar: Icon(
+                            iconoEstado,
+                            color: Colors.white,
+                            size: 18,
+                          ),
+                          label: Text(
+                            comanda.estado == 0
+                                ? 'NUEVO'
+                                : (comanda.estado == 1
+                                    ? 'PREPARANDO'
+                                    : 'LISTO'),
+                          ),
+                          backgroundColor: colorEstado,
+                          labelStyle: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
-                        label: Text(
-                          comanda.estado == 0
-                              ? 'NUEVO'
-                              : (comanda.estado == 1 ? 'PREPARANDO' : 'LISTO'),
-                        ),
-                        backgroundColor: colorEstado,
-                        labelStyle: const TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const Divider(),
-                  Text(
-                    'Alumno: ${comanda.alumno}',
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
+                      ],
                     ),
-                  ),
-                  const SizedBox(height: 10),
-                  Text(
-                    comanda.detalle,
-                    style: const TextStyle(fontSize: 16, color: Colors.black87),
-                  ),
-                  const SizedBox(height: 20),
-                  SizedBox(
-                    width: double.infinity,
-                    height: 50,
-                    child: ElevatedButton(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: colorEstado,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10),
-                        ),
+                    const Divider(),
+                    Text(
+                      'Alumno: ${comanda.alumno}',
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
                       ),
-                      onPressed: () {
-                        setState(() {
-                          if (comanda.estado < 2) {
-                            comanda.estado++;
-                          } else {
-                            pedidosActivos.removeAt(index);
-                          }
-                        });
-                      },
+                    ),
+                    const SizedBox(height: 10),
+                    Text(
+                      comanda.detalle,
+                      style: const TextStyle(
+                        fontSize: 16,
+                        color: Colors.black87,
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    Row(
+                      children: [
+                        Icon(
+                          comanda.metodoPago == 'Efectivo'
+                              ? Icons.payments
+                              : Icons.credit_card,
+                          size: 16,
+                          color: Colors.grey,
+                        ),
+                        const SizedBox(width: 5),
+                        Text(
+                          comanda.metodoPago,
+                          style: const TextStyle(
+                            color: Colors.grey,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 10),
+                    const Center(
                       child: Text(
-                        textoBoton,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 16,
+                        'Toca la tarjeta para ver detalles y procesar',
+                        style: TextStyle(
+                          color: Colors.blueGrey,
+                          fontSize: 12,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
           ),
