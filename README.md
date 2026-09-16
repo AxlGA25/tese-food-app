@@ -22,7 +22,7 @@ Aplicación multiplataforma diseñada para optimizar los tiempos de receso de lo
 Aquí se documentará el progreso del proyecto hacia la entrega final del 2 de diciembre.
 
 * `v0.1.0` - [Fecha de hoy] - Creación del repositorio y estructura inicial del proyecto.
-* *(Las siguientes versiones se irán documentando conforme avance el desarrollo)*
+
 
 ## ⚙️ Cómo ejecutar este proyecto localmente
 1. Clonar este repositorio: `git clone [URL_DEL_REPO]`
