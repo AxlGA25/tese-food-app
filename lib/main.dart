@@ -34,7 +34,154 @@ class TeseHambreadosApp extends StatelessWidget {
         useMaterial3: true,
         textTheme: GoogleFonts.poppinsTextTheme(Theme.of(context).textTheme),
       ),
-      home: const DecisionScreen(),
+      home: const SplashScreen(),
+    );
+  }
+}
+
+class FondoOndasPremium extends StatelessWidget {
+  final Widget child;
+  const FondoOndasPremium({super.key, required this.child});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: const Color(0xFF08261D),
+      body: Stack(
+        children: [
+          Positioned(
+            top: -100,
+            left: -100,
+            child: Container(
+              width: 350,
+              height: 350,
+              decoration: const BoxDecoration(
+                color: colorVerdeTese,
+                shape: BoxShape.circle,
+              ),
+            ),
+          ),
+          Positioned(
+            top: -50,
+            left: -150,
+            child: Container(
+              width: 300,
+              height: 300,
+              decoration: const BoxDecoration(
+                color: Color(0xFF1A7A5E),
+                shape: BoxShape.circle,
+              ),
+            ),
+          ),
+          Positioned(
+            bottom: -150,
+            right: -100,
+            child: Container(
+              width: 400,
+              height: 400,
+              decoration: const BoxDecoration(
+                color: colorVerdeTese,
+                shape: BoxShape.circle,
+              ),
+            ),
+          ),
+          Positioned(
+            bottom: -100,
+            right: -150,
+            child: Container(
+              width: 300,
+              height: 300,
+              decoration: BoxDecoration(
+                color: colorAmarilloTese.withValues(alpha: 0.8),
+                shape: BoxShape.circle,
+              ),
+            ),
+          ),
+          BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 70, sigmaY: 70),
+            child: Container(color: Colors.transparent),
+          ),
+          SafeArea(child: child),
+        ],
+      ),
+    );
+  }
+}
+
+class SplashScreen extends StatefulWidget {
+  const SplashScreen({super.key});
+
+  @override
+  State<SplashScreen> createState() => _SplashScreenState();
+}
+
+class _SplashScreenState extends State<SplashScreen> {
+  @override
+  void initState() {
+    super.initState();
+    Future.delayed(const Duration(milliseconds: 3500), () {
+      Navigator.pushReplacement(
+        context,
+        PageRouteBuilder(
+          transitionDuration: const Duration(milliseconds: 1000),
+          pageBuilder: (_, __, ___) => const DecisionScreen(),
+          transitionsBuilder: (_, animation, __, child) {
+            return FadeTransition(opacity: animation, child: child);
+          },
+        ),
+      );
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FondoOndasPremium(
+      child: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            ElasticIn(
+              duration: const Duration(milliseconds: 1500),
+              child: Hero(
+                tag: 'logo_app',
+                child: Image.asset(
+                  'assets/logo_tesehambreado.png',
+                  height: 250,
+                  fit: BoxFit.contain,
+                ),
+              ),
+            ),
+            const SizedBox(height: 20),
+            FadeInUp(
+              delay: const Duration(milliseconds: 800),
+              child: Text(
+                'TESE Hambreados',
+                style: GoogleFonts.poppins(
+                  fontSize: 32,
+                  fontWeight: FontWeight.w900,
+                  color: Colors.white,
+                ),
+              ),
+            ),
+            FadeInUp(
+              delay: const Duration(milliseconds: 1200),
+              child: const Text(
+                'Preparando la cocina...',
+                style: TextStyle(
+                  fontSize: 16,
+                  color: colorAmarilloTese,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+            const SizedBox(height: 40),
+            FadeIn(
+              delay: const Duration(milliseconds: 1500),
+              child: const CircularProgressIndicator(color: Colors.white),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
@@ -44,46 +191,37 @@ class DecisionScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.white,
-      body: Center(
+    return FondoOndasPremium(
+      child: Center(
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 30.0),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              BounceInDown(
-                child: Hero(
-                  tag: 'logo_app',
-                  child: Image.asset(
-                    'assets/logo_tesehambreado.png',
-                    height: 180,
-                    fit: BoxFit.contain,
-                  ),
+              Hero(
+                tag: 'logo_app',
+                child: Image.asset(
+                  'assets/logo_tesehambreado.png',
+                  height: 180,
+                  fit: BoxFit.contain,
                 ),
               ),
               const SizedBox(height: 20),
-              FadeIn(
-                delay: const Duration(milliseconds: 500),
-                child: Text(
-                  'TESE Hambreados',
-                  style: GoogleFonts.poppins(
-                    fontSize: 32,
-                    fontWeight: FontWeight.w900,
-                    color: colorVerdeTese,
-                  ),
+              Text(
+                'TESE Hambreados',
+                style: GoogleFonts.poppins(
+                  fontSize: 32,
+                  fontWeight: FontWeight.w900,
+                  color: Colors.white,
                 ),
               ),
-              FadeIn(
-                delay: const Duration(milliseconds: 800),
-                child: const Text(
-                  'Sin filas, más receso.',
-                  style: TextStyle(fontSize: 16, color: Colors.grey),
-                ),
+              const Text(
+                'Sin filas, más receso.',
+                style: TextStyle(fontSize: 16, color: Colors.white70),
               ),
               const SizedBox(height: 50),
               FadeInUp(
-                delay: const Duration(milliseconds: 1000),
+                delay: const Duration(milliseconds: 400),
                 child: ElevatedButton.icon(
                   icon: const Icon(Icons.school, color: Colors.white),
                   label: const Text(
@@ -112,20 +250,20 @@ class DecisionScreen extends StatelessWidget {
               ),
               const SizedBox(height: 20),
               FadeInUp(
-                delay: const Duration(milliseconds: 1200),
+                delay: const Duration(milliseconds: 600),
                 child: OutlinedButton.icon(
-                  icon: const Icon(Icons.storefront, color: colorVerdeTese),
+                  icon: const Icon(Icons.storefront, color: Colors.white),
                   label: const Text(
                     'Soy Cafetería / Local',
                     style: TextStyle(
                       fontSize: 18,
-                      color: colorVerdeTese,
+                      color: Colors.white,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
                   style: OutlinedButton.styleFrom(
                     minimumSize: const Size(double.infinity, 60),
-                    side: const BorderSide(color: colorVerdeTese, width: 2),
+                    side: const BorderSide(color: Colors.white, width: 2),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(20),
                     ),
@@ -155,9 +293,10 @@ class LoginEstudianteScreen extends StatelessWidget {
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
-        title: const Text('Atrás'),
+        title: const Text('Atrás', style: TextStyle(color: colorVerdeTese)),
         backgroundColor: Colors.transparent,
         elevation: 0,
+        iconTheme: const IconThemeData(color: colorVerdeTese),
       ),
       body: Center(
         child: SingleChildScrollView(
@@ -844,11 +983,12 @@ class PerfilEstudianteScreen extends StatelessWidget {
                 ),
               ),
               onPressed:
-                  () => Navigator.pushReplacement(
+                  () => Navigator.pushAndRemoveUntil(
                     context,
                     MaterialPageRoute(
                       builder: (context) => const DecisionScreen(),
                     ),
+                    (route) => false,
                   ),
               icon: const Icon(Icons.logout),
               label: const Text(
