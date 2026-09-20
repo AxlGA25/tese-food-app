@@ -22,11 +22,11 @@ class LoginLocalScreen extends StatelessWidget {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              FadeInDown(
-                child: const Icon(
-                  Icons.storefront,
-                  size: 100,
-                  color: Colors.blueGrey,
+              ZoomIn(
+                child: Image.asset(
+                  'assets/pedidoParaEntregar.png',
+                  height: 180,
+                  fit: BoxFit.contain,
                 ),
               ),
               const SizedBox(height: 20),
@@ -190,6 +190,10 @@ class _DashboardNavegacionLocalState extends State<DashboardNavegacionLocal> {
     Color colorEstado,
     String textoBoton,
   ) {
+    String imagenPatito = 'assets/pedidoPendiente.png';
+    if (comanda.estado == 1) imagenPatito = 'assets/listoParaRecoger.png';
+    if (comanda.estado == 2) imagenPatito = 'assets/disfrutaTuComida.png';
+
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -219,6 +223,18 @@ class _DashboardNavegacionLocalState extends State<DashboardNavegacionLocal> {
                   ),
                 ),
                 const SizedBox(height: 20),
+
+                Center(
+                  child: BounceInDown(
+                    child: Image.asset(
+                      imagenPatito,
+                      height: 120,
+                      fit: BoxFit.contain,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 10),
+
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
@@ -402,6 +418,36 @@ class _DashboardNavegacionLocalState extends State<DashboardNavegacionLocal> {
   }
 
   Widget _vistaPedidos() {
+    if (pedidosActivos.isEmpty) {
+      return Center(
+        child: FadeInUp(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Image.asset(
+                'assets/esperandoPedido.png',
+                height: 200,
+                fit: BoxFit.contain,
+              ),
+              const SizedBox(height: 20),
+              const Text(
+                'No hay pedidos activos',
+                style: TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.blueGrey,
+                ),
+              ),
+              const Text(
+                'La cafetería está al día.',
+                style: TextStyle(fontSize: 16, color: Colors.grey),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
     return ListView.builder(
       key: const ValueKey('pedidos'),
       padding: const EdgeInsets.all(16),
