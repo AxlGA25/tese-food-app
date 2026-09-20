@@ -27,7 +27,7 @@ Aplicación multiplataforma diseñada para optimizar los tiempos de receso de lo
 * Lenguaje: **Dart**
 * Librerías UI: `animate_do` (Animaciones), `google_fonts` (Tipografías), `google_nav_bar` (Navegación), `carousel_slider` (Promociones).
 
-**Backend & Base de Datos (Fase de Integración):**
+**PROXIMO!! Backend & Base de Datos (Fase de Integración):**
 * **Firebase** (Authentication, Cloud Firestore, Storage)
 
 **Herramientas & Control de Versiones:**
