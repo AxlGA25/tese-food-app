@@ -1,8 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:animate_do/animate_do.dart';
+import 'package:google_nav_bar/google_nav_bar.dart';
+import 'package:carousel_slider/carousel_slider.dart';
+import 'package:awesome_snackbar_content/awesome_snackbar_content.dart';
 import 'dart:math';
 import 'dart:async';
+import 'dart:ui';
 import 'cafeteria.dart';
 
 void main() {
@@ -52,7 +56,7 @@ class DecisionScreen extends StatelessWidget {
                 child: Hero(
                   tag: 'logo_app',
                   child: Image.asset(
-                    'assets/logo_app.png',
+                    'assets/logo_tesehambreado.png',
                     height: 180,
                     fit: BoxFit.contain,
                   ),
@@ -218,8 +222,7 @@ class LoginEstudianteScreen extends StatelessWidget {
                       () => Navigator.pushReplacement(
                         context,
                         MaterialPageRoute(
-                          builder:
-                              (context) => const CatalogoEstudianteScreen(),
+                          builder: (context) => const NavegacionEstudiante(),
                         ),
                       ),
                   child: const Text(
@@ -282,17 +285,9 @@ class _RegistroEstudianteScreenState extends State<RegistroEstudianteScreen> {
   ];
 
   void _simularRegistro() async {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Creando tu cuenta... 🦆'),
-        backgroundColor: colorAmarilloTese,
-      ),
-    );
-    await Future.delayed(const Duration(seconds: 2));
-    if (!mounted) return;
     Navigator.pushAndRemoveUntil(
       context,
-      MaterialPageRoute(builder: (context) => const CatalogoEstudianteScreen()),
+      MaterialPageRoute(builder: (context) => const NavegacionEstudiante()),
       (route) => false,
     );
   }
@@ -456,15 +451,117 @@ class Platillo {
   });
 }
 
+class NavegacionEstudiante extends StatefulWidget {
+  const NavegacionEstudiante({super.key});
+
+  @override
+  State<NavegacionEstudiante> createState() => _NavegacionEstudianteState();
+}
+
+class _NavegacionEstudianteState extends State<NavegacionEstudiante> {
+  int _indiceActual = 0;
+  List<Platillo> carritoGlobal = [];
+
+  void _actualizarCarrito(Platillo p) {
+    setState(() {
+      carritoGlobal.add(p);
+    });
+  }
+
+  void _limpiarCarrito() {
+    setState(() {
+      carritoGlobal.clear();
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final List<Widget> pantallas = [
+      CatalogoEstudianteScreen(
+        carrito: carritoGlobal,
+        onAgregar: _actualizarCarrito,
+      ),
+      const PerfilEstudianteScreen(),
+    ];
+
+    return Scaffold(
+      body: pantallas[_indiceActual],
+      bottomNavigationBar: Container(
+        color: Colors.white,
+        padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 15),
+        child: GNav(
+          backgroundColor: Colors.white,
+          color: Colors.grey,
+          activeColor: Colors.white,
+          tabBackgroundColor: colorVerdeTese,
+          gap: 8,
+          padding: const EdgeInsets.all(16),
+          selectedIndex: _indiceActual,
+          onTabChange: (index) {
+            setState(() {
+              _indiceActual = index;
+            });
+          },
+          tabs: const [
+            GButton(icon: Icons.fastfood, text: 'Menú'),
+            GButton(icon: Icons.person, text: 'Mi Perfil'),
+          ],
+        ),
+      ),
+      floatingActionButton:
+          _indiceActual == 0
+              ? FloatingActionButton.extended(
+                backgroundColor: colorAmarilloTese,
+                onPressed: () {
+                  if (carritoGlobal.isEmpty) return;
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder:
+                          (context) => CarritoScreen(
+                            carrito: carritoGlobal,
+                            onVaciar: _limpiarCarrito,
+                          ),
+                    ),
+                  ).then((_) => setState(() {}));
+                },
+                icon: Badge(
+                  isLabelVisible: carritoGlobal.isNotEmpty,
+                  label: Text(
+                    carritoGlobal.length.toString(),
+                    style: const TextStyle(color: Colors.white),
+                  ),
+                  backgroundColor: Colors.red,
+                  child: const Icon(Icons.shopping_cart, color: Colors.white),
+                ),
+                label: const Text(
+                  'Ver Pedido',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              )
+              : null,
+    );
+  }
+}
+
 class CatalogoEstudianteScreen extends StatefulWidget {
-  const CatalogoEstudianteScreen({super.key});
+  final List<Platillo> carrito;
+  final Function(Platillo) onAgregar;
+  const CatalogoEstudianteScreen({
+    super.key,
+    required this.carrito,
+    required this.onAgregar,
+  });
+
   @override
   State<CatalogoEstudianteScreen> createState() =>
       _CatalogoEstudianteScreenState();
 }
 
 class _CatalogoEstudianteScreenState extends State<CatalogoEstudianteScreen> {
-  List<Platillo> carrito = [];
   final List<Platillo> menuDisponibles = [
     Platillo(
       id: '1',
@@ -492,139 +589,274 @@ class _CatalogoEstudianteScreenState extends State<CatalogoEstudianteScreen> {
     ),
   ];
 
-  void _agregarAlCarrito(Platillo p) {
-    setState(() {
-      carrito.add(p);
-    });
-    ScaffoldMessenger.of(context).clearSnackBars();
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          '¡${p.nombre} agregado! 😋',
-          style: GoogleFonts.poppins(fontWeight: FontWeight.bold),
-        ),
-        backgroundColor: colorVerdeTese,
-        duration: const Duration(milliseconds: 800),
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+  final List<String> promociones = [
+    '¡2x1 en Chilaquiles hoy!',
+    'Combo Godín a solo \$50',
+    'Postre gratis en compras > \$100',
+  ];
+
+  void _mostrarAlertaExito(String nombre) {
+    final snackBar = SnackBar(
+      elevation: 0,
+      behavior: SnackBarBehavior.floating,
+      backgroundColor: Colors.transparent,
+      content: AwesomeSnackbarContent(
+        title: '¡Añadido!',
+        message: 'Has agregado $nombre a tu carrito 😋',
+        contentType: ContentType.success,
+        color: colorExito,
       ),
     );
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(snackBar);
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.grey[100],
-      appBar: AppBar(
-        title: Text(
-          '¿Qué comeremos hoy?',
-          style: GoogleFonts.poppins(
-            fontWeight: FontWeight.bold,
-            color: Colors.white,
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [colorVerdeTese.withValues(alpha: 0.8), Colors.white],
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            stops: const [0.0, 0.3],
           ),
         ),
-        backgroundColor: colorVerdeTese,
-        elevation: 0,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.logout, color: Colors.white),
-            onPressed:
-                () => Navigator.pushReplacement(
-                  context,
-                  MaterialPageRoute(builder: (c) => const DecisionScreen()),
-                ),
-          ),
-        ],
-      ),
-      body: ListView.builder(
-        padding: const EdgeInsets.all(16),
-        itemCount: menuDisponibles.length,
-        itemBuilder: (context, index) {
-          final platillo = menuDisponibles[index];
-          return FadeInUp(
-            delay: Duration(milliseconds: 100 * index),
-            child: Card(
-              elevation: 4,
-              shadowColor: Colors.black26,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(20),
-              ),
-              margin: const EdgeInsets.only(bottom: 15),
-              child: ListTile(
-                contentPadding: const EdgeInsets.all(12),
-                leading: Container(
-                  padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(
-                    color: colorAmarilloTese.withValues(alpha: 0.2),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: const Icon(
-                    Icons.fastfood,
-                    color: colorAmarilloTese,
-                    size: 30,
-                  ),
-                ),
-                title: Text(
-                  platillo.nombre,
-                  style: const TextStyle(
+        child: SafeArea(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Padding(
+                padding: const EdgeInsets.all(20.0),
+                child: Text(
+                  '¿Qué comeremos hoy?',
+                  style: GoogleFonts.poppins(
+                    fontSize: 26,
                     fontWeight: FontWeight.bold,
-                    fontSize: 16,
+                    color: Colors.white,
                   ),
                 ),
-                subtitle: Text(
-                  platillo.local,
-                  style: TextStyle(color: Colors.grey[600]),
+              ),
+              CarouselSlider(
+                options: CarouselOptions(
+                  height: 140.0,
+                  autoPlay: true,
+                  enlargeCenterPage: true,
+                  autoPlayInterval: const Duration(seconds: 4),
                 ),
-                trailing: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      '\$${platillo.precio.toInt()}',
-                      style: const TextStyle(
-                        fontWeight: FontWeight.w900,
-                        color: colorVerdeTese,
-                        fontSize: 16,
+                items:
+                    promociones.map((texto) {
+                      return Builder(
+                        builder: (BuildContext context) {
+                          return Container(
+                            width: MediaQuery.of(context).size.width,
+                            margin: const EdgeInsets.symmetric(horizontal: 5.0),
+                            decoration: BoxDecoration(
+                              gradient: const LinearGradient(
+                                colors: [colorAmarilloTese, Colors.orange],
+                              ),
+                              borderRadius: BorderRadius.circular(20),
+                              boxShadow: const [
+                                BoxShadow(
+                                  color: Colors.black26,
+                                  blurRadius: 8,
+                                  offset: Offset(0, 4),
+                                ),
+                              ],
+                            ),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                              children: [
+                                const Icon(
+                                  Icons.local_fire_department,
+                                  color: Colors.white,
+                                  size: 50,
+                                ),
+                                Expanded(
+                                  child: Text(
+                                    texto,
+                                    style: const TextStyle(
+                                      fontSize: 20.0,
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                    textAlign: TextAlign.center,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          );
+                        },
+                      );
+                    }).toList(),
+              ),
+              const SizedBox(height: 20),
+              Expanded(
+                child: ListView.builder(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  itemCount: menuDisponibles.length,
+                  itemBuilder: (context, index) {
+                    final platillo = menuDisponibles[index];
+                    return FadeInUp(
+                      delay: Duration(milliseconds: 100 * index),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(20),
+                        child: BackdropFilter(
+                          filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                          child: Container(
+                            margin: const EdgeInsets.only(bottom: 15),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withValues(alpha: 0.8),
+                              borderRadius: BorderRadius.circular(20),
+                              border: Border.all(
+                                color: Colors.white.withValues(alpha: 0.2),
+                              ),
+                              boxShadow: const [
+                                BoxShadow(
+                                  color: Colors.black12,
+                                  blurRadius: 10,
+                                ),
+                              ],
+                            ),
+                            child: ListTile(
+                              contentPadding: const EdgeInsets.all(12),
+                              leading: Container(
+                                padding: const EdgeInsets.all(10),
+                                decoration: BoxDecoration(
+                                  color: colorVerdeTese.withValues(alpha: 0.1),
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: const Icon(
+                                  Icons.fastfood,
+                                  color: colorVerdeTese,
+                                  size: 30,
+                                ),
+                              ),
+                              title: Text(
+                                platillo.nombre,
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 16,
+                                ),
+                              ),
+                              subtitle: Text(
+                                platillo.local,
+                                style: TextStyle(color: Colors.grey[600]),
+                              ),
+                              trailing: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Text(
+                                    '\$${platillo.precio.toInt()}',
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.w900,
+                                      color: colorVerdeTese,
+                                      fontSize: 16,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 10),
+                                  IconButton(
+                                    icon: const Icon(
+                                      Icons.add_circle,
+                                      color: colorAmarilloTese,
+                                      size: 35,
+                                    ),
+                                    onPressed: () {
+                                      widget.onAgregar(platillo);
+                                      _mostrarAlertaExito(platillo.nombre);
+                                    },
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
                       ),
-                    ),
-                    const SizedBox(width: 10),
-                    IconButton(
-                      icon: const Icon(
-                        Icons.add_circle,
-                        color: colorAmarilloTese,
-                        size: 35,
-                      ),
-                      onPressed: () => _agregarAlCarrito(platillo),
-                    ),
-                  ],
+                    );
+                  },
                 ),
               ),
-            ),
-          );
-        },
-      ),
-      floatingActionButton: FloatingActionButton.extended(
-        backgroundColor: colorVerdeTese,
-        onPressed: () {
-          if (carrito.isEmpty) return;
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => CarritoScreen(carrito: carrito),
-            ),
-          ).then((_) => setState(() {}));
-        },
-        icon: Badge(
-          isLabelVisible: carrito.isNotEmpty,
-          label: Text(
-            carrito.length.toString(),
-            style: const TextStyle(color: Colors.white),
+            ],
           ),
-          backgroundColor: Colors.red,
-          child: const Icon(Icons.shopping_cart, color: Colors.white),
         ),
-        label: const Text(
-          'Ver Pedido',
-          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+      ),
+    );
+  }
+}
+
+class PerfilEstudianteScreen extends StatelessWidget {
+  const PerfilEstudianteScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.white,
+      appBar: AppBar(
+        title: const Text(
+          'Mi Perfil',
+          style: TextStyle(color: colorVerdeTese, fontWeight: FontWeight.bold),
+        ),
+        backgroundColor: Colors.white,
+        elevation: 0,
+        centerTitle: true,
+      ),
+      body: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const CircleAvatar(
+              radius: 60,
+              backgroundColor: colorVerdeTese,
+              child: Icon(Icons.person, size: 80, color: Colors.white),
+            ),
+            const SizedBox(height: 20),
+            Text(
+              'Axel Guerrero',
+              style: GoogleFonts.poppins(
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
+                color: colorVerdeTese,
+              ),
+            ),
+            const Text(
+              'Matrícula: 20240001',
+              style: TextStyle(fontSize: 16, color: Colors.grey),
+            ),
+            const Text(
+              'Ing. en Sistemas Computacionales',
+              style: TextStyle(
+                fontSize: 16,
+                color: colorAmarilloTese,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 50),
+            ElevatedButton.icon(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.red[50],
+                foregroundColor: Colors.red,
+                elevation: 0,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 40,
+                  vertical: 15,
+                ),
+              ),
+              onPressed:
+                  () => Navigator.pushReplacement(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const DecisionScreen(),
+                    ),
+                  ),
+              icon: const Icon(Icons.logout),
+              label: const Text(
+                'Cerrar Sesión',
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -633,7 +865,12 @@ class _CatalogoEstudianteScreenState extends State<CatalogoEstudianteScreen> {
 
 class CarritoScreen extends StatefulWidget {
   final List<Platillo> carrito;
-  const CarritoScreen({super.key, required this.carrito});
+  final VoidCallback onVaciar;
+  const CarritoScreen({
+    super.key,
+    required this.carrito,
+    required this.onVaciar,
+  });
 
   @override
   State<CarritoScreen> createState() => _CarritoScreenState();
@@ -867,6 +1104,7 @@ class _CarritoScreenState extends State<CarritoScreen> {
                               : () {
                                 String codigoGenerado =
                                     '#TESE-${Random().nextInt(9000) + 1000}';
+                                widget.onVaciar();
                                 Navigator.pushAndRemoveUntil(
                                   context,
                                   MaterialPageRoute(
@@ -956,39 +1194,37 @@ class _SalaEsperaScreenState extends State<SalaEsperaScreen> {
   }
 
   Widget _construirPantallaPorEstado(int estado) {
-    if (estado == 0) {
+    if (estado == 0)
       return _PantallaEstadoFull(
         key: const ValueKey(0),
         titulo: 'Pedido Recibido',
-        subtitulo: 'Esperando que la cafetería confirme tu orden...',
+        subtitulo: 'Esperando confirmación...',
         cargando: true,
         imagenAsset: 'assets/patito_recibido.png',
         colorTextoTitulo: colorVerdeTese,
         colorTextoSub: Colors.grey,
       );
-    } else if (estado == 1) {
+    else if (estado == 1)
       return _PantallaEstadoFull(
         key: const ValueKey(1),
         titulo: 'En Preparación',
-        subtitulo: '¡El chef ya está preparando tus hambreados!',
+        subtitulo: '¡Preparando tus hambreados!',
         cargando: true,
         imagenAsset: 'assets/patito_chef.png',
         colorTextoTitulo: colorVerdeTese,
         colorTextoSub: Colors.grey,
       );
-    } else {
+    else
       return _PantallaEstadoFull(
         key: const ValueKey(2),
         titulo: '¡Ya está listo!',
-        subtitulo:
-            'Acércate a la ventanilla y muestra tu código para recoger tu comida.',
+        subtitulo: 'Muestra tu código para recoger tu comida.',
         cargando: false,
         mostrarBoton: true,
         imagenAsset: 'assets/patito_listo.png',
         colorTextoTitulo: Colors.white,
         colorTextoSub: Colors.white70,
       );
-    }
   }
 }
 
@@ -1045,12 +1281,12 @@ class _PantallaEstadoFull extends StatelessWidget {
                     ),
                   ),
                   onPressed:
-                      () => Navigator.pushReplacement(
+                      () => Navigator.pushAndRemoveUntil(
                         context,
                         MaterialPageRoute(
-                          builder:
-                              (context) => const CatalogoEstudianteScreen(),
+                          builder: (context) => const NavegacionEstudiante(),
                         ),
+                        (route) => false,
                       ),
                   child: const Text(
                     'Volver al Menú',
