@@ -8,14 +8,27 @@ import 'dart:math';
 import 'dart:async';
 import 'dart:ui';
 import 'cafeteria.dart';
+import 'package:flutter/services.dart';
 
 void main() {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  // 3. ACTIVA EL MODO PANTALLA COMPLETA (Oculta botones y batería)
+  SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
+
   runApp(const TeseHambreadosApp());
 }
 
+// Paleta de marca original (se conservan los nombres: cafeteria.dart los usa)
 const Color colorVerdeTese = Color(0xFF0F4C3A);
 const Color colorAmarilloTese = Color(0xFFF9A826);
 const Color colorExito = Color(0xFF00A650);
+
+// Tokens de apoyo nuevos, solo para dar más calidez y jerarquía visual
+const Color colorVerdeOscuro = Color(0xFF08261D);
+const Color colorFondoCrema = Color(0xFFFBF6EE);
+const Color colorTextoOscuro = Color(0xFF1E2B26);
+const Color colorTextoGris = Color(0xFF7C8B85);
 
 class TeseHambreadosApp extends StatelessWidget {
   const TeseHambreadosApp({super.key});
@@ -31,6 +44,7 @@ class TeseHambreadosApp extends StatelessWidget {
           primary: colorVerdeTese,
           secondary: colorAmarilloTese,
         ),
+        scaffoldBackgroundColor: colorFondoCrema,
         useMaterial3: true,
         textTheme: GoogleFonts.poppinsTextTheme(Theme.of(context).textTheme),
       ),
@@ -46,7 +60,7 @@ class FondoOndasPremium extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF08261D),
+      backgroundColor: colorVerdeOscuro,
       body: Stack(
         children: [
           Positioned(
@@ -92,7 +106,7 @@ class FondoOndasPremium extends StatelessWidget {
               width: 300,
               height: 300,
               decoration: BoxDecoration(
-                color: colorAmarilloTese.withValues(alpha: 0.8),
+                color: colorAmarilloTese.withValues(alpha: 0.75),
                 shape: BoxShape.circle,
               ),
             ),
@@ -142,16 +156,30 @@ class _SplashScreenState extends State<SplashScreen> {
           children: [
             ElasticIn(
               duration: const Duration(milliseconds: 1500),
-              child: Hero(
-                tag: 'logo_app',
-                child: Image.asset(
-                  'assets/logo_tesehambreado.png',
-                  height: 250,
-                  fit: BoxFit.contain,
+              child: Container(
+                padding: const EdgeInsets.all(18),
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: Colors.white.withValues(alpha: 0.08),
+                  boxShadow: [
+                    BoxShadow(
+                      color: colorAmarilloTese.withValues(alpha: 0.25),
+                      blurRadius: 60,
+                      spreadRadius: 10,
+                    ),
+                  ],
+                ),
+                child: Hero(
+                  tag: 'logo_app',
+                  child: Image.asset(
+                    'assets/logo_tesehambreado.png',
+                    height: 220,
+                    fit: BoxFit.contain,
+                  ),
                 ),
               ),
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 28),
             FadeInUp(
               delay: const Duration(milliseconds: 800),
               child: Text(
@@ -160,24 +188,29 @@ class _SplashScreenState extends State<SplashScreen> {
                   fontSize: 32,
                   fontWeight: FontWeight.w900,
                   color: Colors.white,
+                  letterSpacing: 0.2,
                 ),
               ),
             ),
+            const SizedBox(height: 6),
             FadeInUp(
               delay: const Duration(milliseconds: 1200),
-              child: const Text(
+              child: Text(
                 'Preparando la cocina...',
-                style: TextStyle(
+                style: GoogleFonts.poppins(
                   fontSize: 16,
                   color: colorAmarilloTese,
-                  fontWeight: FontWeight.bold,
+                  fontWeight: FontWeight.w600,
                 ),
               ),
             ),
             const SizedBox(height: 40),
             FadeIn(
               delay: const Duration(milliseconds: 1500),
-              child: const CircularProgressIndicator(color: Colors.white),
+              child: const CircularProgressIndicator(
+                color: Colors.white,
+                strokeWidth: 2.5,
+              ),
             ),
           ],
         ),
@@ -202,38 +235,45 @@ class DecisionScreen extends StatelessWidget {
                 tag: 'logo_app',
                 child: Image.asset(
                   'assets/logo_tesehambreado.png',
-                  height: 180,
+                  height: 170,
                   fit: BoxFit.contain,
                 ),
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: 18),
               Text(
                 'TESE Hambreados',
                 style: GoogleFonts.poppins(
-                  fontSize: 32,
+                  fontSize: 30,
                   fontWeight: FontWeight.w900,
                   color: Colors.white,
                 ),
               ),
-              const Text(
+              const SizedBox(height: 4),
+              Text(
                 'Sin filas, más receso.',
-                style: TextStyle(fontSize: 16, color: Colors.white70),
+                style: GoogleFonts.poppins(
+                  fontSize: 16,
+                  color: Colors.white.withValues(alpha: 0.75),
+                  fontWeight: FontWeight.w500,
+                ),
               ),
-              const SizedBox(height: 50),
+              const SizedBox(height: 46),
               FadeInUp(
                 delay: const Duration(milliseconds: 400),
                 child: ElevatedButton.icon(
-                  icon: const Icon(Icons.school, color: Colors.white),
-                  label: const Text(
+                  icon: const Icon(Icons.school, color: colorVerdeOscuro),
+                  label: Text(
                     'Soy Estudiante',
-                    style: TextStyle(
+                    style: GoogleFonts.poppins(
                       fontSize: 18,
-                      color: Colors.white,
+                      color: colorVerdeOscuro,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: colorAmarilloTese,
+                    elevation: 6,
+                    shadowColor: Colors.black.withValues(alpha: 0.4),
                     minimumSize: const Size(double.infinity, 60),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(20),
@@ -248,14 +288,14 @@ class DecisionScreen extends StatelessWidget {
                       ),
                 ),
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: 16),
               FadeInUp(
                 delay: const Duration(milliseconds: 600),
                 child: OutlinedButton.icon(
                   icon: const Icon(Icons.storefront, color: Colors.white),
-                  label: const Text(
+                  label: Text(
                     'Soy Cafetería / Local',
-                    style: TextStyle(
+                    style: GoogleFonts.poppins(
                       fontSize: 18,
                       color: Colors.white,
                       fontWeight: FontWeight.bold,
@@ -263,7 +303,7 @@ class DecisionScreen extends StatelessWidget {
                   ),
                   style: OutlinedButton.styleFrom(
                     minimumSize: const Size(double.infinity, 60),
-                    side: const BorderSide(color: Colors.white, width: 2),
+                    side: const BorderSide(color: Colors.white, width: 1.6),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(20),
                     ),
@@ -291,9 +331,8 @@ class LoginEstudianteScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: colorFondoCrema,
       appBar: AppBar(
-        title: const Text('Atrás', style: TextStyle(color: colorVerdeTese)),
         backgroundColor: Colors.transparent,
         elevation: 0,
         iconTheme: const IconThemeData(color: colorVerdeTese),
@@ -314,67 +353,108 @@ class LoginEstudianteScreen extends StatelessWidget {
                   ),
                 ),
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: 4),
+              Text(
+                'Entra y pide sin hacer fila',
+                style: GoogleFonts.poppins(fontSize: 14, color: colorTextoGris),
+              ),
+              const SizedBox(height: 16),
               ZoomIn(
                 child: Image.asset(
                   'assets/patito_login.png',
-                  height: 160,
+                  height: 150,
                   fit: BoxFit.contain,
                 ),
               ),
-              const SizedBox(height: 30),
-              FadeInLeft(
-                child: TextField(
-                  decoration: InputDecoration(
-                    labelText: 'Matrícula',
-                    prefixIcon: const Icon(Icons.badge),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(15),
+              const SizedBox(height: 24),
+              Container(
+                padding: const EdgeInsets.all(22),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(24),
+                  boxShadow: [
+                    BoxShadow(
+                      color: colorVerdeTese.withValues(alpha: 0.08),
+                      blurRadius: 24,
+                      offset: const Offset(0, 10),
                     ),
-                  ),
+                  ],
                 ),
-              ),
-              const SizedBox(height: 16),
-              FadeInRight(
-                child: TextField(
-                  obscureText: true,
-                  decoration: InputDecoration(
-                    labelText: 'Contraseña',
-                    prefixIcon: const Icon(Icons.lock),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(15),
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 30),
-              FadeInUp(
-                child: ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: colorVerdeTese,
-                    minimumSize: const Size(double.infinity, 55),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(15),
-                    ),
-                  ),
-                  onPressed:
-                      () => Navigator.pushReplacement(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => const NavegacionEstudiante(),
+                child: Column(
+                  children: [
+                    FadeInLeft(
+                      child: TextField(
+                        decoration: InputDecoration(
+                          labelText: 'Matrícula',
+                          prefixIcon: const Icon(
+                            Icons.badge,
+                            color: colorVerdeTese,
+                          ),
+                          filled: true,
+                          fillColor: colorFondoCrema,
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(15),
+                            borderSide: BorderSide.none,
+                          ),
                         ),
                       ),
-                  child: const Text(
-                    'Ingresar',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
                     ),
-                  ),
+                    const SizedBox(height: 16),
+                    FadeInRight(
+                      child: TextField(
+                        obscureText: true,
+                        decoration: InputDecoration(
+                          labelText: 'Contraseña',
+                          prefixIcon: const Icon(
+                            Icons.lock,
+                            color: colorVerdeTese,
+                          ),
+                          filled: true,
+                          fillColor: colorFondoCrema,
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(15),
+                            borderSide: BorderSide.none,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 26),
+                    FadeInUp(
+                      child: SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: colorVerdeTese,
+                            elevation: 4,
+                            shadowColor: colorVerdeTese.withValues(alpha: 0.5),
+                            minimumSize: const Size(double.infinity, 55),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(15),
+                            ),
+                          ),
+                          onPressed:
+                              () => Navigator.pushReplacement(
+                                context,
+                                MaterialPageRoute(
+                                  builder:
+                                      (context) => const NavegacionEstudiante(),
+                                ),
+                              ),
+                          child: Text(
+                            'Ingresar',
+                            style: GoogleFonts.poppins(
+                              color: Colors.white,
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
-              const SizedBox(height: 10),
+              const SizedBox(height: 14),
               FadeInUp(
                 delay: const Duration(milliseconds: 300),
                 child: TextButton(
@@ -386,12 +466,12 @@ class LoginEstudianteScreen extends StatelessWidget {
                               (context) => const RegistroEstudianteScreen(),
                         ),
                       ),
-                  child: const Text(
+                  child: Text(
                     '¿No tienes cuenta? Crear una',
-                    style: TextStyle(
+                    style: GoogleFonts.poppins(
                       color: colorAmarilloTese,
                       fontWeight: FontWeight.bold,
-                      fontSize: 16,
+                      fontSize: 15,
                     ),
                   ),
                 ),
@@ -431,16 +511,32 @@ class _RegistroEstudianteScreenState extends State<RegistroEstudianteScreen> {
     );
   }
 
+  InputDecoration _decoracionCampo(String label, IconData icono) {
+    return InputDecoration(
+      labelText: label,
+      prefixIcon: Icon(icono, color: colorVerdeTese),
+      filled: true,
+      fillColor: colorFondoCrema,
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(15),
+        borderSide: BorderSide.none,
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: colorFondoCrema,
       appBar: AppBar(
-        title: const Text(
+        title: Text(
           'Nuevo Estudiante',
-          style: TextStyle(color: colorVerdeTese, fontWeight: FontWeight.bold),
+          style: GoogleFonts.poppins(
+            color: colorVerdeTese,
+            fontWeight: FontWeight.bold,
+          ),
         ),
-        backgroundColor: Colors.white,
+        backgroundColor: Colors.transparent,
         elevation: 0,
         iconTheme: const IconThemeData(color: colorVerdeTese),
       ),
@@ -452,19 +548,32 @@ class _RegistroEstudianteScreenState extends State<RegistroEstudianteScreen> {
               child: Stack(
                 alignment: Alignment.bottomRight,
                 children: [
-                  CircleAvatar(
-                    radius: 60,
-                    backgroundColor: Colors.grey[200],
-                    child: const Icon(
-                      Icons.person,
-                      size: 80,
-                      color: Colors.grey,
+                  Container(
+                    padding: const EdgeInsets.all(4),
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      border: Border.all(color: colorAmarilloTese, width: 3),
+                    ),
+                    child: CircleAvatar(
+                      radius: 56,
+                      backgroundColor: colorVerdeTese.withValues(alpha: 0.08),
+                      child: const Icon(
+                        Icons.person,
+                        size: 70,
+                        color: colorVerdeTese,
+                      ),
                     ),
                   ),
                   Container(
-                    decoration: const BoxDecoration(
+                    decoration: BoxDecoration(
                       color: colorAmarilloTese,
                       shape: BoxShape.circle,
+                      boxShadow: [
+                        BoxShadow(
+                          color: colorAmarilloTese.withValues(alpha: 0.5),
+                          blurRadius: 8,
+                        ),
+                      ],
                     ),
                     child: IconButton(
                       icon: const Icon(Icons.camera_alt, color: Colors.white),
@@ -474,95 +583,95 @@ class _RegistroEstudianteScreenState extends State<RegistroEstudianteScreen> {
                 ],
               ),
             ),
-            const SizedBox(height: 30),
-            FadeInLeft(
-              delay: const Duration(milliseconds: 100),
-              child: TextField(
-                decoration: InputDecoration(
-                  labelText: 'Nombre Completo',
-                  prefixIcon: const Icon(Icons.text_fields),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(15),
+            const SizedBox(height: 28),
+            Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(24),
+                boxShadow: [
+                  BoxShadow(
+                    color: colorVerdeTese.withValues(alpha: 0.08),
+                    blurRadius: 24,
+                    offset: const Offset(0, 10),
                   ),
-                ),
+                ],
+              ),
+              child: Column(
+                children: [
+                  FadeInLeft(
+                    delay: const Duration(milliseconds: 100),
+                    child: TextField(
+                      decoration: _decoracionCampo(
+                        'Nombre Completo',
+                        Icons.text_fields,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 15),
+                  FadeInRight(
+                    delay: const Duration(milliseconds: 200),
+                    child: TextField(
+                      keyboardType: TextInputType.number,
+                      decoration: _decoracionCampo('Matrícula', Icons.badge),
+                    ),
+                  ),
+                  const SizedBox(height: 15),
+                  FadeInLeft(
+                    delay: const Duration(milliseconds: 300),
+                    child: DropdownButtonFormField<String>(
+                      decoration: _decoracionCampo('Carrera', Icons.school),
+                      value: carreraSeleccionada,
+                      items:
+                          carrerasTese
+                              .map(
+                                (c) =>
+                                    DropdownMenuItem(value: c, child: Text(c)),
+                              )
+                              .toList(),
+                      onChanged:
+                          (val) => setState(() => carreraSeleccionada = val),
+                    ),
+                  ),
+                  const SizedBox(height: 15),
+                  FadeInRight(
+                    delay: const Duration(milliseconds: 400),
+                    child: TextField(
+                      keyboardType: TextInputType.phone,
+                      decoration: _decoracionCampo('Teléfono', Icons.phone),
+                    ),
+                  ),
+                  const SizedBox(height: 15),
+                  FadeInLeft(
+                    delay: const Duration(milliseconds: 500),
+                    child: TextField(
+                      obscureText: true,
+                      decoration: _decoracionCampo(
+                        'Crear Contraseña',
+                        Icons.lock,
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
-            const SizedBox(height: 15),
-            FadeInRight(
-              delay: const Duration(milliseconds: 200),
-              child: TextField(
-                keyboardType: TextInputType.number,
-                decoration: InputDecoration(
-                  labelText: 'Matrícula',
-                  prefixIcon: const Icon(Icons.badge),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(15),
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(height: 15),
-            FadeInLeft(
-              delay: const Duration(milliseconds: 300),
-              child: DropdownButtonFormField<String>(
-                decoration: InputDecoration(
-                  labelText: 'Carrera',
-                  prefixIcon: const Icon(Icons.school),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(15),
-                  ),
-                ),
-                value: carreraSeleccionada,
-                items:
-                    carrerasTese
-                        .map((c) => DropdownMenuItem(value: c, child: Text(c)))
-                        .toList(),
-                onChanged: (val) => setState(() => carreraSeleccionada = val),
-              ),
-            ),
-            const SizedBox(height: 15),
-            FadeInRight(
-              delay: const Duration(milliseconds: 400),
-              child: TextField(
-                keyboardType: TextInputType.phone,
-                decoration: InputDecoration(
-                  labelText: 'Teléfono',
-                  prefixIcon: const Icon(Icons.phone),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(15),
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(height: 15),
-            FadeInLeft(
-              delay: const Duration(milliseconds: 500),
-              child: TextField(
-                obscureText: true,
-                decoration: InputDecoration(
-                  labelText: 'Crear Contraseña',
-                  prefixIcon: const Icon(Icons.lock),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(15),
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(height: 30),
+            const SizedBox(height: 28),
             FadeInUp(
               delay: const Duration(milliseconds: 600),
               child: ElevatedButton(
                 style: ElevatedButton.styleFrom(
                   backgroundColor: colorVerdeTese,
+                  elevation: 4,
+                  shadowColor: colorVerdeTese.withValues(alpha: 0.5),
                   minimumSize: const Size(double.infinity, 55),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(15),
                   ),
                 ),
                 onPressed: _simularRegistro,
-                child: const Text(
+                child: Text(
                   'Registrarme',
-                  style: TextStyle(
+                  style: GoogleFonts.poppins(
                     color: Colors.white,
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
@@ -626,7 +735,16 @@ class _NavegacionEstudianteState extends State<NavegacionEstudiante> {
     return Scaffold(
       body: pantallas[_indiceActual],
       bottomNavigationBar: Container(
-        color: Colors.white,
+        decoration: BoxDecoration(
+          color: Colors.white,
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.06),
+              blurRadius: 16,
+              offset: const Offset(0, -4),
+            ),
+          ],
+        ),
         padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 15),
         child: GNav(
           backgroundColor: Colors.white,
@@ -651,6 +769,7 @@ class _NavegacionEstudianteState extends State<NavegacionEstudiante> {
           _indiceActual == 0
               ? FloatingActionButton.extended(
                 backgroundColor: colorAmarilloTese,
+                elevation: 6,
                 onPressed: () {
                   if (carritoGlobal.isEmpty) return;
                   Navigator.push(
@@ -670,12 +789,12 @@ class _NavegacionEstudianteState extends State<NavegacionEstudiante> {
                     carritoGlobal.length.toString(),
                     style: const TextStyle(color: Colors.white),
                   ),
-                  backgroundColor: Colors.red,
+                  backgroundColor: colorExito,
                   child: const Icon(Icons.shopping_cart, color: Colors.white),
                 ),
-                label: const Text(
+                label: Text(
                   'Ver Pedido',
-                  style: TextStyle(
+                  style: GoogleFonts.poppins(
                     color: Colors.white,
                     fontWeight: FontWeight.bold,
                   ),
@@ -757,10 +876,10 @@ class _CatalogoEstudianteScreenState extends State<CatalogoEstudianteScreen> {
       body: Container(
         decoration: BoxDecoration(
           gradient: LinearGradient(
-            colors: [colorVerdeTese.withValues(alpha: 0.8), Colors.white],
+            colors: [colorVerdeTese, colorFondoCrema],
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            stops: const [0.0, 0.3],
+            stops: const [0.0, 0.32],
           ),
         ),
         child: SafeArea(
@@ -768,13 +887,23 @@ class _CatalogoEstudianteScreenState extends State<CatalogoEstudianteScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Padding(
-                padding: const EdgeInsets.all(20.0),
+                padding: const EdgeInsets.fromLTRB(20, 20, 20, 4),
                 child: Text(
                   '¿Qué comeremos hoy?',
                   style: GoogleFonts.poppins(
                     fontSize: 26,
                     fontWeight: FontWeight.bold,
                     color: Colors.white,
+                  ),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
+                child: Text(
+                  'Ordena y recógelo directo en el receso',
+                  style: GoogleFonts.poppins(
+                    fontSize: 14,
+                    color: Colors.white.withValues(alpha: 0.85),
                   ),
                 ),
               ),
@@ -794,14 +923,16 @@ class _CatalogoEstudianteScreenState extends State<CatalogoEstudianteScreen> {
                             margin: const EdgeInsets.symmetric(horizontal: 5.0),
                             decoration: BoxDecoration(
                               gradient: const LinearGradient(
-                                colors: [colorAmarilloTese, Colors.orange],
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                                colors: [colorAmarilloTese, Color(0xFFF07B1D)],
                               ),
-                              borderRadius: BorderRadius.circular(20),
-                              boxShadow: const [
+                              borderRadius: BorderRadius.circular(22),
+                              boxShadow: [
                                 BoxShadow(
-                                  color: Colors.black26,
-                                  blurRadius: 8,
-                                  offset: Offset(0, 4),
+                                  color: Colors.black.withValues(alpha: 0.18),
+                                  blurRadius: 12,
+                                  offset: const Offset(0, 6),
                                 ),
                               ],
                             ),
@@ -814,14 +945,19 @@ class _CatalogoEstudianteScreenState extends State<CatalogoEstudianteScreen> {
                                   size: 50,
                                 ),
                                 Expanded(
-                                  child: Text(
-                                    texto,
-                                    style: const TextStyle(
-                                      fontSize: 20.0,
-                                      color: Colors.white,
-                                      fontWeight: FontWeight.bold,
+                                  child: Padding(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 8,
                                     ),
-                                    textAlign: TextAlign.center,
+                                    child: Text(
+                                      texto,
+                                      style: GoogleFonts.poppins(
+                                        fontSize: 18.0,
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                      textAlign: TextAlign.center,
+                                    ),
                                   ),
                                 ),
                               ],
@@ -831,7 +967,7 @@ class _CatalogoEstudianteScreenState extends State<CatalogoEstudianteScreen> {
                       );
                     }).toList(),
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: 16),
               Expanded(
                 child: ListView.builder(
                   padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -840,77 +976,91 @@ class _CatalogoEstudianteScreenState extends State<CatalogoEstudianteScreen> {
                     final platillo = menuDisponibles[index];
                     return FadeInUp(
                       delay: Duration(milliseconds: 100 * index),
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(20),
-                        child: BackdropFilter(
-                          filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-                          child: Container(
-                            margin: const EdgeInsets.only(bottom: 15),
-                            decoration: BoxDecoration(
-                              color: Colors.white.withValues(alpha: 0.8),
-                              borderRadius: BorderRadius.circular(20),
-                              border: Border.all(
-                                color: Colors.white.withValues(alpha: 0.2),
-                              ),
-                              boxShadow: const [
-                                BoxShadow(
-                                  color: Colors.black12,
-                                  blurRadius: 10,
-                                ),
-                              ],
+                      child: Container(
+                        margin: const EdgeInsets.only(bottom: 14),
+                        padding: const EdgeInsets.all(14),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(20),
+                          boxShadow: [
+                            BoxShadow(
+                              color: colorVerdeTese.withValues(alpha: 0.07),
+                              blurRadius: 14,
+                              offset: const Offset(0, 6),
                             ),
-                            child: ListTile(
-                              contentPadding: const EdgeInsets.all(12),
-                              leading: Container(
-                                padding: const EdgeInsets.all(10),
-                                decoration: BoxDecoration(
-                                  color: colorVerdeTese.withValues(alpha: 0.1),
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                child: const Icon(
-                                  Icons.fastfood,
-                                  color: colorVerdeTese,
-                                  size: 30,
-                                ),
+                          ],
+                        ),
+                        child: Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(14),
+                              decoration: BoxDecoration(
+                                color: colorVerdeTese.withValues(alpha: 0.1),
+                                borderRadius: BorderRadius.circular(16),
                               ),
-                              title: Text(
-                                platillo.nombre,
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 16,
-                                ),
+                              child: const Icon(
+                                Icons.fastfood,
+                                color: colorVerdeTese,
+                                size: 28,
                               ),
-                              subtitle: Text(
-                                platillo.local,
-                                style: TextStyle(color: Colors.grey[600]),
-                              ),
-                              trailing: Row(
-                                mainAxisSize: MainAxisSize.min,
+                            ),
+                            const SizedBox(width: 14),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text(
-                                    '\$${platillo.precio.toInt()}',
-                                    style: const TextStyle(
-                                      fontWeight: FontWeight.w900,
-                                      color: colorVerdeTese,
-                                      fontSize: 16,
+                                    platillo.nombre,
+                                    style: GoogleFonts.poppins(
+                                      fontWeight: FontWeight.w600,
+                                      fontSize: 15.5,
+                                      color: colorTextoOscuro,
                                     ),
                                   ),
-                                  const SizedBox(width: 10),
-                                  IconButton(
-                                    icon: const Icon(
-                                      Icons.add_circle,
-                                      color: colorAmarilloTese,
-                                      size: 35,
+                                  const SizedBox(height: 3),
+                                  Text(
+                                    platillo.local,
+                                    style: GoogleFonts.poppins(
+                                      fontSize: 12.5,
+                                      color: colorTextoGris,
                                     ),
-                                    onPressed: () {
-                                      widget.onAgregar(platillo);
-                                      _mostrarAlertaExito(platillo.nombre);
-                                    },
+                                  ),
+                                  const SizedBox(height: 6),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 10,
+                                      vertical: 3,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: colorVerdeTese.withValues(
+                                        alpha: 0.1,
+                                      ),
+                                      borderRadius: BorderRadius.circular(30),
+                                    ),
+                                    child: Text(
+                                      '\$${platillo.precio.toInt()}',
+                                      style: GoogleFonts.poppins(
+                                        fontWeight: FontWeight.w700,
+                                        color: colorVerdeTese,
+                                        fontSize: 13,
+                                      ),
+                                    ),
                                   ),
                                 ],
                               ),
                             ),
-                          ),
+                            IconButton(
+                              icon: const Icon(
+                                Icons.add_circle,
+                                color: colorAmarilloTese,
+                                size: 36,
+                              ),
+                              onPressed: () {
+                                widget.onAgregar(platillo);
+                                _mostrarAlertaExito(platillo.nombre);
+                              },
+                            ),
+                          ],
                         ),
                       ),
                     );
@@ -931,73 +1081,150 @@ class PerfilEstudianteScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: colorFondoCrema,
       appBar: AppBar(
-        title: const Text(
+        title: Text(
           'Mi Perfil',
-          style: TextStyle(color: colorVerdeTese, fontWeight: FontWeight.bold),
+          style: GoogleFonts.poppins(
+            color: colorVerdeTese,
+            fontWeight: FontWeight.bold,
+          ),
         ),
-        backgroundColor: Colors.white,
+        backgroundColor: Colors.transparent,
         elevation: 0,
         centerTitle: true,
       ),
-      body: Center(
+      body: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 24),
         child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const CircleAvatar(
-              radius: 60,
-              backgroundColor: colorVerdeTese,
-              child: Icon(Icons.person, size: 80, color: Colors.white),
+            const SizedBox(height: 24),
+            Container(
+              padding: const EdgeInsets.all(4),
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                border: Border.all(color: colorAmarilloTese, width: 3),
+              ),
+              child: const CircleAvatar(
+                radius: 56,
+                backgroundColor: colorVerdeTese,
+                child: Icon(Icons.person, size: 68, color: Colors.white),
+              ),
             ),
             const SizedBox(height: 20),
             Text(
               'Axel Guerrero',
               style: GoogleFonts.poppins(
-                fontSize: 24,
+                fontSize: 22,
                 fontWeight: FontWeight.bold,
                 color: colorVerdeTese,
               ),
             ),
-            const Text(
-              'Matrícula: 20240001',
-              style: TextStyle(fontSize: 16, color: Colors.grey),
-            ),
-            const Text(
-              'Ing. en Sistemas Computacionales',
-              style: TextStyle(
-                fontSize: 16,
-                color: colorAmarilloTese,
-                fontWeight: FontWeight.bold,
+            const SizedBox(height: 24),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(20),
+                boxShadow: [
+                  BoxShadow(
+                    color: colorVerdeTese.withValues(alpha: 0.06),
+                    blurRadius: 16,
+                    offset: const Offset(0, 8),
+                  ),
+                ],
+              ),
+              child: Column(
+                children: [
+                  _FilaInfoPerfil(
+                    icono: Icons.badge_outlined,
+                    etiqueta: 'Matrícula',
+                    valor: '202220112',
+                  ),
+                  const Divider(height: 1),
+                  _FilaInfoPerfil(
+                    icono: Icons.school_outlined,
+                    etiqueta: 'Carrera',
+                    valor: 'Ing. en Sistemas Computacionales',
+                  ),
+                ],
               ),
             ),
-            const SizedBox(height: 50),
-            ElevatedButton.icon(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.red[50],
-                foregroundColor: Colors.red,
-                elevation: 0,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 40,
-                  vertical: 15,
+            const Spacer(),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.red[50],
+                  foregroundColor: Colors.red,
+                  elevation: 0,
+                  padding: const EdgeInsets.symmetric(vertical: 15),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(15),
+                  ),
+                ),
+                onPressed:
+                    () => Navigator.pushAndRemoveUntil(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const DecisionScreen(),
+                      ),
+                      (route) => false,
+                    ),
+                icon: const Icon(Icons.logout),
+                label: Text(
+                  'Cerrar Sesión',
+                  style: GoogleFonts.poppins(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                  ),
                 ),
               ),
-              onPressed:
-                  () => Navigator.pushAndRemoveUntil(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => const DecisionScreen(),
-                    ),
-                    (route) => false,
-                  ),
-              icon: const Icon(Icons.logout),
-              label: const Text(
-                'Cerrar Sesión',
-                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-              ),
             ),
+            const SizedBox(height: 24),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _FilaInfoPerfil extends StatelessWidget {
+  final IconData icono;
+  final String etiqueta;
+  final String valor;
+  const _FilaInfoPerfil({
+    required this.icono,
+    required this.etiqueta,
+    required this.valor,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 14),
+      child: Row(
+        children: [
+          Icon(icono, color: colorVerdeTese, size: 20),
+          const SizedBox(width: 12),
+          Text(
+            etiqueta,
+            style: GoogleFonts.poppins(color: colorTextoGris, fontSize: 13.5),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              valor,
+              textAlign: TextAlign.right,
+              style: GoogleFonts.poppins(
+                color: colorTextoOscuro,
+                fontWeight: FontWeight.w600,
+                fontSize: 13.5,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -1024,11 +1251,14 @@ class _CarritoScreenState extends State<CarritoScreen> {
     double total = widget.carrito.fold(0, (suma, item) => suma + item.precio);
 
     return Scaffold(
-      backgroundColor: Colors.grey[100],
+      backgroundColor: colorFondoCrema,
       appBar: AppBar(
-        title: const Text(
+        title: Text(
           'Tu Orden',
-          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+          style: GoogleFonts.poppins(
+            color: Colors.white,
+            fontWeight: FontWeight.bold,
+          ),
         ),
         backgroundColor: colorVerdeTese,
       ),
@@ -1037,13 +1267,37 @@ class _CarritoScreenState extends State<CarritoScreen> {
           Expanded(
             child:
                 widget.carrito.isEmpty
-                    ? const Center(
-                      child: Text(
-                        'Carrito vacío',
-                        style: TextStyle(fontSize: 18, color: Colors.grey),
+                    ? Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.shopping_basket_outlined,
+                            size: 72,
+                            color: colorTextoGris.withValues(alpha: 0.6),
+                          ),
+                          const SizedBox(height: 14),
+                          Text(
+                            'Tu carrito está vacío',
+                            style: GoogleFonts.poppins(
+                              fontSize: 17,
+                              fontWeight: FontWeight.w600,
+                              color: colorTextoGris,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            'Agrega algo rico desde el menú',
+                            style: GoogleFonts.poppins(
+                              fontSize: 13,
+                              color: colorTextoGris.withValues(alpha: 0.8),
+                            ),
+                          ),
+                        ],
                       ),
                     )
                     : ListView.builder(
+                      padding: const EdgeInsets.symmetric(vertical: 8),
                       itemCount: widget.carrito.length,
                       itemBuilder: (context, index) {
                         final item = widget.carrito[index];
@@ -1055,7 +1309,14 @@ class _CarritoScreenState extends State<CarritoScreen> {
                                 widget.carrito.removeAt(index);
                               }),
                           background: Container(
-                            color: Colors.red,
+                            margin: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 6,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.red[400],
+                              borderRadius: BorderRadius.circular(16),
+                            ),
                             alignment: Alignment.centerRight,
                             padding: const EdgeInsets.symmetric(horizontal: 20),
                             child: const Icon(
@@ -1063,21 +1324,38 @@ class _CarritoScreenState extends State<CarritoScreen> {
                               color: Colors.white,
                             ),
                           ),
-                          child: Card(
+                          child: Container(
                             margin: const EdgeInsets.symmetric(
                               horizontal: 16,
-                              vertical: 8,
+                              vertical: 6,
+                            ),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 6,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(16),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: colorVerdeTese.withValues(alpha: 0.06),
+                                  blurRadius: 10,
+                                  offset: const Offset(0, 4),
+                                ),
+                              ],
                             ),
                             child: ListTile(
+                              contentPadding: EdgeInsets.zero,
                               title: Text(
                                 item.nombre,
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.bold,
+                                style: GoogleFonts.poppins(
+                                  fontWeight: FontWeight.w600,
+                                  color: colorTextoOscuro,
                                 ),
                               ),
                               trailing: Text(
                                 '\$${item.precio.toStringAsFixed(2)}',
-                                style: const TextStyle(
+                                style: GoogleFonts.poppins(
                                   fontSize: 16,
                                   color: colorVerdeTese,
                                   fontWeight: FontWeight.bold,
@@ -1110,34 +1388,37 @@ class _CarritoScreenState extends State<CarritoScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
+                    Text(
                       'Método de pago al recoger:',
-                      style: TextStyle(
+                      style: GoogleFonts.poppins(
                         fontWeight: FontWeight.bold,
-                        fontSize: 16,
+                        fontSize: 15,
+                        color: colorTextoOscuro,
                       ),
                     ),
-                    const SizedBox(height: 10),
+                    const SizedBox(height: 12),
                     Row(
                       children: [
                         Expanded(
                           child: InkWell(
+                            borderRadius: BorderRadius.circular(14),
                             onTap:
                                 () => setState(() => metodoPago = 'Efectivo'),
                             child: Container(
-                              padding: const EdgeInsets.symmetric(vertical: 12),
+                              padding: const EdgeInsets.symmetric(vertical: 14),
                               decoration: BoxDecoration(
                                 color:
                                     metodoPago == 'Efectivo'
                                         ? colorVerdeTese.withValues(alpha: 0.1)
-                                        : Colors.white,
+                                        : colorFondoCrema,
                                 border: Border.all(
                                   color:
                                       metodoPago == 'Efectivo'
                                           ? colorVerdeTese
-                                          : Colors.grey[300]!,
+                                          : Colors.transparent,
+                                  width: 1.4,
                                 ),
-                                borderRadius: BorderRadius.circular(10),
+                                borderRadius: BorderRadius.circular(14),
                               ),
                               child: Column(
                                 children: [
@@ -1146,16 +1427,18 @@ class _CarritoScreenState extends State<CarritoScreen> {
                                     color:
                                         metodoPago == 'Efectivo'
                                             ? colorVerdeTese
-                                            : Colors.grey,
+                                            : colorTextoGris,
                                   ),
+                                  const SizedBox(height: 4),
                                   Text(
                                     'Efectivo',
-                                    style: TextStyle(
+                                    style: GoogleFonts.poppins(
                                       color:
                                           metodoPago == 'Efectivo'
                                               ? colorVerdeTese
-                                              : Colors.grey,
-                                      fontWeight: FontWeight.bold,
+                                              : colorTextoGris,
+                                      fontWeight: FontWeight.w600,
+                                      fontSize: 13.5,
                                     ),
                                   ),
                                 ],
@@ -1163,27 +1446,29 @@ class _CarritoScreenState extends State<CarritoScreen> {
                             ),
                           ),
                         ),
-                        const SizedBox(width: 15),
+                        const SizedBox(width: 14),
                         Expanded(
                           child: InkWell(
+                            borderRadius: BorderRadius.circular(14),
                             onTap:
                                 () => setState(
                                   () => metodoPago = 'Terminal Bancaria',
                                 ),
                             child: Container(
-                              padding: const EdgeInsets.symmetric(vertical: 12),
+                              padding: const EdgeInsets.symmetric(vertical: 14),
                               decoration: BoxDecoration(
                                 color:
                                     metodoPago == 'Terminal Bancaria'
                                         ? colorVerdeTese.withValues(alpha: 0.1)
-                                        : Colors.white,
+                                        : colorFondoCrema,
                                 border: Border.all(
                                   color:
                                       metodoPago == 'Terminal Bancaria'
                                           ? colorVerdeTese
-                                          : Colors.grey[300]!,
+                                          : Colors.transparent,
+                                  width: 1.4,
                                 ),
-                                borderRadius: BorderRadius.circular(10),
+                                borderRadius: BorderRadius.circular(14),
                               ),
                               child: Column(
                                 children: [
@@ -1192,16 +1477,18 @@ class _CarritoScreenState extends State<CarritoScreen> {
                                     color:
                                         metodoPago == 'Terminal Bancaria'
                                             ? colorVerdeTese
-                                            : Colors.grey,
+                                            : colorTextoGris,
                                   ),
+                                  const SizedBox(height: 4),
                                   Text(
                                     'Tarjeta',
-                                    style: TextStyle(
+                                    style: GoogleFonts.poppins(
                                       color:
                                           metodoPago == 'Terminal Bancaria'
                                               ? colorVerdeTese
-                                              : Colors.grey,
-                                      fontWeight: FontWeight.bold,
+                                              : colorTextoGris,
+                                      fontWeight: FontWeight.w600,
+                                      fontSize: 13.5,
                                     ),
                                   ),
                                 ],
@@ -1211,57 +1498,66 @@ class _CarritoScreenState extends State<CarritoScreen> {
                         ),
                       ],
                     ),
-                    const Divider(height: 40),
+                    const Divider(height: 36),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        const Text(
+                        Text(
                           'Total a pagar:',
-                          style: TextStyle(fontSize: 20, color: Colors.grey),
+                          style: GoogleFonts.poppins(
+                            fontSize: 16,
+                            color: colorTextoGris,
+                          ),
                         ),
                         Text(
                           '\$${total.toStringAsFixed(2)}',
-                          style: const TextStyle(
-                            fontSize: 28,
+                          style: GoogleFonts.poppins(
+                            fontSize: 26,
                             fontWeight: FontWeight.w900,
                             color: colorVerdeTese,
                           ),
                         ),
                       ],
                     ),
-                    const SizedBox(height: 20),
-                    ElevatedButton(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: colorAmarilloTese,
-                        minimumSize: const Size(double.infinity, 55),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(15),
+                    const SizedBox(height: 18),
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: colorAmarilloTese,
+                          disabledBackgroundColor: Colors.grey[300],
+                          elevation: 4,
+                          shadowColor: colorAmarilloTese.withValues(alpha: 0.5),
+                          minimumSize: const Size(double.infinity, 55),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(15),
+                          ),
                         ),
-                      ),
-                      onPressed:
-                          widget.carrito.isEmpty
-                              ? null
-                              : () {
-                                String codigoGenerado =
-                                    '#TESE-${Random().nextInt(9000) + 1000}';
-                                widget.onVaciar();
-                                Navigator.pushAndRemoveUntil(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder:
-                                        (context) => SalaEsperaScreen(
-                                          codigoPedido: codigoGenerado,
-                                        ),
-                                  ),
-                                  (route) => false,
-                                );
-                              },
-                      child: const Text(
-                        'Confirmar Pedido',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
+                        onPressed:
+                            widget.carrito.isEmpty
+                                ? null
+                                : () {
+                                  String codigoGenerado =
+                                      '#TESE-${Random().nextInt(9000) + 1000}';
+                                  widget.onVaciar();
+                                  Navigator.pushAndRemoveUntil(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder:
+                                          (context) => SalaEsperaScreen(
+                                            codigoPedido: codigoGenerado,
+                                          ),
+                                    ),
+                                    (route) => false,
+                                  );
+                                },
+                        child: Text(
+                          'Confirmar Pedido',
+                          style: GoogleFonts.poppins(
+                            color: colorVerdeOscuro,
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
                       ),
                     ),
@@ -1308,10 +1604,10 @@ class _SalaEsperaScreenState extends State<SalaEsperaScreen> {
       appBar: AppBar(
         title: Text(
           'Orden: ${widget.codigoPedido}',
-          style: TextStyle(
+          style: GoogleFonts.poppins(
             color: colorTextoTop,
             fontWeight: FontWeight.bold,
-            fontSize: 24,
+            fontSize: 22,
           ),
         ),
         backgroundColor: Colors.transparent,
@@ -1324,9 +1620,20 @@ class _SalaEsperaScreenState extends State<SalaEsperaScreen> {
         width: double.infinity,
         height: double.infinity,
         child: SafeArea(
-          child: AnimatedSwitcher(
-            duration: const Duration(milliseconds: 800),
-            child: _construirPantallaPorEstado(estadoActual),
+          child: Column(
+            children: [
+              const SizedBox(height: 90),
+              _BarraProgresoPedido(
+                estadoActual: estadoActual,
+                colorTexto: colorTextoTop,
+              ),
+              Expanded(
+                child: AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 800),
+                  child: _construirPantallaPorEstado(estadoActual),
+                ),
+              ),
+            ],
           ),
         ),
       ),
@@ -1334,7 +1641,7 @@ class _SalaEsperaScreenState extends State<SalaEsperaScreen> {
   }
 
   Widget _construirPantallaPorEstado(int estado) {
-    if (estado == 0)
+    if (estado == 0) {
       return _PantallaEstadoFull(
         key: const ValueKey(0),
         titulo: 'Pedido Recibido',
@@ -1342,9 +1649,9 @@ class _SalaEsperaScreenState extends State<SalaEsperaScreen> {
         cargando: true,
         imagenAsset: 'assets/patito_recibido.png',
         colorTextoTitulo: colorVerdeTese,
-        colorTextoSub: Colors.grey,
+        colorTextoSub: colorTextoGris,
       );
-    else if (estado == 1)
+    } else if (estado == 1) {
       return _PantallaEstadoFull(
         key: const ValueKey(1),
         titulo: 'En Preparación',
@@ -1352,9 +1659,9 @@ class _SalaEsperaScreenState extends State<SalaEsperaScreen> {
         cargando: true,
         imagenAsset: 'assets/patito_chef.png',
         colorTextoTitulo: colorVerdeTese,
-        colorTextoSub: Colors.grey,
+        colorTextoSub: colorTextoGris,
       );
-    else
+    } else {
       return _PantallaEstadoFull(
         key: const ValueKey(2),
         titulo: '¡Ya está listo!',
@@ -1365,6 +1672,66 @@ class _SalaEsperaScreenState extends State<SalaEsperaScreen> {
         colorTextoTitulo: Colors.white,
         colorTextoSub: Colors.white70,
       );
+    }
+  }
+}
+
+class _BarraProgresoPedido extends StatelessWidget {
+  final int estadoActual;
+  final Color colorTexto;
+  const _BarraProgresoPedido({
+    required this.estadoActual,
+    required this.colorTexto,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final etiquetas = ['Recibido', 'Preparando', 'Listo'];
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 32),
+      child: Row(
+        children: List.generate(etiquetas.length * 2 - 1, (i) {
+          if (i.isOdd) {
+            final indiceSegmento = (i - 1) ~/ 2;
+            final activo = estadoActual > indiceSegmento;
+            return Expanded(
+              child: Container(
+                height: 3,
+                margin: const EdgeInsets.symmetric(horizontal: 4),
+                color:
+                    activo
+                        ? colorTexto.withValues(alpha: 0.9)
+                        : colorTexto.withValues(alpha: 0.25),
+              ),
+            );
+          }
+          final indicePaso = i ~/ 2;
+          final activo = estadoActual >= indicePaso;
+          return Column(
+            children: [
+              Container(
+                width: 14,
+                height: 14,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: activo ? colorTexto : Colors.transparent,
+                  border: Border.all(color: colorTexto, width: 2),
+                ),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                etiquetas[indicePaso],
+                style: GoogleFonts.poppins(
+                  fontSize: 11,
+                  color: colorTexto,
+                  fontWeight: activo ? FontWeight.w700 : FontWeight.w400,
+                ),
+              ),
+            ],
+          );
+        }),
+      ),
+    );
   }
 }
 
@@ -1390,13 +1757,13 @@ class _PantallaEstadoFull extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Image.asset(imagenAsset, height: 250, fit: BoxFit.contain),
-            const SizedBox(height: 40),
+            Image.asset(imagenAsset, height: 230, fit: BoxFit.contain),
+            const SizedBox(height: 32),
             Text(
               titulo,
               textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 32,
+              style: GoogleFonts.poppins(
+                fontSize: 30,
                 fontWeight: FontWeight.w900,
                 color: colorTextoTitulo,
               ),
@@ -1405,35 +1772,42 @@ class _PantallaEstadoFull extends StatelessWidget {
             Text(
               subtitulo,
               textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 18, color: colorTextoSub),
+              style: GoogleFonts.poppins(fontSize: 16, color: colorTextoSub),
             ),
-            const SizedBox(height: 40),
+            const SizedBox(height: 36),
             if (cargando)
-              const CircularProgressIndicator(color: colorAmarilloTese),
+              const CircularProgressIndicator(
+                color: colorAmarilloTese,
+                strokeWidth: 2.6,
+              ),
             if (mostrarBoton)
               ZoomIn(
-                child: ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.white,
-                    minimumSize: const Size(double.infinity, 55),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(15),
-                    ),
-                  ),
-                  onPressed:
-                      () => Navigator.pushAndRemoveUntil(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => const NavegacionEstudiante(),
-                        ),
-                        (route) => false,
+                child: SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.white,
+                      elevation: 4,
+                      minimumSize: const Size(double.infinity, 55),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(15),
                       ),
-                  child: const Text(
-                    'Volver al Menú',
-                    style: TextStyle(
-                      color: colorExito,
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
+                    ),
+                    onPressed:
+                        () => Navigator.pushAndRemoveUntil(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const NavegacionEstudiante(),
+                          ),
+                          (route) => false,
+                        ),
+                    child: Text(
+                      'Volver al Menú',
+                      style: GoogleFonts.poppins(
+                        color: colorExito,
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                   ),
                 ),

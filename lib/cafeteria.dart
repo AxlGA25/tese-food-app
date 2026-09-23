@@ -9,12 +9,11 @@ class LoginLocalScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.blueGrey[50],
+      backgroundColor: colorFondoCrema,
       appBar: AppBar(
-        title: const Text('Atrás', style: TextStyle(color: Colors.blueGrey)),
         backgroundColor: Colors.transparent,
         elevation: 0,
-        iconTheme: const IconThemeData(color: Colors.blueGrey),
+        iconTheme: const IconThemeData(color: colorVerdeTese),
       ),
       body: Center(
         child: SingleChildScrollView(
@@ -25,76 +24,107 @@ class LoginLocalScreen extends StatelessWidget {
               ZoomIn(
                 child: Image.asset(
                   'assets/pedidoParaEntregar.png',
-                  height: 180,
+                  height: 170,
                   fit: BoxFit.contain,
                 ),
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: 16),
               FadeInDown(
                 child: Text(
                   'Acceso a Locales',
                   style: GoogleFonts.poppins(
                     fontSize: 28,
                     fontWeight: FontWeight.bold,
-                    color: Colors.blueGrey,
+                    color: colorVerdeTese,
                   ),
                 ),
               ),
-              const SizedBox(height: 10),
+              const SizedBox(height: 6),
               FadeInDown(
-                child: const Text(
+                child: Text(
                   'Ingresa tu código único de cafetería',
-                  style: TextStyle(color: Colors.grey),
-                ),
-              ),
-              const SizedBox(height: 40),
-              FadeInUp(
-                child: TextField(
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
-                    letterSpacing: 2,
-                  ),
-                  decoration: InputDecoration(
-                    hintText: 'Ej. CAFE-9999',
-                    prefixIcon: const Icon(Icons.key, color: Colors.blueGrey),
-                    filled: true,
-                    fillColor: Colors.white,
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(15),
-                      borderSide: BorderSide.none,
-                    ),
+                  style: GoogleFonts.poppins(
+                    fontSize: 14,
+                    color: colorTextoGris,
                   ),
                 ),
               ),
-              const SizedBox(height: 30),
-              FadeInUp(
-                delay: const Duration(milliseconds: 200),
-                child: ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.blueGrey,
-                    minimumSize: const Size(double.infinity, 55),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(15),
+              const SizedBox(height: 32),
+              Container(
+                padding: const EdgeInsets.all(22),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(24),
+                  boxShadow: [
+                    BoxShadow(
+                      color: colorVerdeTese.withValues(alpha: 0.08),
+                      blurRadius: 24,
+                      offset: const Offset(0, 10),
                     ),
-                  ),
-                  onPressed:
-                      () => Navigator.pushReplacement(
-                        context,
-                        MaterialPageRoute(
-                          builder:
-                              (context) => const DashboardNavegacionLocal(),
+                  ],
+                ),
+                child: Column(
+                  children: [
+                    FadeInUp(
+                      child: TextField(
+                        textAlign: TextAlign.center,
+                        style: GoogleFonts.poppins(
+                          fontSize: 22,
+                          fontWeight: FontWeight.bold,
+                          letterSpacing: 2,
+                          color: colorTextoOscuro,
+                        ),
+                        decoration: InputDecoration(
+                          hintText: 'Ej. CAFE-9999',
+                          prefixIcon: const Icon(
+                            Icons.key,
+                            color: colorVerdeTese,
+                          ),
+                          filled: true,
+                          fillColor: colorFondoCrema,
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(15),
+                            borderSide: BorderSide.none,
+                          ),
                         ),
                       ),
-                  child: const Text(
-                    'Abrir Panel de Pedidos',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
                     ),
-                  ),
+                    const SizedBox(height: 22),
+                    FadeInUp(
+                      delay: const Duration(milliseconds: 200),
+                      child: SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: colorVerdeTese,
+                            elevation: 4,
+                            shadowColor: colorVerdeTese.withValues(alpha: 0.5),
+                            minimumSize: const Size(double.infinity, 55),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(15),
+                            ),
+                          ),
+                          onPressed:
+                              () => Navigator.pushReplacement(
+                                context,
+                                MaterialPageRoute(
+                                  builder:
+                                      (context) =>
+                                          const DashboardNavegacionLocal(),
+                                ),
+                              ),
+                          child: Text(
+                            'Abrir Panel de Pedidos',
+                            style: GoogleFonts.poppins(
+                              color: Colors.white,
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ],
@@ -178,6 +208,12 @@ class _DashboardNavegacionLocalState extends State<DashboardNavegacionLocal> {
     PlatilloLocal('Jugo de Naranja', 25.0, false),
   ];
 
+  // El amarillo de marca es claro: sobre ese fondo se usa texto verde oscuro
+  // para mantener buen contraste; en rojo/verde el texto blanco ya se lee bien.
+  Color _colorTextoSobre(Color fondo) {
+    return fondo == colorAmarilloTese ? colorVerdeOscuro : Colors.white;
+  }
+
   void _agregarNuevoPlatillo(PlatilloLocal nuevoPlatillo) {
     setState(() {
       miMenu.add(nuevoPlatillo);
@@ -240,18 +276,18 @@ class _DashboardNavegacionLocalState extends State<DashboardNavegacionLocal> {
                   children: [
                     Text(
                       comanda.idPedido,
-                      style: TextStyle(
-                        fontSize: 28,
+                      style: GoogleFonts.poppins(
+                        fontSize: 26,
                         fontWeight: FontWeight.w900,
                         color: colorEstado,
                       ),
                     ),
                     Text(
                       '\$${comanda.total.toStringAsFixed(2)}',
-                      style: const TextStyle(
-                        fontSize: 24,
+                      style: GoogleFonts.poppins(
+                        fontSize: 22,
                         fontWeight: FontWeight.bold,
-                        color: Colors.blueGrey,
+                        color: colorVerdeTese,
                       ),
                     ),
                   ],
@@ -260,54 +296,66 @@ class _DashboardNavegacionLocalState extends State<DashboardNavegacionLocal> {
                 Row(
                   children: [
                     const CircleAvatar(
-                      backgroundColor: Colors.blueGrey,
+                      backgroundColor: colorVerdeTese,
                       child: Icon(Icons.person, color: Colors.white),
                     ),
                     const SizedBox(width: 15),
                     Text(
                       comanda.alumno,
-                      style: const TextStyle(
+                      style: GoogleFonts.poppins(
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
+                        color: colorTextoOscuro,
                       ),
                     ),
                   ],
                 ),
                 const Divider(height: 30),
-                const Text(
+                Text(
                   'Artículos:',
-                  style: TextStyle(fontSize: 16, color: Colors.grey),
+                  style: GoogleFonts.poppins(
+                    fontSize: 14,
+                    color: colorTextoGris,
+                  ),
                 ),
                 const SizedBox(height: 5),
                 Text(
                   comanda.detalle,
-                  style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
+                  style: GoogleFonts.poppins(
+                    fontSize: 17,
+                    fontWeight: FontWeight.w600,
+                    color: colorTextoOscuro,
                   ),
                 ),
                 const SizedBox(height: 20),
                 Container(
                   width: double.infinity,
-                  padding: const EdgeInsets.all(12),
+                  padding: const EdgeInsets.all(14),
                   decoration: BoxDecoration(
-                    color: Colors.amber[50],
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border.all(color: Colors.amber),
+                    color: colorAmarilloTese.withValues(alpha: 0.08),
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(
+                      color: colorAmarilloTese.withValues(alpha: 0.4),
+                    ),
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text(
+                      Text(
                         'Notas del cliente:',
-                        style: TextStyle(fontSize: 14, color: Colors.amber),
+                        style: GoogleFonts.poppins(
+                          fontSize: 13,
+                          color: colorAmarilloTese,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
+                      const SizedBox(height: 2),
                       Text(
                         comanda.notas,
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.black87,
+                        style: GoogleFonts.poppins(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600,
+                          color: colorTextoOscuro,
                         ),
                       ),
                     ],
@@ -320,14 +368,15 @@ class _DashboardNavegacionLocalState extends State<DashboardNavegacionLocal> {
                       comanda.metodoPago == 'Efectivo'
                           ? Icons.payments
                           : Icons.credit_card,
-                      color: Colors.blueGrey,
+                      color: colorVerdeTese,
                     ),
                     const SizedBox(width: 10),
                     Text(
                       'Pago con: ${comanda.metodoPago}',
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
+                      style: GoogleFonts.poppins(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
+                        color: colorTextoOscuro,
                       ),
                     ),
                   ],
@@ -339,6 +388,7 @@ class _DashboardNavegacionLocalState extends State<DashboardNavegacionLocal> {
                   child: ElevatedButton(
                     style: ElevatedButton.styleFrom(
                       backgroundColor: colorEstado,
+                      elevation: 3,
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(15),
                       ),
@@ -355,8 +405,8 @@ class _DashboardNavegacionLocalState extends State<DashboardNavegacionLocal> {
                     },
                     child: Text(
                       textoBoton,
-                      style: const TextStyle(
-                        color: Colors.white,
+                      style: GoogleFonts.poppins(
+                        color: _colorTextoSobre(colorEstado),
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
                       ),
@@ -372,7 +422,7 @@ class _DashboardNavegacionLocalState extends State<DashboardNavegacionLocal> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.grey[200],
+      backgroundColor: colorFondoCrema,
       appBar: AppBar(
         title: Text(
           'Kiosko Sistemas',
@@ -381,7 +431,7 @@ class _DashboardNavegacionLocalState extends State<DashboardNavegacionLocal> {
             fontWeight: FontWeight.bold,
           ),
         ),
-        backgroundColor: Colors.blueGrey[800],
+        backgroundColor: colorVerdeTese,
         actions: [
           IconButton(
             icon: const Icon(Icons.logout, color: Colors.white),
@@ -397,22 +447,35 @@ class _DashboardNavegacionLocalState extends State<DashboardNavegacionLocal> {
         duration: const Duration(milliseconds: 300),
         child: _indiceActual == 0 ? _vistaPedidos() : _vistaMenu(),
       ),
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _indiceActual,
-        onTap: (index) => setState(() => _indiceActual = index),
-        selectedItemColor: colorAmarilloTese,
-        unselectedItemColor: Colors.grey,
-        backgroundColor: Colors.white,
-        items: const [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.receipt_long),
-            label: 'Pedidos',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.restaurant_menu),
-            label: 'Mi Menú',
-          ),
-        ],
+      bottomNavigationBar: Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.06),
+              blurRadius: 16,
+              offset: const Offset(0, -4),
+            ),
+          ],
+        ),
+        child: BottomNavigationBar(
+          currentIndex: _indiceActual,
+          onTap: (index) => setState(() => _indiceActual = index),
+          selectedItemColor: colorVerdeTese,
+          unselectedItemColor: colorTextoGris,
+          backgroundColor: Colors.white,
+          elevation: 0,
+          items: const [
+            BottomNavigationBarItem(
+              icon: Icon(Icons.receipt_long),
+              label: 'Pedidos',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.restaurant_menu),
+              label: 'Mi Menú',
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -420,6 +483,7 @@ class _DashboardNavegacionLocalState extends State<DashboardNavegacionLocal> {
   Widget _vistaPedidos() {
     if (pedidosActivos.isEmpty) {
       return Center(
+        key: const ValueKey('sinPedidos'),
         child: FadeInUp(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -430,17 +494,17 @@ class _DashboardNavegacionLocalState extends State<DashboardNavegacionLocal> {
                 fit: BoxFit.contain,
               ),
               const SizedBox(height: 20),
-              const Text(
+              Text(
                 'No hay pedidos activos',
-                style: TextStyle(
+                style: GoogleFonts.poppins(
                   fontSize: 22,
                   fontWeight: FontWeight.bold,
-                  color: Colors.blueGrey,
+                  color: colorVerdeTese,
                 ),
               ),
-              const Text(
+              Text(
                 'La cafetería está al día.',
-                style: TextStyle(fontSize: 16, color: Colors.grey),
+                style: GoogleFonts.poppins(fontSize: 15, color: colorTextoGris),
               ),
             ],
           ),
@@ -481,103 +545,133 @@ class _DashboardNavegacionLocalState extends State<DashboardNavegacionLocal> {
                   colorEstado,
                   textoBoton,
                 ),
-            child: Card(
+            child: Container(
               margin: const EdgeInsets.only(bottom: 16),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(15),
-                side: BorderSide(color: colorEstado, width: 2),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(18),
+                boxShadow: [
+                  BoxShadow(
+                    color: colorVerdeTese.withValues(alpha: 0.06),
+                    blurRadius: 14,
+                    offset: const Offset(0, 6),
+                  ),
+                ],
               ),
-              child: Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          comanda.idPedido,
-                          style: TextStyle(
-                            fontSize: 22,
-                            fontWeight: FontWeight.w900,
-                            color: colorEstado,
-                          ),
-                        ),
-                        Chip(
-                          avatar: Icon(
-                            iconoEstado,
-                            color: Colors.white,
-                            size: 18,
-                          ),
-                          label: Text(
-                            comanda.estado == 0
-                                ? 'NUEVO'
-                                : (comanda.estado == 1
-                                    ? 'PREPARANDO'
-                                    : 'LISTO'),
-                          ),
-                          backgroundColor: colorEstado,
-                          labelStyle: const TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const Divider(),
-                    Text(
-                      'Alumno: ${comanda.alumno}',
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 10),
-                    Text(
-                      comanda.detalle,
-                      style: const TextStyle(
-                        fontSize: 16,
-                        color: Colors.black87,
-                      ),
-                    ),
-                    const SizedBox(height: 10),
-                    Row(
-                      children: [
-                        Icon(
-                          comanda.metodoPago == 'Efectivo'
-                              ? Icons.payments
-                              : Icons.credit_card,
-                          size: 16,
-                          color: Colors.grey,
-                        ),
-                        const SizedBox(width: 5),
-                        Text(
-                          comanda.metodoPago,
-                          style: const TextStyle(
-                            color: Colors.grey,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 10),
-                    const Center(
-                      child: Text(
-                        'Toca la tarjeta para ver detalles y procesar',
-                        style: TextStyle(
-                          color: Colors.blueGrey,
-                          fontSize: 12,
-                          fontWeight: FontWeight.bold,
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(18),
+                child: IntrinsicHeight(
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Container(width: 5, color: colorEstado),
+                      Expanded(
+                        child: _contenidoTarjetaPedido(
+                          comanda,
+                          iconoEstado,
+                          colorEstado,
                         ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
             ),
           ),
         );
       },
+    );
+  }
+
+  Widget _contenidoTarjetaPedido(
+    ComandaDummy comanda,
+    IconData iconoEstado,
+    Color colorEstado,
+  ) {
+    return Padding(
+      padding: const EdgeInsets.all(16.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                comanda.idPedido,
+                style: GoogleFonts.poppins(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w900,
+                  color: colorEstado,
+                ),
+              ),
+              Chip(
+                avatar: Icon(
+                  iconoEstado,
+                  color: _colorTextoSobre(colorEstado),
+                  size: 18,
+                ),
+                label: Text(
+                  comanda.estado == 0
+                      ? 'NUEVO'
+                      : (comanda.estado == 1 ? 'PREPARANDO' : 'LISTO'),
+                ),
+                backgroundColor: colorEstado,
+                labelStyle: GoogleFonts.poppins(
+                  color: _colorTextoSobre(colorEstado),
+                  fontWeight: FontWeight.bold,
+                  fontSize: 12,
+                ),
+              ),
+            ],
+          ),
+          const Divider(),
+          Text(
+            'Alumno: ${comanda.alumno}',
+            style: GoogleFonts.poppins(
+              fontSize: 15,
+              fontWeight: FontWeight.w600,
+              color: colorTextoOscuro,
+            ),
+          ),
+          const SizedBox(height: 10),
+          Text(
+            comanda.detalle,
+            style: GoogleFonts.poppins(fontSize: 14.5, color: colorTextoOscuro),
+          ),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              Icon(
+                comanda.metodoPago == 'Efectivo'
+                    ? Icons.payments
+                    : Icons.credit_card,
+                size: 16,
+                color: colorTextoGris,
+              ),
+              const SizedBox(width: 5),
+              Text(
+                comanda.metodoPago,
+                style: GoogleFonts.poppins(
+                  color: colorTextoGris,
+                  fontWeight: FontWeight.w600,
+                  fontSize: 13,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Center(
+            child: Text(
+              'Toca la tarjeta para ver detalles y procesar',
+              style: GoogleFonts.poppins(
+                color: colorVerdeTese,
+                fontSize: 11.5,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -591,35 +685,43 @@ class _DashboardNavegacionLocalState extends State<DashboardNavegacionLocal> {
         itemBuilder: (context, index) {
           final platillo = miMenu[index];
           return FadeInUp(
-            child: Card(
-              elevation: 2,
+            child: Container(
               margin: const EdgeInsets.only(bottom: 12),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(15),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(18),
+                boxShadow: [
+                  BoxShadow(
+                    color: colorVerdeTese.withValues(alpha: 0.06),
+                    blurRadius: 12,
+                    offset: const Offset(0, 5),
+                  ),
+                ],
               ),
               child: ListTile(
                 contentPadding: const EdgeInsets.all(16),
                 leading: Container(
                   padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(
-                    color: Colors.blueGrey[100],
-                    borderRadius: BorderRadius.circular(10),
+                    color: colorVerdeTese.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(12),
                   ),
-                  child: const Icon(Icons.fastfood, color: Colors.blueGrey),
+                  child: const Icon(Icons.fastfood, color: colorVerdeTese),
                 ),
                 title: Text(
                   platillo.nombre,
-                  style: const TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 18,
+                  style: GoogleFonts.poppins(
+                    fontWeight: FontWeight.w600,
+                    fontSize: 16,
+                    color: colorTextoOscuro,
                   ),
                 ),
                 subtitle: Text(
                   '\$${platillo.precio.toStringAsFixed(2)}',
-                  style: const TextStyle(
+                  style: GoogleFonts.poppins(
                     color: colorExito,
                     fontWeight: FontWeight.bold,
-                    fontSize: 16,
+                    fontSize: 15,
                   ),
                 ),
                 trailing: Switch(
@@ -642,10 +744,14 @@ class _DashboardNavegacionLocalState extends State<DashboardNavegacionLocal> {
       ),
       floatingActionButton: FloatingActionButton.extended(
         backgroundColor: colorAmarilloTese,
-        icon: const Icon(Icons.add, color: Colors.white),
-        label: const Text(
+        elevation: 6,
+        icon: const Icon(Icons.add, color: colorVerdeOscuro),
+        label: Text(
           'Nuevo Platillo',
-          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+          style: GoogleFonts.poppins(
+            color: colorVerdeOscuro,
+            fontWeight: FontWeight.bold,
+          ),
         ),
         onPressed: () async {
           final PlatilloLocal? nuevo = await Navigator.push(
@@ -674,6 +780,13 @@ class _AgregarPlatilloScreenState extends State<AgregarPlatilloScreen> {
   final TextEditingController _nombreCtrl = TextEditingController();
   final TextEditingController _precioCtrl = TextEditingController();
 
+  @override
+  void dispose() {
+    _nombreCtrl.dispose();
+    _precioCtrl.dispose();
+    super.dispose();
+  }
+
   void _guardarPlatillo() {
     if (_nombreCtrl.text.isEmpty || _precioCtrl.text.isEmpty) return;
     final nuevoPlatillo = PlatilloLocal(
@@ -684,18 +797,34 @@ class _AgregarPlatilloScreenState extends State<AgregarPlatilloScreen> {
     Navigator.pop(context, nuevoPlatillo);
   }
 
+  InputDecoration _decoracionCampo(String label, IconData icono) {
+    return InputDecoration(
+      labelText: label,
+      prefixIcon: Icon(icono, color: colorVerdeTese),
+      filled: true,
+      fillColor: colorFondoCrema,
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(15),
+        borderSide: BorderSide.none,
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: colorFondoCrema,
       appBar: AppBar(
-        title: const Text(
+        title: Text(
           'Agregar Platillo',
-          style: TextStyle(color: Colors.blueGrey, fontWeight: FontWeight.bold),
+          style: GoogleFonts.poppins(
+            color: colorVerdeTese,
+            fontWeight: FontWeight.bold,
+          ),
         ),
-        backgroundColor: Colors.white,
+        backgroundColor: Colors.transparent,
         elevation: 0,
-        iconTheme: const IconThemeData(color: Colors.blueGrey),
+        iconTheme: const IconThemeData(color: colorVerdeTese),
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(24.0),
@@ -706,73 +835,94 @@ class _AgregarPlatilloScreenState extends State<AgregarPlatilloScreen> {
                 height: 150,
                 width: double.infinity,
                 decoration: BoxDecoration(
-                  color: Colors.grey[200],
+                  color: colorVerdeTese.withValues(alpha: 0.05),
                   borderRadius: BorderRadius.circular(20),
                   border: Border.all(
-                    color: Colors.grey,
-                    style: BorderStyle.solid,
+                    color: colorVerdeTese.withValues(alpha: 0.25),
                   ),
                 ),
-                child: const Column(
+                child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Icon(Icons.add_a_photo, size: 50, color: Colors.grey),
-                    SizedBox(height: 10),
+                    Icon(
+                      Icons.add_a_photo,
+                      size: 44,
+                      color: colorVerdeTese.withValues(alpha: 0.6),
+                    ),
+                    const SizedBox(height: 10),
                     Text(
                       'Subir foto del platillo',
-                      style: TextStyle(
-                        color: Colors.grey,
-                        fontWeight: FontWeight.bold,
+                      style: GoogleFonts.poppins(
+                        color: colorTextoGris,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 13.5,
                       ),
                     ),
                   ],
                 ),
               ),
             ),
+            const SizedBox(height: 26),
+            Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(24),
+                boxShadow: [
+                  BoxShadow(
+                    color: colorVerdeTese.withValues(alpha: 0.08),
+                    blurRadius: 24,
+                    offset: const Offset(0, 10),
+                  ),
+                ],
+              ),
+              child: Column(
+                children: [
+                  FadeInLeft(
+                    child: TextField(
+                      controller: _nombreCtrl,
+                      decoration: _decoracionCampo(
+                        'Nombre del Platillo',
+                        Icons.restaurant,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  FadeInRight(
+                    child: TextField(
+                      controller: _precioCtrl,
+                      keyboardType: TextInputType.number,
+                      decoration: _decoracionCampo(
+                        'Precio (\$)',
+                        Icons.attach_money,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
             const SizedBox(height: 30),
-            FadeInLeft(
-              child: TextField(
-                controller: _nombreCtrl,
-                decoration: InputDecoration(
-                  labelText: 'Nombre del Platillo',
-                  prefixIcon: const Icon(Icons.restaurant),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(15),
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(height: 20),
-            FadeInRight(
-              child: TextField(
-                controller: _precioCtrl,
-                keyboardType: TextInputType.number,
-                decoration: InputDecoration(
-                  labelText: 'Precio (\$)',
-                  prefixIcon: const Icon(Icons.attach_money),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(15),
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(height: 40),
             FadeInUp(
-              child: ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: colorAmarilloTese,
-                  minimumSize: const Size(double.infinity, 55),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(15),
+              child: SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: colorAmarilloTese,
+                    elevation: 4,
+                    shadowColor: colorAmarilloTese.withValues(alpha: 0.5),
+                    minimumSize: const Size(double.infinity, 55),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(15),
+                    ),
                   ),
-                ),
-                onPressed: _guardarPlatillo,
-                child: const Text(
-                  'Guardar en el Menú',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
+                  onPressed: _guardarPlatillo,
+                  child: Text(
+                    'Guardar en el Menú',
+                    style: GoogleFonts.poppins(
+                      color: colorVerdeOscuro,
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                 ),
               ),
