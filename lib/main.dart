@@ -10,8 +10,10 @@ import 'dart:math';
 import 'dart:async';
 import 'dart:ui';
 import 'cafeteria.dart';
+import 'package:flutter/services.dart';
 
 void main() {
+  SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
   runApp(const TeseHambreadosApp());
 }
 
