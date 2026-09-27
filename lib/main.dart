@@ -1,21 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:animate_do/animate_do.dart';
-import 'package:google_nav_bar/google_nav_bar.dart';
+import 'package:curved_navigation_bar/curved_navigation_bar.dart';
 import 'package:carousel_slider/carousel_slider.dart';
+import 'package:smooth_page_indicator/smooth_page_indicator.dart';
+import 'package:confetti/confetti.dart';
 import 'package:awesome_snackbar_content/awesome_snackbar_content.dart';
 import 'dart:math';
 import 'dart:async';
 import 'dart:ui';
 import 'cafeteria.dart';
-import 'package:flutter/services.dart';
 
 void main() {
-  WidgetsFlutterBinding.ensureInitialized();
-
-  // 3. ACTIVA EL MODO PANTALLA COMPLETA (Oculta botones y batería)
-  SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
-
   runApp(const TeseHambreadosApp());
 }
 
@@ -114,6 +110,42 @@ class FondoOndasPremium extends StatelessWidget {
           BackdropFilter(
             filter: ImageFilter.blur(sigmaX: 70, sigmaY: 70),
             child: Container(color: Colors.transparent),
+          ),
+          Positioned(
+            top: 70,
+            right: 24,
+            child: Icon(
+              Icons.local_pizza,
+              size: 46,
+              color: Colors.white.withValues(alpha: 0.12),
+            ),
+          ),
+          Positioned(
+            top: 150,
+            left: 18,
+            child: Icon(
+              Icons.icecream,
+              size: 38,
+              color: Colors.white.withValues(alpha: 0.12),
+            ),
+          ),
+          Positioned(
+            bottom: 90,
+            right: 40,
+            child: Icon(
+              Icons.local_cafe,
+              size: 40,
+              color: Colors.white.withValues(alpha: 0.12),
+            ),
+          ),
+          Positioned(
+            bottom: 170,
+            left: 30,
+            child: Icon(
+              Icons.bakery_dining,
+              size: 34,
+              color: Colors.white.withValues(alpha: 0.1),
+            ),
           ),
           SafeArea(child: child),
         ],
@@ -691,11 +723,15 @@ class Platillo {
   final String nombre;
   final String local;
   final double precio;
+  final String categoria;
+  final IconData icono;
   Platillo({
     required this.id,
     required this.nombre,
     required this.local,
     required this.precio,
+    this.categoria = 'Comida',
+    this.icono = Icons.fastfood,
   });
 }
 
@@ -733,37 +769,34 @@ class _NavegacionEstudianteState extends State<NavegacionEstudiante> {
     ];
 
     return Scaffold(
+      backgroundColor: colorFondoCrema,
+      extendBody: true,
       body: pantallas[_indiceActual],
-      bottomNavigationBar: Container(
-        decoration: BoxDecoration(
-          color: Colors.white,
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.06),
-              blurRadius: 16,
-              offset: const Offset(0, -4),
-            ),
-          ],
-        ),
-        padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 15),
-        child: GNav(
-          backgroundColor: Colors.white,
-          color: Colors.grey,
-          activeColor: Colors.white,
-          tabBackgroundColor: colorVerdeTese,
-          gap: 8,
-          padding: const EdgeInsets.all(16),
-          selectedIndex: _indiceActual,
-          onTabChange: (index) {
-            setState(() {
-              _indiceActual = index;
-            });
-          },
-          tabs: const [
-            GButton(icon: Icons.fastfood, text: 'Menú'),
-            GButton(icon: Icons.person, text: 'Mi Perfil'),
-          ],
-        ),
+      bottomNavigationBar: CurvedNavigationBar(
+        index: _indiceActual,
+        height: 58,
+        backgroundColor: Colors.transparent,
+        color: colorVerdeTese,
+        buttonBackgroundColor: colorAmarilloTese,
+        animationDuration: const Duration(milliseconds: 400),
+        animationCurve: Curves.easeOutBack,
+        items: [
+          Icon(
+            Icons.fastfood,
+            size: 26,
+            color: _indiceActual == 0 ? colorVerdeOscuro : Colors.white,
+          ),
+          Icon(
+            Icons.person,
+            size: 26,
+            color: _indiceActual == 1 ? colorVerdeOscuro : Colors.white,
+          ),
+        ],
+        onTap: (index) {
+          setState(() {
+            _indiceActual = index;
+          });
+        },
       ),
       floatingActionButton:
           _indiceActual == 0
@@ -823,35 +856,130 @@ class _CatalogoEstudianteScreenState extends State<CatalogoEstudianteScreen> {
   final List<Platillo> menuDisponibles = [
     Platillo(
       id: '1',
-      nombre: 'Hamburguesa Clásica',
-      local: 'Kiosko Sistemas',
-      precio: 65.0,
-    ),
-    Platillo(
-      id: '2',
       nombre: 'Chilaquiles Verdes',
       local: 'Cafetería Central',
       precio: 45.0,
+      categoria: 'Desayunos',
+      icono: Icons.breakfast_dining,
+    ),
+    Platillo(
+      id: '2',
+      nombre: 'Hot Cakes con Miel',
+      local: 'Cafetería Central',
+      precio: 35.0,
+      categoria: 'Desayunos',
+      icono: Icons.bakery_dining,
     ),
     Platillo(
       id: '3',
-      nombre: 'Orden de Tacos (4)',
-      local: 'Cafetería Central',
-      precio: 40.0,
+      nombre: 'Licuado de Fresa',
+      local: 'Jugos TESE',
+      precio: 30.0,
+      categoria: 'Desayunos',
+      icono: Icons.local_drink,
     ),
     Platillo(
       id: '4',
+      nombre: 'Hamburguesa Clásica',
+      local: 'Kiosko Sistemas',
+      precio: 65.0,
+      categoria: 'Comida',
+      icono: Icons.lunch_dining,
+    ),
+    Platillo(
+      id: '5',
+      nombre: 'Orden de Tacos (4)',
+      local: 'Cafetería Central',
+      precio: 40.0,
+      categoria: 'Comida',
+      icono: Icons.dinner_dining,
+    ),
+    Platillo(
+      id: '6',
+      nombre: 'Torta de Milanesa',
+      local: 'Kiosko Sistemas',
+      precio: 55.0,
+      categoria: 'Comida',
+      icono: Icons.fastfood,
+    ),
+    Platillo(
+      id: '7',
+      nombre: 'Arroz con Pollo',
+      local: 'Cafetería Central',
+      precio: 50.0,
+      categoria: 'Comida',
+      icono: Icons.rice_bowl,
+    ),
+    Platillo(
+      id: '8',
       nombre: 'Jugo de Naranja',
       local: 'Jugos TESE',
       precio: 25.0,
+      categoria: 'Bebidas',
+      icono: Icons.emoji_food_beverage,
+    ),
+    Platillo(
+      id: '9',
+      nombre: 'Café Americano',
+      local: 'Cafetería Central',
+      precio: 20.0,
+      categoria: 'Bebidas',
+      icono: Icons.coffee,
+    ),
+    Platillo(
+      id: '10',
+      nombre: 'Gelatina de Mosaico',
+      local: 'Cafetería Central',
+      precio: 15.0,
+      categoria: 'Postres',
+      icono: Icons.icecream,
+    ),
+    Platillo(
+      id: '11',
+      nombre: 'Pay de Queso',
+      local: 'Kiosko Sistemas',
+      precio: 30.0,
+      categoria: 'Postres',
+      icono: Icons.cake,
     ),
   ];
 
+  final List<String> _categorias = const [
+    'Todos',
+    'Desayunos',
+    'Comida',
+    'Bebidas',
+    'Postres',
+  ];
+  String _categoriaSeleccionada = 'Todos';
+
+  final TextEditingController _busquedaCtrl = TextEditingController();
+  String _terminoBusqueda = '';
+
+  int _promoIndex = 0;
   final List<String> promociones = [
     '¡2x1 en Chilaquiles hoy!',
     'Combo Godín a solo \$50',
     'Postre gratis en compras > \$100',
   ];
+
+  List<Platillo> get _platillosFiltrados {
+    return menuDisponibles.where((p) {
+      final coincideCategoria =
+          _categoriaSeleccionada == 'Todos' ||
+          p.categoria == _categoriaSeleccionada;
+      final coincideBusqueda =
+          _terminoBusqueda.isEmpty ||
+          p.nombre.toLowerCase().contains(_terminoBusqueda.toLowerCase());
+      return coincideCategoria && coincideBusqueda;
+    }).toList();
+  }
+
+  @override
+  void dispose() {
+    _busquedaCtrl.dispose();
+    super.dispose();
+  }
 
   void _mostrarAlertaExito(String nombre) {
     final snackBar = SnackBar(
@@ -872,6 +1000,8 @@ class _CatalogoEstudianteScreenState extends State<CatalogoEstudianteScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final platillosFiltrados = _platillosFiltrados;
+
     return Scaffold(
       body: Container(
         decoration: BoxDecoration(
@@ -879,7 +1009,7 @@ class _CatalogoEstudianteScreenState extends State<CatalogoEstudianteScreen> {
             colors: [colorVerdeTese, colorFondoCrema],
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            stops: const [0.0, 0.32],
+            stops: const [0.0, 0.3],
           ),
         ),
         child: SafeArea(
@@ -887,32 +1017,124 @@ class _CatalogoEstudianteScreenState extends State<CatalogoEstudianteScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Padding(
-                padding: const EdgeInsets.fromLTRB(20, 20, 20, 4),
+                padding: const EdgeInsets.fromLTRB(20, 16, 20, 4),
                 child: Text(
                   '¿Qué comeremos hoy?',
                   style: GoogleFonts.poppins(
-                    fontSize: 26,
+                    fontSize: 25,
                     fontWeight: FontWeight.bold,
                     color: Colors.white,
                   ),
                 ),
               ),
               Padding(
-                padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
+                padding: const EdgeInsets.fromLTRB(20, 0, 20, 14),
                 child: Text(
                   'Ordena y recógelo directo en el receso',
                   style: GoogleFonts.poppins(
-                    fontSize: 14,
+                    fontSize: 13.5,
                     color: Colors.white.withValues(alpha: 0.85),
                   ),
                 ),
               ),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                child: TextField(
+                  controller: _busquedaCtrl,
+                  onChanged:
+                      (valor) => setState(() => _terminoBusqueda = valor),
+                  style: GoogleFonts.poppins(
+                    fontSize: 14,
+                    color: colorTextoOscuro,
+                  ),
+                  decoration: InputDecoration(
+                    hintText: 'Busca tu antojo...',
+                    hintStyle: GoogleFonts.poppins(
+                      color: colorTextoGris,
+                      fontSize: 14,
+                    ),
+                    prefixIcon: const Icon(Icons.search, color: colorVerdeTese),
+                    suffixIcon:
+                        _terminoBusqueda.isEmpty
+                            ? null
+                            : IconButton(
+                              icon: const Icon(
+                                Icons.close,
+                                color: colorTextoGris,
+                                size: 18,
+                              ),
+                              onPressed: () {
+                                _busquedaCtrl.clear();
+                                setState(() => _terminoBusqueda = '');
+                              },
+                            ),
+                    filled: true,
+                    fillColor: Colors.white,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(16),
+                      borderSide: BorderSide.none,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 14),
+              SizedBox(
+                height: 40,
+                child: ListView.separated(
+                  scrollDirection: Axis.horizontal,
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  itemCount: _categorias.length,
+                  separatorBuilder: (_, __) => const SizedBox(width: 8),
+                  itemBuilder: (context, index) {
+                    final categoria = _categorias[index];
+                    final seleccionada = categoria == _categoriaSeleccionada;
+                    return GestureDetector(
+                      onTap:
+                          () => setState(
+                            () => _categoriaSeleccionada = categoria,
+                          ),
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 200),
+                        padding: const EdgeInsets.symmetric(horizontal: 18),
+                        alignment: Alignment.center,
+                        decoration: BoxDecoration(
+                          color: seleccionada ? colorVerdeTese : Colors.white,
+                          borderRadius: BorderRadius.circular(20),
+                          boxShadow:
+                              seleccionada
+                                  ? []
+                                  : [
+                                    BoxShadow(
+                                      color: colorVerdeTese.withValues(
+                                        alpha: 0.06,
+                                      ),
+                                      blurRadius: 8,
+                                      offset: const Offset(0, 3),
+                                    ),
+                                  ],
+                        ),
+                        child: Text(
+                          categoria,
+                          style: GoogleFonts.poppins(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                            color: seleccionada ? Colors.white : colorTextoGris,
+                          ),
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
+              const SizedBox(height: 14),
               CarouselSlider(
                 options: CarouselOptions(
-                  height: 140.0,
+                  height: 130.0,
                   autoPlay: true,
                   enlargeCenterPage: true,
                   autoPlayInterval: const Duration(seconds: 4),
+                  onPageChanged:
+                      (index, reason) => setState(() => _promoIndex = index),
                 ),
                 items:
                     promociones.map((texto) {
@@ -942,7 +1164,7 @@ class _CatalogoEstudianteScreenState extends State<CatalogoEstudianteScreen> {
                                 const Icon(
                                   Icons.local_fire_department,
                                   color: Colors.white,
-                                  size: 50,
+                                  size: 46,
                                 ),
                                 Expanded(
                                   child: Padding(
@@ -952,7 +1174,7 @@ class _CatalogoEstudianteScreenState extends State<CatalogoEstudianteScreen> {
                                     child: Text(
                                       texto,
                                       style: GoogleFonts.poppins(
-                                        fontSize: 18.0,
+                                        fontSize: 17.0,
                                         color: Colors.white,
                                         fontWeight: FontWeight.bold,
                                       ),
@@ -967,105 +1189,146 @@ class _CatalogoEstudianteScreenState extends State<CatalogoEstudianteScreen> {
                       );
                     }).toList(),
               ),
-              const SizedBox(height: 16),
-              Expanded(
-                child: ListView.builder(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  itemCount: menuDisponibles.length,
-                  itemBuilder: (context, index) {
-                    final platillo = menuDisponibles[index];
-                    return FadeInUp(
-                      delay: Duration(milliseconds: 100 * index),
-                      child: Container(
-                        margin: const EdgeInsets.only(bottom: 14),
-                        padding: const EdgeInsets.all(14),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(20),
-                          boxShadow: [
-                            BoxShadow(
-                              color: colorVerdeTese.withValues(alpha: 0.07),
-                              blurRadius: 14,
-                              offset: const Offset(0, 6),
-                            ),
-                          ],
-                        ),
-                        child: Row(
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.all(14),
-                              decoration: BoxDecoration(
-                                color: colorVerdeTese.withValues(alpha: 0.1),
-                                borderRadius: BorderRadius.circular(16),
-                              ),
-                              child: const Icon(
-                                Icons.fastfood,
-                                color: colorVerdeTese,
-                                size: 28,
-                              ),
-                            ),
-                            const SizedBox(width: 14),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    platillo.nombre,
-                                    style: GoogleFonts.poppins(
-                                      fontWeight: FontWeight.w600,
-                                      fontSize: 15.5,
-                                      color: colorTextoOscuro,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 3),
-                                  Text(
-                                    platillo.local,
-                                    style: GoogleFonts.poppins(
-                                      fontSize: 12.5,
-                                      color: colorTextoGris,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 6),
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 10,
-                                      vertical: 3,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      color: colorVerdeTese.withValues(
-                                        alpha: 0.1,
-                                      ),
-                                      borderRadius: BorderRadius.circular(30),
-                                    ),
-                                    child: Text(
-                                      '\$${platillo.precio.toInt()}',
-                                      style: GoogleFonts.poppins(
-                                        fontWeight: FontWeight.w700,
-                                        color: colorVerdeTese,
-                                        fontSize: 13,
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            IconButton(
-                              icon: const Icon(
-                                Icons.add_circle,
-                                color: colorAmarilloTese,
-                                size: 36,
-                              ),
-                              onPressed: () {
-                                widget.onAgregar(platillo);
-                                _mostrarAlertaExito(platillo.nombre);
-                              },
-                            ),
-                          ],
-                        ),
-                      ),
-                    );
-                  },
+              const SizedBox(height: 8),
+              Center(
+                child: AnimatedSmoothIndicator(
+                  activeIndex: _promoIndex,
+                  count: promociones.length,
+                  effect: ExpandingDotsEffect(
+                    dotHeight: 7,
+                    dotWidth: 7,
+                    activeDotColor: colorVerdeTese,
+                    dotColor: colorVerdeTese.withValues(alpha: 0.2),
+                  ),
                 ),
+              ),
+              const SizedBox(height: 10),
+              Expanded(
+                child:
+                    platillosFiltrados.isEmpty
+                        ? Center(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                Icons.search_off,
+                                size: 52,
+                                color: colorTextoGris.withValues(alpha: 0.5),
+                              ),
+                              const SizedBox(height: 10),
+                              Text(
+                                'No encontramos nada con eso',
+                                style: GoogleFonts.poppins(
+                                  color: colorTextoGris,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
+                          ),
+                        )
+                        : ListView.builder(
+                          padding: const EdgeInsets.fromLTRB(16, 0, 16, 90),
+                          itemCount: platillosFiltrados.length,
+                          itemBuilder: (context, index) {
+                            final platillo = platillosFiltrados[index];
+                            return FadeInUp(
+                              delay: Duration(milliseconds: 70 * index),
+                              child: Container(
+                                margin: const EdgeInsets.only(bottom: 14),
+                                padding: const EdgeInsets.all(14),
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  borderRadius: BorderRadius.circular(20),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: colorVerdeTese.withValues(
+                                        alpha: 0.07,
+                                      ),
+                                      blurRadius: 14,
+                                      offset: const Offset(0, 6),
+                                    ),
+                                  ],
+                                ),
+                                child: Row(
+                                  children: [
+                                    Container(
+                                      padding: const EdgeInsets.all(14),
+                                      decoration: BoxDecoration(
+                                        color: colorVerdeTese.withValues(
+                                          alpha: 0.1,
+                                        ),
+                                        borderRadius: BorderRadius.circular(16),
+                                      ),
+                                      child: Icon(
+                                        platillo.icono,
+                                        color: colorVerdeTese,
+                                        size: 28,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 14),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            platillo.nombre,
+                                            style: GoogleFonts.poppins(
+                                              fontWeight: FontWeight.w600,
+                                              fontSize: 15.5,
+                                              color: colorTextoOscuro,
+                                            ),
+                                          ),
+                                          const SizedBox(height: 3),
+                                          Text(
+                                            platillo.local,
+                                            style: GoogleFonts.poppins(
+                                              fontSize: 12.5,
+                                              color: colorTextoGris,
+                                            ),
+                                          ),
+                                          const SizedBox(height: 6),
+                                          Container(
+                                            padding: const EdgeInsets.symmetric(
+                                              horizontal: 10,
+                                              vertical: 3,
+                                            ),
+                                            decoration: BoxDecoration(
+                                              color: colorVerdeTese.withValues(
+                                                alpha: 0.1,
+                                              ),
+                                              borderRadius:
+                                                  BorderRadius.circular(30),
+                                            ),
+                                            child: Text(
+                                              '\$${platillo.precio.toInt()}',
+                                              style: GoogleFonts.poppins(
+                                                fontWeight: FontWeight.w700,
+                                                color: colorVerdeTese,
+                                                fontSize: 13,
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    IconButton(
+                                      icon: const Icon(
+                                        Icons.add_circle,
+                                        color: colorAmarilloTese,
+                                        size: 36,
+                                      ),
+                                      onPressed: () {
+                                        widget.onAgregar(platillo);
+                                        _mostrarAlertaExito(platillo.nombre);
+                                      },
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            );
+                          },
+                        ),
               ),
             ],
           ),
@@ -1095,7 +1358,7 @@ class PerfilEstudianteScreen extends StatelessWidget {
         centerTitle: true,
       ),
       body: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 24),
+        padding: const EdgeInsets.fromLTRB(24, 0, 24, 80),
         child: Column(
           children: [
             const SizedBox(height: 24),
@@ -1140,7 +1403,7 @@ class PerfilEstudianteScreen extends StatelessWidget {
                   _FilaInfoPerfil(
                     icono: Icons.badge_outlined,
                     etiqueta: 'Matrícula',
-                    valor: '202220112',
+                    valor: '20240001',
                   ),
                   const Divider(height: 1),
                   _FilaInfoPerfil(
@@ -1582,17 +1845,31 @@ class SalaEsperaScreen extends StatefulWidget {
 
 class _SalaEsperaScreenState extends State<SalaEsperaScreen> {
   int estadoActual = 0;
+  late final ConfettiController _confettiController;
+
   @override
   void initState() {
     super.initState();
+    _confettiController = ConfettiController(
+      duration: const Duration(seconds: 2),
+    );
     _simularAvancePedido();
+  }
+
+  @override
+  void dispose() {
+    _confettiController.dispose();
+    super.dispose();
   }
 
   void _simularAvancePedido() async {
     await Future.delayed(const Duration(seconds: 4));
     if (mounted) setState(() => estadoActual = 1);
     await Future.delayed(const Duration(seconds: 4));
-    if (mounted) setState(() => estadoActual = 2);
+    if (mounted) {
+      setState(() => estadoActual = 2);
+      _confettiController.play();
+    }
   }
 
   @override
@@ -1614,28 +1891,48 @@ class _SalaEsperaScreenState extends State<SalaEsperaScreen> {
         elevation: 0,
         centerTitle: true,
       ),
-      body: AnimatedContainer(
-        duration: const Duration(milliseconds: 800),
-        color: colorFondo,
-        width: double.infinity,
-        height: double.infinity,
-        child: SafeArea(
-          child: Column(
-            children: [
-              const SizedBox(height: 90),
-              _BarraProgresoPedido(
-                estadoActual: estadoActual,
-                colorTexto: colorTextoTop,
+      body: Stack(
+        children: [
+          AnimatedContainer(
+            duration: const Duration(milliseconds: 800),
+            color: colorFondo,
+            width: double.infinity,
+            height: double.infinity,
+            child: SafeArea(
+              child: Column(
+                children: [
+                  const SizedBox(height: 90),
+                  _BarraProgresoPedido(
+                    estadoActual: estadoActual,
+                    colorTexto: colorTextoTop,
+                  ),
+                  Expanded(
+                    child: AnimatedSwitcher(
+                      duration: const Duration(milliseconds: 800),
+                      child: _construirPantallaPorEstado(estadoActual),
+                    ),
+                  ),
+                ],
               ),
-              Expanded(
-                child: AnimatedSwitcher(
-                  duration: const Duration(milliseconds: 800),
-                  child: _construirPantallaPorEstado(estadoActual),
-                ),
-              ),
-            ],
+            ),
           ),
-        ),
+          Align(
+            alignment: Alignment.topCenter,
+            child: ConfettiWidget(
+              confettiController: _confettiController,
+              blastDirectionality: BlastDirectionality.explosive,
+              shouldLoop: false,
+              numberOfParticles: 24,
+              gravity: 0.25,
+              colors: const [
+                colorAmarilloTese,
+                colorExito,
+                Colors.white,
+                colorVerdeTese,
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
