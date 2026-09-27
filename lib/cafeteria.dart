@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:animate_do/animate_do.dart';
-import 'main.dart';
+import 'colores.dart';
+import 'pantalla_inicio.dart';
 
 class LoginLocalScreen extends StatelessWidget {
   const LoginLocalScreen({super.key});
