@@ -1,4 +1,4 @@
-name: Tese_Hambreados
+name: tese_food_app
 description: "A new Flutter project."
 # The following line prevents the package from being accidentally published to
 # pub.dev using `flutter pub publish`. This is preferred for private packages.
@@ -33,6 +33,7 @@ dependencies:
 
   # The following adds the Cupertino Icons font to your application.
   # Use with the CupertinoIcons class for iOS style icons.
+  smooth_page_indicator: ^1.2.1
   cupertino_icons: ^1.0.8
   google_fonts: ^6.3.2
   animate_do: ^3.3.4
@@ -41,7 +42,7 @@ dependencies:
   awesome_snackbar_content: ^0.1.6
   curved_navigation_bar: ^1.0.6
   confetti: ^0.8.0
-  smooth_page_indicator: ^1.2.1
+  
 
 dev_dependencies:
   flutter_test:

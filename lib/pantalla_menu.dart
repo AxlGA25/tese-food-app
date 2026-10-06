@@ -9,6 +9,25 @@ import 'colores.dart';
 import 'modelos.dart';
 import 'pantalla_perfil.dart';
 import 'pantalla_pedido.dart';
+import 'pantalla_detalle_platillo.dart';
+
+// Un color de acento por categoría: lo usan tanto el catálogo como la
+// pantalla de detalle, para que combinen.
+const Map<String, Color> colorPorCategoria = {
+  'Todos': colorVerdeTese,
+  'Desayunos': colorAmarilloTese,
+  'Comida': colorVerdeTese,
+  'Bebidas': colorSalvia,
+  'Postres': colorRosa,
+};
+
+Color acentoDeCategoria(String categoria) =>
+    colorPorCategoria[categoria] ?? colorVerdeTese;
+
+// Solo el acento verde oscuro es lo bastante oscuro para texto blanco;
+// el resto (amarillo, salvia, rosa) son claros y piden texto oscuro.
+Color colorTextoSobreAcento(Color fondo) =>
+    fondo == colorVerdeTese ? Colors.white : colorVerdeOscuro;
 
 // Cascarón con el nav bar curvo: aquí vive el carrito global que comparten
 // el catálogo y la pantalla de pedido.
@@ -138,6 +157,12 @@ class _CatalogoEstudianteScreenState extends State<CatalogoEstudianteScreen> {
       precio: 45.0,
       categoria: 'Desayunos',
       icono: Icons.breakfast_dining,
+      descripcion:
+          'Totopos bañados en salsa verde, con crema, queso fresco y '
+          'cebolla. Se sirven bien calientes.',
+      calificacion: 4.7,
+      tiempoPrep: '10-15 min',
+      popular: true,
     ),
     Platillo(
       id: '2',
@@ -146,6 +171,9 @@ class _CatalogoEstudianteScreenState extends State<CatalogoEstudianteScreen> {
       precio: 35.0,
       categoria: 'Desayunos',
       icono: Icons.bakery_dining,
+      descripcion: 'Hot cakes esponjositos, con miel y mantequilla al gusto.',
+      calificacion: 4.5,
+      tiempoPrep: '8-10 min',
     ),
     Platillo(
       id: '3',
@@ -154,6 +182,9 @@ class _CatalogoEstudianteScreenState extends State<CatalogoEstudianteScreen> {
       precio: 30.0,
       categoria: 'Desayunos',
       icono: Icons.local_drink,
+      descripcion: 'Licuado cremoso de fresa con leche, bien frío.',
+      calificacion: 4.6,
+      tiempoPrep: '5 min',
     ),
     Platillo(
       id: '4',
@@ -162,6 +193,12 @@ class _CatalogoEstudianteScreenState extends State<CatalogoEstudianteScreen> {
       precio: 65.0,
       categoria: 'Comida',
       icono: Icons.lunch_dining,
+      descripcion:
+          'Carne a la plancha, queso, lechuga, jitomate y nuestra salsa '
+          'especial, en pan recién tostado.',
+      calificacion: 4.8,
+      tiempoPrep: '12-15 min',
+      popular: true,
     ),
     Platillo(
       id: '5',
@@ -170,6 +207,10 @@ class _CatalogoEstudianteScreenState extends State<CatalogoEstudianteScreen> {
       precio: 40.0,
       categoria: 'Comida',
       icono: Icons.dinner_dining,
+      descripcion: 'Cuatro tacos al pastor con piña, cebolla y cilantro.',
+      calificacion: 4.9,
+      tiempoPrep: '10 min',
+      popular: true,
     ),
     Platillo(
       id: '6',
@@ -178,6 +219,10 @@ class _CatalogoEstudianteScreenState extends State<CatalogoEstudianteScreen> {
       precio: 55.0,
       categoria: 'Comida',
       icono: Icons.fastfood,
+      descripcion:
+          'Milanesa empanizada con aguacate, jitomate, frijoles y mayonesa.',
+      calificacion: 4.6,
+      tiempoPrep: '12 min',
     ),
     Platillo(
       id: '7',
@@ -186,6 +231,9 @@ class _CatalogoEstudianteScreenState extends State<CatalogoEstudianteScreen> {
       precio: 50.0,
       categoria: 'Comida',
       icono: Icons.rice_bowl,
+      descripcion: 'Arroz guisado con pollo deshebrado y verduras salteadas.',
+      calificacion: 4.4,
+      tiempoPrep: '15 min',
     ),
     Platillo(
       id: '8',
@@ -194,6 +242,9 @@ class _CatalogoEstudianteScreenState extends State<CatalogoEstudianteScreen> {
       precio: 25.0,
       categoria: 'Bebidas',
       icono: Icons.emoji_food_beverage,
+      descripcion: 'Jugo de naranja recién exprimido, bien frío.',
+      calificacion: 4.5,
+      tiempoPrep: '5 min',
     ),
     Platillo(
       id: '9',
@@ -202,6 +253,9 @@ class _CatalogoEstudianteScreenState extends State<CatalogoEstudianteScreen> {
       precio: 20.0,
       categoria: 'Bebidas',
       icono: Icons.coffee,
+      descripcion: 'Café negro recién hecho, tamaño grande.',
+      calificacion: 4.3,
+      tiempoPrep: '3 min',
     ),
     Platillo(
       id: '10',
@@ -210,6 +264,9 @@ class _CatalogoEstudianteScreenState extends State<CatalogoEstudianteScreen> {
       precio: 15.0,
       categoria: 'Postres',
       icono: Icons.icecream,
+      descripcion: 'Gelatina de varios sabores en cuadritos, con leche.',
+      calificacion: 4.2,
+      tiempoPrep: 'Listo',
     ),
     Platillo(
       id: '11',
@@ -218,6 +275,10 @@ class _CatalogoEstudianteScreenState extends State<CatalogoEstudianteScreen> {
       precio: 30.0,
       categoria: 'Postres',
       icono: Icons.cake,
+      descripcion: 'Rebanada de pay de queso cremoso con zarzamora.',
+      calificacion: 4.7,
+      tiempoPrep: 'Listo',
+      popular: true,
     ),
   ];
 
@@ -252,24 +313,6 @@ class _CatalogoEstudianteScreenState extends State<CatalogoEstudianteScreen> {
     }).toList();
   }
 
-  // Un color de acento por categoría, para que el catálogo se sienta vivo
-  // y no todo del mismo verde.
-  static const Map<String, Color> _colorPorCategoria = {
-    'Todos': colorVerdeTese,
-    'Desayunos': colorAmarilloTese,
-    'Comida': colorVerdeTese,
-    'Bebidas': colorSalvia,
-    'Postres': colorRosa,
-  };
-
-  Color _acentoDe(String categoria) =>
-      _colorPorCategoria[categoria] ?? colorVerdeTese;
-
-  // Solo el acento verde oscuro es lo bastante oscuro para texto blanco;
-  // el resto (amarillo, salvia, rosa) son claros y piden texto oscuro.
-  Color _textoSobreAcento(Color fondo) =>
-      fondo == colorVerdeTese ? Colors.white : colorVerdeOscuro;
-
   @override
   void dispose() {
     _busquedaCtrl.dispose();
@@ -291,6 +334,22 @@ class _CatalogoEstudianteScreenState extends State<CatalogoEstudianteScreen> {
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
       ..showSnackBar(snackBar);
+  }
+
+  void _abrirDetalle(Platillo platillo) async {
+    final agregado = await Navigator.push<bool>(
+      context,
+      MaterialPageRoute(
+        builder:
+            (context) => PantallaDetallePlatillo(
+              platillo: platillo,
+              onAgregar: widget.onAgregar,
+            ),
+      ),
+    );
+    if (agregado == true) {
+      _mostrarAlertaExito(platillo.nombre);
+    }
   }
 
   @override
@@ -383,7 +442,7 @@ class _CatalogoEstudianteScreenState extends State<CatalogoEstudianteScreen> {
                   itemBuilder: (context, index) {
                     final categoria = _categorias[index];
                     final seleccionada = categoria == _categoriaSeleccionada;
-                    final acento = _acentoDe(categoria);
+                    final acento = acentoDeCategoria(categoria);
                     return GestureDetector(
                       onTap:
                           () => setState(
@@ -416,7 +475,7 @@ class _CatalogoEstudianteScreenState extends State<CatalogoEstudianteScreen> {
                             fontWeight: FontWeight.w600,
                             color:
                                 seleccionada
-                                    ? _textoSobreAcento(acento)
+                                    ? colorTextoSobreAcento(acento)
                                     : colorTextoGris,
                           ),
                         ),
@@ -543,98 +602,178 @@ class _CatalogoEstudianteScreenState extends State<CatalogoEstudianteScreen> {
                           itemCount: platillosFiltrados.length,
                           itemBuilder: (context, index) {
                             final platillo = platillosFiltrados[index];
-                            final acento = _acentoDe(platillo.categoria);
+                            final acento = acentoDeCategoria(
+                              platillo.categoria,
+                            );
                             return FadeInUp(
                               delay: Duration(milliseconds: 70 * index),
-                              child: Container(
-                                margin: const EdgeInsets.only(bottom: 14),
-                                padding: const EdgeInsets.all(14),
-                                decoration: BoxDecoration(
-                                  color: Colors.white,
-                                  borderRadius: BorderRadius.circular(20),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: colorVerdeTese.withValues(
-                                        alpha: 0.07,
+                              child: GestureDetector(
+                                onTap: () => _abrirDetalle(platillo),
+                                child: Container(
+                                  margin: const EdgeInsets.only(bottom: 14),
+                                  padding: const EdgeInsets.all(14),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    borderRadius: BorderRadius.circular(20),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: colorVerdeTese.withValues(
+                                          alpha: 0.07,
+                                        ),
+                                        blurRadius: 14,
+                                        offset: const Offset(0, 6),
                                       ),
-                                      blurRadius: 14,
-                                      offset: const Offset(0, 6),
-                                    ),
-                                  ],
-                                ),
-                                child: Row(
-                                  children: [
-                                    Container(
-                                      padding: const EdgeInsets.all(14),
-                                      decoration: BoxDecoration(
-                                        color: acento.withValues(alpha: 0.16),
-                                        borderRadius: BorderRadius.circular(16),
-                                      ),
-                                      child: Icon(
-                                        platillo.icono,
-                                        color: colorTextoOscuro,
-                                        size: 28,
-                                      ),
-                                    ),
-                                    const SizedBox(width: 14),
-                                    Expanded(
-                                      child: Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
+                                    ],
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      Stack(
+                                        clipBehavior: Clip.none,
                                         children: [
-                                          Text(
-                                            platillo.nombre,
-                                            style: GoogleFonts.poppins(
-                                              fontWeight: FontWeight.w600,
-                                              fontSize: 15.5,
-                                              color: colorTextoOscuro,
-                                            ),
-                                          ),
-                                          const SizedBox(height: 3),
-                                          Text(
-                                            platillo.local,
-                                            style: GoogleFonts.poppins(
-                                              fontSize: 12.5,
-                                              color: colorTextoGris,
-                                            ),
-                                          ),
-                                          const SizedBox(height: 6),
                                           Container(
-                                            padding: const EdgeInsets.symmetric(
-                                              horizontal: 10,
-                                              vertical: 3,
-                                            ),
+                                            padding: const EdgeInsets.all(14),
                                             decoration: BoxDecoration(
                                               color: acento.withValues(
                                                 alpha: 0.16,
                                               ),
                                               borderRadius:
-                                                  BorderRadius.circular(30),
+                                                  BorderRadius.circular(16),
                                             ),
-                                            child: Text(
-                                              '\$${platillo.precio.toInt()}',
-                                              style: GoogleFonts.poppins(
-                                                fontWeight: FontWeight.w700,
-                                                color: colorTextoOscuro,
-                                                fontSize: 13,
-                                              ),
+                                            child: Icon(
+                                              platillo.icono,
+                                              color: colorTextoOscuro,
+                                              size: 28,
                                             ),
                                           ),
+                                          if (platillo.popular)
+                                            Positioned(
+                                              top: -6,
+                                              left: -6,
+                                              child: Container(
+                                                padding:
+                                                    const EdgeInsets.symmetric(
+                                                      horizontal: 5,
+                                                      vertical: 1,
+                                                    ),
+                                                decoration: BoxDecoration(
+                                                  color: colorAmarilloTese,
+                                                  borderRadius:
+                                                      BorderRadius.circular(8),
+                                                  boxShadow: [
+                                                    BoxShadow(
+                                                      color: Colors.black
+                                                          .withValues(
+                                                            alpha: 0.15,
+                                                          ),
+                                                      blurRadius: 4,
+                                                    ),
+                                                  ],
+                                                ),
+                                                child: const Text(
+                                                  '🔥',
+                                                  style: TextStyle(
+                                                    fontSize: 11,
+                                                  ),
+                                                ),
+                                              ),
+                                            ),
                                         ],
                                       ),
-                                    ),
-                                    IconButton(
-                                      icon: const Icon(
-                                        Icons.add_circle,
-                                        color: colorAmarilloTese,
-                                        size: 36,
+                                      const SizedBox(width: 14),
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              platillo.nombre,
+                                              style: GoogleFonts.poppins(
+                                                fontWeight: FontWeight.w600,
+                                                fontSize: 15.5,
+                                                color: colorTextoOscuro,
+                                              ),
+                                            ),
+                                            const SizedBox(height: 3),
+                                            Text(
+                                              platillo.local,
+                                              style: GoogleFonts.poppins(
+                                                fontSize: 12.5,
+                                                color: colorTextoGris,
+                                              ),
+                                            ),
+                                            const SizedBox(height: 4),
+                                            Row(
+                                              children: [
+                                                const Icon(
+                                                  Icons.star_rounded,
+                                                  size: 14,
+                                                  color: colorAmarilloTese,
+                                                ),
+                                                const SizedBox(width: 2),
+                                                Text(
+                                                  platillo.calificacion
+                                                      .toStringAsFixed(1),
+                                                  style: GoogleFonts.poppins(
+                                                    fontSize: 11.5,
+                                                    fontWeight: FontWeight.w600,
+                                                    color: colorTextoOscuro,
+                                                  ),
+                                                ),
+                                                const SizedBox(width: 8),
+                                                Icon(
+                                                  Icons.schedule,
+                                                  size: 12,
+                                                  color: colorTextoGris,
+                                                ),
+                                                const SizedBox(width: 2),
+                                                Text(
+                                                  platillo.tiempoPrep,
+                                                  style: GoogleFonts.poppins(
+                                                    fontSize: 11.5,
+                                                    color: colorTextoGris,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                            const SizedBox(height: 6),
+                                            Container(
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                    horizontal: 10,
+                                                    vertical: 3,
+                                                  ),
+                                              decoration: BoxDecoration(
+                                                color: acento.withValues(
+                                                  alpha: 0.16,
+                                                ),
+                                                borderRadius:
+                                                    BorderRadius.circular(30),
+                                              ),
+                                              child: Text(
+                                                '\$${platillo.precio.toInt()}',
+                                                style: GoogleFonts.poppins(
+                                                  fontWeight: FontWeight.w700,
+                                                  color: colorTextoOscuro,
+                                                  fontSize: 13,
+                                                ),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
                                       ),
-                                      onPressed: () {
-                                        widget.onAgregar(platillo);
-                                        _mostrarAlertaExito(platillo.nombre);
-                                      },
-                                    ),
-                                  ],
+                                      IconButton(
+                                        icon: const Icon(
+                                          Icons.add_circle,
+                                          color: colorAmarilloTese,
+                                          size: 36,
+                                        ),
+                                        onPressed: () {
+                                          widget.onAgregar(platillo);
+                                          _mostrarAlertaExito(platillo.nombre);
+                                        },
+                                      ),
+                                    ],
+                                  ),
                                 ),
                               ),
                             );

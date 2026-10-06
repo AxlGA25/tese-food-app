@@ -7,6 +7,10 @@ class Platillo {
   final double precio;
   final String categoria;
   final IconData icono;
+  final String descripcion;
+  final double calificacion;
+  final String tiempoPrep;
+  final bool popular;
   Platillo({
     required this.id,
     required this.nombre,
@@ -14,5 +18,9 @@ class Platillo {
     required this.precio,
     this.categoria = 'Comida',
     this.icono = Icons.fastfood,
+    this.descripcion = '',
+    this.calificacion = 4.5,
+    this.tiempoPrep = '10 min',
+    this.popular = false,
   });
 }

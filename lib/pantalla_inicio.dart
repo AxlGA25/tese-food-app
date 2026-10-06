@@ -1,4 +1,4 @@
-import 'dart:ui';
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:animate_do/animate_do.dart';
@@ -6,7 +6,9 @@ import 'colores.dart';
 import 'pantalla_login.dart';
 import 'cafeteria.dart';
 
-// Fondo compartido entre Splash y Decisión: blobs de color + íconos sutiles.
+// Fondo compartido entre Splash y Decisión: degradado pastel claro con
+// dos "ondas" pintadas a mano en las esquinas, como en la imagen de
+// referencia (en vez de blobs difuminados).
 class FondoOndasPremium extends StatelessWidget {
   final Widget child;
   const FondoOndasPremium({super.key, required this.child});
@@ -14,102 +16,134 @@ class FondoOndasPremium extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: colorVerdeOscuro,
-      body: Stack(
-        children: [
-          Positioned(
-            top: -100,
-            left: -100,
-            child: Container(
-              width: 350,
-              height: 350,
-              decoration: const BoxDecoration(
-                color: colorVerdeTese,
-                shape: BoxShape.circle,
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topRight,
+            end: Alignment.bottomLeft,
+            colors: [colorPastelOscuro, colorPastelClaro],
+          ),
+        ),
+        child: Stack(
+          children: [
+            Positioned(
+              top: -30,
+              left: -40,
+              child: CustomPaint(
+                size: const Size(300, 360),
+                painter: _PintorOnda(colorVerdeSuave.withValues(alpha: 0.85)),
               ),
             ),
-          ),
-          Positioned(
-            top: -50,
-            left: -150,
-            child: Container(
-              width: 300,
-              height: 300,
-              decoration: const BoxDecoration(
-                color: colorSalvia,
-                shape: BoxShape.circle,
+            Positioned(
+              bottom: -30,
+              right: -40,
+              child: Transform.rotate(
+                angle: math.pi,
+                child: CustomPaint(
+                  size: const Size(300, 360),
+                  painter: _PintorOnda(colorSalvia.withValues(alpha: 0.55)),
+                ),
               ),
             ),
-          ),
-          Positioned(
-            bottom: -150,
-            right: -100,
-            child: Container(
-              width: 400,
-              height: 400,
-              decoration: BoxDecoration(
-                color: colorRosa.withValues(alpha: 0.85),
-                shape: BoxShape.circle,
+            Positioned(
+              top: 70,
+              right: 24,
+              child: Icon(
+                Icons.local_pizza,
+                size: 46,
+                color: colorVerdeSuave.withValues(alpha: 0.18),
               ),
             ),
-          ),
-          Positioned(
-            bottom: -100,
-            right: -150,
-            child: Container(
-              width: 300,
-              height: 300,
-              decoration: BoxDecoration(
-                color: colorAmarilloTese.withValues(alpha: 0.8),
-                shape: BoxShape.circle,
+            Positioned(
+              top: 150,
+              left: 18,
+              child: Icon(
+                Icons.icecream,
+                size: 38,
+                color: colorVerdeSuave.withValues(alpha: 0.18),
               ),
             ),
-          ),
-          BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 70, sigmaY: 70),
-            child: Container(color: Colors.transparent),
-          ),
-          Positioned(
-            top: 70,
-            right: 24,
-            child: Icon(
-              Icons.local_pizza,
-              size: 46,
-              color: Colors.white.withValues(alpha: 0.12),
+            Positioned(
+              bottom: 90,
+              right: 40,
+              child: Icon(
+                Icons.local_cafe,
+                size: 40,
+                color: colorVerdeSuave.withValues(alpha: 0.18),
+              ),
             ),
-          ),
-          Positioned(
-            top: 150,
-            left: 18,
-            child: Icon(
-              Icons.icecream,
-              size: 38,
-              color: Colors.white.withValues(alpha: 0.12),
+            Positioned(
+              bottom: 170,
+              left: 30,
+              child: Icon(
+                Icons.bakery_dining,
+                size: 34,
+                color: colorVerdeSuave.withValues(alpha: 0.16),
+              ),
             ),
-          ),
-          Positioned(
-            bottom: 90,
-            right: 40,
-            child: Icon(
-              Icons.local_cafe,
-              size: 40,
-              color: Colors.white.withValues(alpha: 0.12),
-            ),
-          ),
-          Positioned(
-            bottom: 170,
-            left: 30,
-            child: Icon(
-              Icons.bakery_dining,
-              size: 34,
-              color: Colors.white.withValues(alpha: 0.1),
-            ),
-          ),
-          SafeArea(child: child),
-        ],
+            SafeArea(child: child),
+          ],
+        ),
       ),
     );
   }
+}
+
+// Dibuja la "ondita" de la esquina: una forma orgánica con una línea
+// dorada delgada trazando su borde, como en la imagen de referencia.
+class _PintorOnda extends CustomPainter {
+  final Color color;
+  const _PintorOnda(this.color);
+
+  Path _forma(Size size) {
+    return Path()
+      ..moveTo(0, size.height * 0.08)
+      ..quadraticBezierTo(
+        size.width * 0.62,
+        -size.height * 0.05,
+        size.width,
+        size.height * 0.3,
+      )
+      ..quadraticBezierTo(
+        size.width * 0.58,
+        size.height * 0.52,
+        size.width * 0.18,
+        size.height * 0.82,
+      )
+      ..quadraticBezierTo(
+        -size.width * 0.05,
+        size.height * 0.95,
+        0,
+        size.height * 0.55,
+      )
+      ..close();
+  }
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    canvas.drawPath(_forma(size), Paint()..color = color);
+
+    final trazoDorado =
+        Paint()
+          ..color = colorAmarilloTese.withValues(alpha: 0.7)
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 3
+          ..strokeCap = StrokeCap.round;
+    final bordeSuperior =
+        Path()
+          ..moveTo(0, size.height * 0.08)
+          ..quadraticBezierTo(
+            size.width * 0.62,
+            -size.height * 0.05,
+            size.width,
+            size.height * 0.3,
+          );
+    canvas.drawPath(bordeSuperior, trazoDorado);
+  }
+
+  @override
+  bool shouldRepaint(covariant _PintorOnda oldDelegate) =>
+      oldDelegate.color != color;
 }
 
 class SplashScreen extends StatefulWidget {
@@ -124,6 +158,7 @@ class _SplashScreenState extends State<SplashScreen> {
   void initState() {
     super.initState();
     Future.delayed(const Duration(milliseconds: 3500), () {
+      if (!mounted) return;
       Navigator.pushReplacement(
         context,
         PageRouteBuilder(
@@ -150,12 +185,12 @@ class _SplashScreenState extends State<SplashScreen> {
                 padding: const EdgeInsets.all(18),
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: Colors.white.withValues(alpha: 0.08),
+                  color: Colors.white.withValues(alpha: 0.55),
                   boxShadow: [
                     BoxShadow(
-                      color: colorAmarilloTese.withValues(alpha: 0.25),
-                      blurRadius: 60,
-                      spreadRadius: 10,
+                      color: colorVerdeSuave.withValues(alpha: 0.18),
+                      blurRadius: 50,
+                      spreadRadius: 8,
                     ),
                   ],
                 ),
@@ -177,7 +212,7 @@ class _SplashScreenState extends State<SplashScreen> {
                 style: GoogleFonts.poppins(
                   fontSize: 32,
                   fontWeight: FontWeight.w900,
-                  color: Colors.white,
+                  color: colorVerdeTese,
                   letterSpacing: 0.2,
                 ),
               ),
@@ -186,10 +221,10 @@ class _SplashScreenState extends State<SplashScreen> {
             FadeInUp(
               delay: const Duration(milliseconds: 1200),
               child: Text(
-                'Preparando la cocina...',
+                'Preparando tu pedido...',
                 style: GoogleFonts.poppins(
                   fontSize: 16,
-                  color: colorAmarilloTese,
+                  color: colorVerdeSuave,
                   fontWeight: FontWeight.w600,
                 ),
               ),
@@ -198,7 +233,7 @@ class _SplashScreenState extends State<SplashScreen> {
             FadeIn(
               delay: const Duration(milliseconds: 1500),
               child: const CircularProgressIndicator(
-                color: Colors.white,
+                color: colorVerdeSuave,
                 strokeWidth: 2.5,
               ),
             ),
@@ -235,7 +270,7 @@ class DecisionScreen extends StatelessWidget {
                 style: GoogleFonts.poppins(
                   fontSize: 30,
                   fontWeight: FontWeight.w900,
-                  color: Colors.white,
+                  color: colorVerdeTese,
                 ),
               ),
               const SizedBox(height: 4),
@@ -243,7 +278,7 @@ class DecisionScreen extends StatelessWidget {
                 'Sin filas, más receso.',
                 style: GoogleFonts.poppins(
                   fontSize: 16,
-                  color: Colors.white.withValues(alpha: 0.75),
+                  color: colorVerdeSuave,
                   fontWeight: FontWeight.w500,
                 ),
               ),
@@ -251,22 +286,22 @@ class DecisionScreen extends StatelessWidget {
               FadeInUp(
                 delay: const Duration(milliseconds: 400),
                 child: ElevatedButton.icon(
-                  icon: const Icon(Icons.school, color: colorVerdeOscuro),
+                  icon: const Icon(Icons.school, color: Colors.white),
                   label: Text(
                     'Soy Estudiante',
                     style: GoogleFonts.poppins(
                       fontSize: 18,
-                      color: colorVerdeOscuro,
+                      color: Colors.white,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: colorAmarilloTese,
-                    elevation: 6,
-                    shadowColor: Colors.black.withValues(alpha: 0.4),
+                    backgroundColor: colorVerdeSuave,
+                    elevation: 4,
+                    shadowColor: colorVerdeSuave.withValues(alpha: 0.4),
                     minimumSize: const Size(double.infinity, 60),
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(20),
+                      borderRadius: BorderRadius.circular(30),
                     ),
                   ),
                   onPressed:
@@ -282,20 +317,20 @@ class DecisionScreen extends StatelessWidget {
               FadeInUp(
                 delay: const Duration(milliseconds: 600),
                 child: OutlinedButton.icon(
-                  icon: const Icon(Icons.storefront, color: Colors.white),
+                  icon: const Icon(Icons.storefront, color: colorVerdeSuave),
                   label: Text(
                     'Soy Cafetería / Local',
                     style: GoogleFonts.poppins(
                       fontSize: 18,
-                      color: Colors.white,
+                      color: colorVerdeSuave,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
                   style: OutlinedButton.styleFrom(
                     minimumSize: const Size(double.infinity, 60),
-                    side: const BorderSide(color: Colors.white, width: 1.6),
+                    side: const BorderSide(color: colorVerdeSuave, width: 1.6),
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(20),
+                      borderRadius: BorderRadius.circular(30),
                     ),
                   ),
                   onPressed:
