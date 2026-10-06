@@ -5,14 +5,14 @@ import 'package:curved_navigation_bar/curved_navigation_bar.dart';
 import 'package:carousel_slider/carousel_slider.dart';
 import 'package:smooth_page_indicator/smooth_page_indicator.dart';
 import 'package:awesome_snackbar_content/awesome_snackbar_content.dart';
+import 'dart:ui';
+import 'dart:math';
 import 'colores.dart';
 import 'modelos.dart';
 import 'pantalla_perfil.dart';
 import 'pantalla_pedido.dart';
 import 'pantalla_detalle_platillo.dart';
 
-// Un color de acento por categoría: lo usan tanto el catálogo como la
-// pantalla de detalle, para que combinen.
 const Map<String, Color> colorPorCategoria = {
   'Todos': colorVerdeTese,
   'Desayunos': colorAmarilloTese,
@@ -24,13 +24,16 @@ const Map<String, Color> colorPorCategoria = {
 Color acentoDeCategoria(String categoria) =>
     colorPorCategoria[categoria] ?? colorVerdeTese;
 
-// Solo el acento verde oscuro es lo bastante oscuro para texto blanco;
-// el resto (amarillo, salvia, rosa) son claros y piden texto oscuro.
 Color colorTextoSobreAcento(Color fondo) =>
     fondo == colorVerdeTese ? Colors.white : colorVerdeOscuro;
 
-// Cascarón con el nav bar curvo: aquí vive el carrito global que comparten
-// el catálogo y la pantalla de pedido.
+class MiPedidoDummy {
+  final String id;
+  final double total;
+  final String fecha;
+  MiPedidoDummy({required this.id, required this.total, required this.fecha});
+}
+
 class NavegacionEstudiante extends StatefulWidget {
   const NavegacionEstudiante({super.key});
 
@@ -41,6 +44,7 @@ class NavegacionEstudiante extends StatefulWidget {
 class _NavegacionEstudianteState extends State<NavegacionEstudiante> {
   int _indiceActual = 0;
   List<Platillo> carritoGlobal = [];
+  List<MiPedidoDummy> misPedidosHistorial = [];
 
   void _actualizarCarrito(Platillo p) {
     setState(() {
@@ -61,6 +65,7 @@ class _NavegacionEstudianteState extends State<NavegacionEstudiante> {
         carrito: carritoGlobal,
         onAgregar: _actualizarCarrito,
       ),
+      MisPedidosScreen(historial: misPedidosHistorial),
       const PerfilEstudianteScreen(),
     ];
 
@@ -83,9 +88,14 @@ class _NavegacionEstudianteState extends State<NavegacionEstudiante> {
             color: _indiceActual == 0 ? colorVerdeOscuro : Colors.white,
           ),
           Icon(
-            Icons.person,
+            Icons.receipt_long,
             size: 26,
             color: _indiceActual == 1 ? colorVerdeOscuro : Colors.white,
+          ),
+          Icon(
+            Icons.person,
+            size: 26,
+            color: _indiceActual == 2 ? colorVerdeOscuro : Colors.white,
           ),
         ],
         onTap: (index) {
@@ -99,9 +109,10 @@ class _NavegacionEstudianteState extends State<NavegacionEstudiante> {
               ? FloatingActionButton.extended(
                 backgroundColor: colorAmarilloTese,
                 elevation: 6,
-                onPressed: () {
+                onPressed: () async {
                   if (carritoGlobal.isEmpty) return;
-                  Navigator.push(
+
+                  final double? totalPagado = await Navigator.push(
                     context,
                     MaterialPageRoute(
                       builder:
@@ -110,7 +121,30 @@ class _NavegacionEstudianteState extends State<NavegacionEstudiante> {
                             onVaciar: _limpiarCarrito,
                           ),
                     ),
-                  ).then((_) => setState(() {}));
+                  );
+
+                  if (totalPagado != null) {
+                    setState(() {
+                      misPedidosHistorial.insert(
+                        0,
+                        MiPedidoDummy(
+                          id: '#TESE-${Random().nextInt(9000) + 1000}',
+                          total: totalPagado,
+                          fecha: 'Hoy, 10:30 AM',
+                        ),
+                      );
+                      _indiceActual = 1;
+                    });
+
+                    if (context.mounted) {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const PedidoEnviadoScreen(),
+                        ),
+                      );
+                    }
+                  }
                 },
                 icon: Badge(
                   isLabelVisible: carritoGlobal.isNotEmpty,
@@ -130,6 +164,151 @@ class _NavegacionEstudianteState extends State<NavegacionEstudiante> {
                 ),
               )
               : null,
+    );
+  }
+}
+
+class MisPedidosScreen extends StatelessWidget {
+  final List<MiPedidoDummy> historial;
+  const MisPedidosScreen({super.key, required this.historial});
+
+  @override
+  Widget build(BuildContext context) {
+    return SafeArea(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
+            child: Text(
+              'Mis Pedidos',
+              style: GoogleFonts.poppins(
+                fontSize: 26,
+                fontWeight: FontWeight.bold,
+                color: colorVerdeTese,
+              ),
+            ),
+          ),
+          Expanded(
+            child:
+                historial.isEmpty
+                    ? Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Image.asset(
+                            'assets/esperandoPedido.png',
+                            height: 150,
+                          ),
+                          const SizedBox(height: 20),
+                          Text(
+                            'No tienes pedidos activos',
+                            style: GoogleFonts.poppins(
+                              fontSize: 18,
+                              fontWeight: FontWeight.w600,
+                              color: colorTextoGris,
+                            ),
+                          ),
+                        ],
+                      ),
+                    )
+                    : ListView.builder(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      itemCount: historial.length,
+                      itemBuilder: (context, index) {
+                        final pedido = historial[index];
+                        return FadeInUp(
+                          child: GestureDetector(
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder:
+                                      (context) => SalaEsperaScreen(
+                                        codigoPedido: pedido.id,
+                                      ),
+                                ),
+                              );
+                            },
+                            child: Container(
+                              margin: const EdgeInsets.only(bottom: 14),
+                              padding: const EdgeInsets.all(16),
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(20),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: colorVerdeTese.withValues(
+                                      alpha: 0.05,
+                                    ),
+                                    blurRadius: 10,
+                                    offset: const Offset(0, 4),
+                                  ),
+                                ],
+                                border: Border.all(
+                                  color: colorVerdeTese.withValues(alpha: 0.1),
+                                ),
+                              ),
+                              child: Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Row(
+                                    children: [
+                                      Container(
+                                        padding: const EdgeInsets.all(12),
+                                        decoration: BoxDecoration(
+                                          color: colorAmarilloTese.withValues(
+                                            alpha: 0.2,
+                                          ),
+                                          borderRadius: BorderRadius.circular(
+                                            12,
+                                          ),
+                                        ),
+                                        child: const Icon(
+                                          Icons.receipt_long,
+                                          color: colorAmarilloTese,
+                                        ),
+                                      ),
+                                      const SizedBox(width: 16),
+                                      Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            pedido.id,
+                                            style: GoogleFonts.poppins(
+                                              fontWeight: FontWeight.bold,
+                                              fontSize: 18,
+                                              color: colorVerdeTese,
+                                            ),
+                                          ),
+                                          Text(
+                                            pedido.fecha,
+                                            style: GoogleFonts.poppins(
+                                              fontSize: 13,
+                                              color: colorTextoGris,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ],
+                                  ),
+                                  const Icon(
+                                    Icons.arrow_forward_ios,
+                                    size: 16,
+                                    color: colorTextoGris,
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -158,8 +337,7 @@ class _CatalogoEstudianteScreenState extends State<CatalogoEstudianteScreen> {
       categoria: 'Desayunos',
       icono: Icons.breakfast_dining,
       descripcion:
-          'Totopos bañados en salsa verde, con crema, queso fresco y '
-          'cebolla. Se sirven bien calientes.',
+          'Totopos bañados en salsa verde, con crema, queso fresco y cebolla.',
       calificacion: 4.7,
       tiempoPrep: '10-15 min',
       popular: true,
@@ -194,8 +372,7 @@ class _CatalogoEstudianteScreenState extends State<CatalogoEstudianteScreen> {
       categoria: 'Comida',
       icono: Icons.lunch_dining,
       descripcion:
-          'Carne a la plancha, queso, lechuga, jitomate y nuestra salsa '
-          'especial, en pan recién tostado.',
+          'Carne a la plancha, queso, lechuga, jitomate y nuestra salsa especial.',
       calificacion: 4.8,
       tiempoPrep: '12-15 min',
       popular: true,
@@ -289,7 +466,16 @@ class _CatalogoEstudianteScreenState extends State<CatalogoEstudianteScreen> {
     'Bebidas',
     'Postres',
   ];
+
+  final List<String> _locales = const [
+    'Todos',
+    'Cafetería Central',
+    'Kiosko Sistemas',
+    'Jugos TESE',
+  ];
+
   String _categoriaSeleccionada = 'Todos';
+  String _localSeleccionado = 'Todos';
 
   final TextEditingController _busquedaCtrl = TextEditingController();
   String _terminoBusqueda = '';
@@ -306,10 +492,12 @@ class _CatalogoEstudianteScreenState extends State<CatalogoEstudianteScreen> {
       final coincideCategoria =
           _categoriaSeleccionada == 'Todos' ||
           p.categoria == _categoriaSeleccionada;
+      final coincideLocal =
+          _localSeleccionado == 'Todos' || p.local == _localSeleccionado;
       final coincideBusqueda =
           _terminoBusqueda.isEmpty ||
           p.nombre.toLowerCase().contains(_terminoBusqueda.toLowerCase());
-      return coincideCategoria && coincideBusqueda;
+      return coincideCategoria && coincideLocal && coincideBusqueda;
     }).toList();
   }
 
@@ -363,7 +551,7 @@ class _CatalogoEstudianteScreenState extends State<CatalogoEstudianteScreen> {
             colors: [colorVerdeTese, colorFondoCrema],
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            stops: const [0.0, 0.3],
+            stops: const [0.0, 0.4],
           ),
         ),
         child: SafeArea(
@@ -373,7 +561,7 @@ class _CatalogoEstudianteScreenState extends State<CatalogoEstudianteScreen> {
               Padding(
                 padding: const EdgeInsets.fromLTRB(20, 16, 20, 4),
                 child: Text(
-                  '¿Qué comeremos hoy?',
+                  '¿Dónde comeremos hoy?',
                   style: GoogleFonts.poppins(
                     fontSize: 25,
                     fontWeight: FontWeight.bold,
@@ -384,13 +572,82 @@ class _CatalogoEstudianteScreenState extends State<CatalogoEstudianteScreen> {
               Padding(
                 padding: const EdgeInsets.fromLTRB(20, 0, 20, 14),
                 child: Text(
-                  'Ordena y recógelo directo en el receso',
+                  'Selecciona tu kiosco favorito',
                   style: GoogleFonts.poppins(
                     fontSize: 13.5,
                     color: Colors.white.withValues(alpha: 0.85),
                   ),
                 ),
               ),
+              SizedBox(
+                height: 90,
+                child: ListView.separated(
+                  scrollDirection: Axis.horizontal,
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  itemCount: _locales.length,
+                  separatorBuilder: (_, __) => const SizedBox(width: 12),
+                  itemBuilder: (context, index) {
+                    final local = _locales[index];
+                    final seleccionada = local == _localSeleccionado;
+                    return GestureDetector(
+                      onTap: () => setState(() => _localSeleccionado = local),
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 200),
+                        width: 95,
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color:
+                              seleccionada
+                                  ? colorAmarilloTese
+                                  : Colors.white.withValues(alpha: 0.9),
+                          borderRadius: BorderRadius.circular(18),
+                          boxShadow:
+                              seleccionada
+                                  ? [
+                                    BoxShadow(
+                                      color: colorAmarilloTese.withValues(
+                                        alpha: 0.4,
+                                      ),
+                                      blurRadius: 8,
+                                      offset: const Offset(0, 4),
+                                    ),
+                                  ]
+                                  : [],
+                        ),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              local == 'Todos' ? Icons.map : Icons.storefront,
+                              color:
+                                  seleccionada
+                                      ? colorVerdeOscuro
+                                      : colorVerdeTese,
+                              size: 28,
+                            ),
+                            const SizedBox(height: 6),
+                            Text(
+                              local,
+                              textAlign: TextAlign.center,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: GoogleFonts.poppins(
+                                fontSize: 11,
+                                fontWeight: FontWeight.bold,
+                                color:
+                                    seleccionada
+                                        ? colorVerdeOscuro
+                                        : colorTextoOscuro,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
+              const SizedBox(height: 16),
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 20),
                 child: TextField(
@@ -455,18 +712,12 @@ class _CatalogoEstudianteScreenState extends State<CatalogoEstudianteScreen> {
                         decoration: BoxDecoration(
                           color: seleccionada ? acento : Colors.white,
                           borderRadius: BorderRadius.circular(20),
-                          boxShadow:
-                              seleccionada
-                                  ? []
-                                  : [
-                                    BoxShadow(
-                                      color: colorVerdeTese.withValues(
-                                        alpha: 0.06,
-                                      ),
-                                      blurRadius: 8,
-                                      offset: const Offset(0, 3),
-                                    ),
-                                  ],
+                          border: Border.all(
+                            color:
+                                seleccionada
+                                    ? Colors.transparent
+                                    : Colors.grey.shade300,
+                          ),
                         ),
                         child: Text(
                           categoria,
@@ -588,7 +839,7 @@ class _CatalogoEstudianteScreenState extends State<CatalogoEstudianteScreen> {
                               ),
                               const SizedBox(height: 10),
                               Text(
-                                'No encontramos nada con eso',
+                                'No encontramos nada aquí',
                                 style: GoogleFonts.poppins(
                                   color: colorTextoGris,
                                   fontWeight: FontWeight.w600,
@@ -779,6 +1030,84 @@ class _CatalogoEstudianteScreenState extends State<CatalogoEstudianteScreen> {
                             );
                           },
                         ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ==========================================
+// NUEVA PANTALLA: ÉXITO AL ENVIAR PEDIDO
+// ==========================================
+class PedidoEnviadoScreen extends StatelessWidget {
+  const PedidoEnviadoScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: colorVerdeTese,
+      body: Center(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 24.0),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              BounceInDown(
+                child: Image.asset(
+                  'assets/compraHecha.png',
+                  height: 220,
+                  fit: BoxFit.contain,
+                ),
+              ),
+              const SizedBox(height: 30),
+              FadeInUp(
+                child: Text(
+                  '¡Pedido Enviado!',
+                  style: GoogleFonts.poppins(
+                    fontSize: 32,
+                    fontWeight: FontWeight.w900,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+              FadeInUp(
+                delay: const Duration(milliseconds: 200),
+                child: Text(
+                  'Tu orden ya está en la cafetería.\nRevisa el menú de "Mis Pedidos" para ver el estado en tiempo real.',
+                  textAlign: TextAlign.center,
+                  style: GoogleFonts.poppins(
+                    fontSize: 16,
+                    color: Colors.white70,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 40),
+              FadeInUp(
+                delay: const Duration(milliseconds: 400),
+                child: ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: colorAmarilloTese,
+                    minimumSize: const Size(double.infinity, 55),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(15),
+                    ),
+                  ),
+                  onPressed: () {
+                    Navigator.pop(context);
+                  },
+                  child: Text(
+                    'Ir a mis pedidos',
+                    style: GoogleFonts.poppins(
+                      color: colorVerdeOscuro,
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
               ),
             ],
           ),
