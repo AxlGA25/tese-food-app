@@ -1,8 +1,9 @@
-import 'dart:math';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:animate_do/animate_do.dart';
 import 'package:confetti/confetti.dart';
+import 'package:audioplayers/audioplayers.dart';
 import 'colores.dart';
 import 'modelos.dart';
 import 'pantalla_menu.dart';
@@ -22,6 +23,131 @@ class CarritoScreen extends StatefulWidget {
 
 class _CarritoScreenState extends State<CarritoScreen> {
   String metodoPago = 'Efectivo';
+  final TextEditingController _notasCtrl = TextEditingController();
+
+  @override
+  void dispose() {
+    _notasCtrl.dispose();
+    super.dispose();
+  }
+
+  void _mostrarConfirmacion(double total) {
+    HapticFeedback.heavyImpact();
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder:
+          (context) => Container(
+            padding: EdgeInsets.only(
+              bottom: MediaQuery.of(context).viewInsets.bottom + 24,
+              top: 24,
+              left: 24,
+              right: 24,
+            ),
+            decoration: const BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.only(
+                topLeft: Radius.circular(30),
+                topRight: Radius.circular(30),
+              ),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Center(
+                  child: Container(
+                    width: 50,
+                    height: 5,
+                    decoration: BoxDecoration(
+                      color: Colors.grey[300],
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 20),
+                const Icon(
+                  Icons.info_outline,
+                  size: 60,
+                  color: colorAmarilloTese,
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  'Confirmar Compra',
+                  style: GoogleFonts.poppins(
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                    color: colorTextoOscuro,
+                  ),
+                ),
+                const SizedBox(height: 10),
+                Text(
+                  'Estás a punto de enviar tu pedido a la cafetería por un total de \$${total.toStringAsFixed(2)}.',
+                  textAlign: TextAlign.center,
+                  style: GoogleFonts.poppins(
+                    color: colorTextoGris,
+                    fontSize: 14,
+                  ),
+                ),
+                const SizedBox(height: 30),
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton(
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(15),
+                          ),
+                          side: BorderSide(color: Colors.grey[300]!),
+                        ),
+                        onPressed: () => Navigator.pop(context),
+                        child: Text(
+                          'Cancelar',
+                          style: GoogleFonts.poppins(
+                            color: colorTextoGris,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 15),
+                    Expanded(
+                      child: ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: colorExito,
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(15),
+                          ),
+                        ),
+                        onPressed: () {
+                          HapticFeedback.heavyImpact();
+                          if (context.mounted) {
+                            Navigator.pop(context);
+                            widget.onVaciar();
+                            Navigator.pop(context, {
+                              'total': total,
+                              'notas': _notasCtrl.text,
+                            });
+                          }
+                        },
+                        child: Text(
+                          '¡Pagar!',
+                          style: GoogleFonts.poppins(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -38,6 +164,7 @@ class _CarritoScreenState extends State<CarritoScreen> {
           ),
         ),
         backgroundColor: colorVerdeTese,
+        iconTheme: const IconThemeData(color: Colors.white),
       ),
       body: Column(
         children: [
@@ -81,10 +208,12 @@ class _CarritoScreenState extends State<CarritoScreen> {
                         return Dismissible(
                           key: UniqueKey(),
                           direction: DismissDirection.endToStart,
-                          onDismissed:
-                              (direction) => setState(() {
-                                widget.carrito.removeAt(index);
-                              }),
+                          onDismissed: (direction) {
+                            HapticFeedback.mediumImpact();
+                            setState(() {
+                              widget.carrito.removeAt(index);
+                            });
+                          },
                           background: Container(
                             margin: const EdgeInsets.symmetric(
                               horizontal: 16,
@@ -165,6 +294,27 @@ class _CarritoScreenState extends State<CarritoScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    TextField(
+                      controller: _notasCtrl,
+                      decoration: InputDecoration(
+                        hintText: 'Instrucciones especiales (ej. Sin cebolla)',
+                        hintStyle: GoogleFonts.poppins(
+                          fontSize: 13,
+                          color: colorTextoGris,
+                        ),
+                        prefixIcon: const Icon(
+                          Icons.edit_note,
+                          color: colorAmarilloTese,
+                        ),
+                        filled: true,
+                        fillColor: colorFondoCrema,
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide.none,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 20),
                     Text(
                       'Método de pago al recoger:',
                       style: GoogleFonts.poppins(
@@ -179,8 +329,10 @@ class _CarritoScreenState extends State<CarritoScreen> {
                         Expanded(
                           child: InkWell(
                             borderRadius: BorderRadius.circular(14),
-                            onTap:
-                                () => setState(() => metodoPago = 'Efectivo'),
+                            onTap: () {
+                              HapticFeedback.selectionClick();
+                              setState(() => metodoPago = 'Efectivo');
+                            },
                             child: Container(
                               padding: const EdgeInsets.symmetric(vertical: 14),
                               decoration: BoxDecoration(
@@ -227,10 +379,10 @@ class _CarritoScreenState extends State<CarritoScreen> {
                         Expanded(
                           child: InkWell(
                             borderRadius: BorderRadius.circular(14),
-                            onTap:
-                                () => setState(
-                                  () => metodoPago = 'Terminal Bancaria',
-                                ),
+                            onTap: () {
+                              HapticFeedback.selectionClick();
+                              setState(() => metodoPago = 'Terminal Bancaria');
+                            },
                             child: Container(
                               padding: const EdgeInsets.symmetric(vertical: 14),
                               decoration: BoxDecoration(
@@ -313,21 +465,7 @@ class _CarritoScreenState extends State<CarritoScreen> {
                         onPressed:
                             widget.carrito.isEmpty
                                 ? null
-                                : () {
-                                  String codigoGenerado =
-                                      '#TESE-${Random().nextInt(9000) + 1000}';
-                                  widget.onVaciar();
-                                  Navigator.pushAndRemoveUntil(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder:
-                                          (context) => SalaEsperaScreen(
-                                            codigoPedido: codigoGenerado,
-                                          ),
-                                    ),
-                                    (route) => false,
-                                  );
-                                },
+                                : () => _mostrarConfirmacion(total),
                         child: Text(
                           'Confirmar Pedido',
                           style: GoogleFonts.poppins(
@@ -344,6 +482,108 @@ class _CarritoScreenState extends State<CarritoScreen> {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class PedidoEnviadoScreen extends StatefulWidget {
+  const PedidoEnviadoScreen({super.key});
+
+  @override
+  State<PedidoEnviadoScreen> createState() => _PedidoEnviadoScreenState();
+}
+
+class _PedidoEnviadoScreenState extends State<PedidoEnviadoScreen> {
+  final AudioPlayer _audioPlayerExito = AudioPlayer();
+
+  @override
+  void initState() {
+    super.initState();
+    _reproducirSonido();
+  }
+
+  void _reproducirSonido() async {
+    try {
+      await _audioPlayerExito.play(AssetSource('exito.mp3'), volume: 1.0);
+    } catch (e) {
+      debugPrint('Error reproduciendo sonido: $e');
+    }
+  }
+
+  @override
+  void dispose() {
+    _audioPlayerExito.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: colorVerdeTese,
+      body: Center(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 24.0),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              BounceInDown(
+                child: Image.asset(
+                  'assets/compraHecha.png',
+                  height: 220,
+                  fit: BoxFit.contain,
+                ),
+              ),
+              const SizedBox(height: 30),
+              FadeInUp(
+                child: Text(
+                  '¡Pedido Enviado!',
+                  style: GoogleFonts.poppins(
+                    fontSize: 32,
+                    fontWeight: FontWeight.w900,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+              FadeInUp(
+                delay: const Duration(milliseconds: 200),
+                child: Text(
+                  'Tu orden ya está en la cafetería.\nRevisa el menú de "Mis Pedidos" para ver el estado en tiempo real.',
+                  textAlign: TextAlign.center,
+                  style: GoogleFonts.poppins(
+                    fontSize: 16,
+                    color: Colors.white70,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 40),
+              FadeInUp(
+                delay: const Duration(milliseconds: 400),
+                child: ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: colorAmarilloTese,
+                    minimumSize: const Size(double.infinity, 55),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(15),
+                    ),
+                  ),
+                  onPressed: () {
+                    Navigator.pop(context);
+                  },
+                  child: Text(
+                    'Ir a mis pedidos',
+                    style: GoogleFonts.poppins(
+                      color: colorVerdeOscuro,
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -391,6 +631,7 @@ class _SalaEsperaScreenState extends State<SalaEsperaScreen> {
     Color colorFondo = estadoActual == 2 ? colorExito : Colors.white;
     Color colorTextoTop = estadoActual == 2 ? Colors.white : colorVerdeTese;
     return Scaffold(
+      backgroundColor: colorFondo,
       extendBodyBehindAppBar: true,
       appBar: AppBar(
         title: Text(
@@ -404,6 +645,7 @@ class _SalaEsperaScreenState extends State<SalaEsperaScreen> {
         backgroundColor: Colors.transparent,
         elevation: 0,
         centerTitle: true,
+        iconTheme: IconThemeData(color: colorTextoTop),
       ),
       body: Stack(
         children: [
@@ -478,7 +720,7 @@ class _SalaEsperaScreenState extends State<SalaEsperaScreen> {
         titulo: '¡Ya está listo!',
         subtitulo: 'Muestra tu código para recoger tu comida.',
         cargando: false,
-        mostrarBoton: true,
+        mostrarBoton: false,
         imagenAsset: 'assets/patito_listo.png',
         colorTextoTitulo: Colors.white,
         colorTextoSub: Colors.white70,
@@ -560,6 +802,7 @@ class _PantallaEstadoFull extends StatelessWidget {
     required this.colorTextoTitulo,
     required this.colorTextoSub,
   });
+
   @override
   Widget build(BuildContext context) {
     return Center(
@@ -590,38 +833,6 @@ class _PantallaEstadoFull extends StatelessWidget {
               const CircularProgressIndicator(
                 color: colorAmarilloTese,
                 strokeWidth: 2.6,
-              ),
-            if (mostrarBoton)
-              ZoomIn(
-                child: SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.white,
-                      elevation: 4,
-                      minimumSize: const Size(double.infinity, 55),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(15),
-                      ),
-                    ),
-                    onPressed:
-                        () => Navigator.pushAndRemoveUntil(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => const NavegacionEstudiante(),
-                          ),
-                          (route) => false,
-                        ),
-                    child: Text(
-                      'Volver al Menú',
-                      style: GoogleFonts.poppins(
-                        color: colorExito,
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                ),
               ),
           ],
         ),

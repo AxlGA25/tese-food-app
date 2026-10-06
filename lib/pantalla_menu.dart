@@ -1,4 +1,6 @@
+import 'dart:math';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:animate_do/animate_do.dart';
 import 'package:curved_navigation_bar/curved_navigation_bar.dart';
@@ -6,7 +8,6 @@ import 'package:carousel_slider/carousel_slider.dart';
 import 'package:smooth_page_indicator/smooth_page_indicator.dart';
 import 'package:awesome_snackbar_content/awesome_snackbar_content.dart';
 import 'dart:ui';
-import 'dart:math';
 import 'colores.dart';
 import 'modelos.dart';
 import 'pantalla_perfil.dart';
@@ -31,7 +32,13 @@ class MiPedidoDummy {
   final String id;
   final double total;
   final String fecha;
-  MiPedidoDummy({required this.id, required this.total, required this.fecha});
+  final String notas;
+  MiPedidoDummy({
+    required this.id,
+    required this.total,
+    required this.fecha,
+    required this.notas,
+  });
 }
 
 class NavegacionEstudiante extends StatefulWidget {
@@ -99,6 +106,7 @@ class _NavegacionEstudianteState extends State<NavegacionEstudiante> {
           ),
         ],
         onTap: (index) {
+          HapticFeedback.selectionClick();
           setState(() {
             _indiceActual = index;
           });
@@ -111,8 +119,9 @@ class _NavegacionEstudianteState extends State<NavegacionEstudiante> {
                 elevation: 6,
                 onPressed: () async {
                   if (carritoGlobal.isEmpty) return;
+                  HapticFeedback.lightImpact();
 
-                  final double? totalPagado = await Navigator.push(
+                  final Map<String, dynamic>? resultado = await Navigator.push(
                     context,
                     MaterialPageRoute(
                       builder:
@@ -123,14 +132,15 @@ class _NavegacionEstudianteState extends State<NavegacionEstudiante> {
                     ),
                   );
 
-                  if (totalPagado != null) {
+                  if (resultado != null) {
                     setState(() {
                       misPedidosHistorial.insert(
                         0,
                         MiPedidoDummy(
                           id: '#TESE-${Random().nextInt(9000) + 1000}',
-                          total: totalPagado,
+                          total: resultado['total'],
                           fecha: 'Hoy, 10:30 AM',
+                          notas: resultado['notas'],
                         ),
                       );
                       _indiceActual = 1;
@@ -220,6 +230,7 @@ class MisPedidosScreen extends StatelessWidget {
                         return FadeInUp(
                           child: GestureDetector(
                             onTap: () {
+                              HapticFeedback.selectionClick();
                               Navigator.push(
                                 context,
                                 MaterialPageRoute(
@@ -249,56 +260,82 @@ class MisPedidosScreen extends StatelessWidget {
                                   color: colorVerdeTese.withValues(alpha: 0.1),
                                 ),
                               ),
-                              child: Row(
-                                mainAxisAlignment:
-                                    MainAxisAlignment.spaceBetween,
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Row(
+                                    mainAxisAlignment:
+                                        MainAxisAlignment.spaceBetween,
                                     children: [
-                                      Container(
-                                        padding: const EdgeInsets.all(12),
-                                        decoration: BoxDecoration(
-                                          color: colorAmarilloTese.withValues(
-                                            alpha: 0.2,
-                                          ),
-                                          borderRadius: BorderRadius.circular(
-                                            12,
-                                          ),
-                                        ),
-                                        child: const Icon(
-                                          Icons.receipt_long,
-                                          color: colorAmarilloTese,
-                                        ),
-                                      ),
-                                      const SizedBox(width: 16),
-                                      Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
+                                      Row(
                                         children: [
-                                          Text(
-                                            pedido.id,
-                                            style: GoogleFonts.poppins(
-                                              fontWeight: FontWeight.bold,
-                                              fontSize: 18,
-                                              color: colorVerdeTese,
+                                          Container(
+                                            padding: const EdgeInsets.all(12),
+                                            decoration: BoxDecoration(
+                                              color: colorAmarilloTese
+                                                  .withValues(alpha: 0.2),
+                                              borderRadius:
+                                                  BorderRadius.circular(12),
+                                            ),
+                                            child: const Icon(
+                                              Icons.receipt_long,
+                                              color: colorAmarilloTese,
                                             ),
                                           ),
-                                          Text(
-                                            pedido.fecha,
-                                            style: GoogleFonts.poppins(
-                                              fontSize: 13,
-                                              color: colorTextoGris,
-                                            ),
+                                          const SizedBox(width: 16),
+                                          Column(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
+                                            children: [
+                                              Text(
+                                                pedido.id,
+                                                style: GoogleFonts.poppins(
+                                                  fontWeight: FontWeight.bold,
+                                                  fontSize: 18,
+                                                  color: colorVerdeTese,
+                                                ),
+                                              ),
+                                              Text(
+                                                pedido.fecha,
+                                                style: GoogleFonts.poppins(
+                                                  fontSize: 13,
+                                                  color: colorTextoGris,
+                                                ),
+                                              ),
+                                            ],
                                           ),
                                         ],
                                       ),
+                                      const Icon(
+                                        Icons.arrow_forward_ios,
+                                        size: 16,
+                                        color: colorTextoGris,
+                                      ),
                                     ],
                                   ),
-                                  const Icon(
-                                    Icons.arrow_forward_ios,
-                                    size: 16,
-                                    color: colorTextoGris,
-                                  ),
+                                  if (pedido.notas.isNotEmpty) ...[
+                                    const Divider(height: 24),
+                                    Row(
+                                      children: [
+                                        const Icon(
+                                          Icons.edit_note,
+                                          size: 16,
+                                          color: colorAmarilloTese,
+                                        ),
+                                        const SizedBox(width: 8),
+                                        Expanded(
+                                          child: Text(
+                                            'Notas: ${pedido.notas}',
+                                            style: GoogleFonts.poppins(
+                                              fontSize: 13,
+                                              color: colorTextoOscuro,
+                                              fontStyle: FontStyle.italic,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ],
                                 ],
                               ),
                             ),
@@ -508,6 +545,7 @@ class _CatalogoEstudianteScreenState extends State<CatalogoEstudianteScreen> {
   }
 
   void _mostrarAlertaExito(String nombre) {
+    HapticFeedback.lightImpact();
     final snackBar = SnackBar(
       elevation: 0,
       behavior: SnackBarBehavior.floating,
@@ -525,6 +563,7 @@ class _CatalogoEstudianteScreenState extends State<CatalogoEstudianteScreen> {
   }
 
   void _abrirDetalle(Platillo platillo) async {
+    HapticFeedback.selectionClick();
     final agregado = await Navigator.push<bool>(
       context,
       MaterialPageRoute(
@@ -590,7 +629,10 @@ class _CatalogoEstudianteScreenState extends State<CatalogoEstudianteScreen> {
                     final local = _locales[index];
                     final seleccionada = local == _localSeleccionado;
                     return GestureDetector(
-                      onTap: () => setState(() => _localSeleccionado = local),
+                      onTap: () {
+                        HapticFeedback.selectionClick();
+                        setState(() => _localSeleccionado = local);
+                      },
                       child: AnimatedContainer(
                         duration: const Duration(milliseconds: 200),
                         width: 95,
@@ -701,10 +743,10 @@ class _CatalogoEstudianteScreenState extends State<CatalogoEstudianteScreen> {
                     final seleccionada = categoria == _categoriaSeleccionada;
                     final acento = acentoDeCategoria(categoria);
                     return GestureDetector(
-                      onTap:
-                          () => setState(
-                            () => _categoriaSeleccionada = categoria,
-                          ),
+                      onTap: () {
+                        HapticFeedback.selectionClick();
+                        setState(() => _categoriaSeleccionada = categoria);
+                      },
                       child: AnimatedContainer(
                         duration: const Duration(milliseconds: 200),
                         padding: const EdgeInsets.symmetric(horizontal: 18),
@@ -1030,84 +1072,6 @@ class _CatalogoEstudianteScreenState extends State<CatalogoEstudianteScreen> {
                             );
                           },
                         ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-// ==========================================
-// NUEVA PANTALLA: ÉXITO AL ENVIAR PEDIDO
-// ==========================================
-class PedidoEnviadoScreen extends StatelessWidget {
-  const PedidoEnviadoScreen({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: colorVerdeTese,
-      body: Center(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24.0),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              BounceInDown(
-                child: Image.asset(
-                  'assets/compraHecha.png',
-                  height: 220,
-                  fit: BoxFit.contain,
-                ),
-              ),
-              const SizedBox(height: 30),
-              FadeInUp(
-                child: Text(
-                  '¡Pedido Enviado!',
-                  style: GoogleFonts.poppins(
-                    fontSize: 32,
-                    fontWeight: FontWeight.w900,
-                    color: Colors.white,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 16),
-              FadeInUp(
-                delay: const Duration(milliseconds: 200),
-                child: Text(
-                  'Tu orden ya está en la cafetería.\nRevisa el menú de "Mis Pedidos" para ver el estado en tiempo real.',
-                  textAlign: TextAlign.center,
-                  style: GoogleFonts.poppins(
-                    fontSize: 16,
-                    color: Colors.white70,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 40),
-              FadeInUp(
-                delay: const Duration(milliseconds: 400),
-                child: ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: colorAmarilloTese,
-                    minimumSize: const Size(double.infinity, 55),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(15),
-                    ),
-                  ),
-                  onPressed: () {
-                    Navigator.pop(context);
-                  },
-                  child: Text(
-                    'Ir a mis pedidos',
-                    style: GoogleFonts.poppins(
-                      color: colorVerdeOscuro,
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
               ),
             ],
           ),
