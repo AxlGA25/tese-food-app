@@ -21,6 +21,17 @@ class PantallaDetallePlatillo extends StatefulWidget {
 
 class _PantallaDetallePlatilloState extends State<PantallaDetallePlatillo> {
   int cantidad = 1;
+  // 0 = Normal (Verde), 1 = Sin (Rojo), 2 = Extra (Amarillo)
+  Map<String, int> estadoIngredientes = {};
+
+  @override
+  void initState() {
+    super.initState();
+    // Iniciamos todos los ingredientes en estado 0 (Normal)
+    for (var ing in widget.platillo.ingredientes) {
+      estadoIngredientes[ing] = 0;
+    }
+  }
 
   Widget _botonCircular({
     required IconData icono,
@@ -244,7 +255,101 @@ class _PantallaDetallePlatilloState extends State<PantallaDetallePlatillo> {
                       height: 1.5,
                     ),
                   ),
-                  const SizedBox(height: 28),
+
+                  // ==========================================
+                  // SECCIÓN DE INGREDIENTES (PERSONALIZACIÓN)
+                  // ==========================================
+                  if (platillo.ingredientes.isNotEmpty) ...[
+                    const SizedBox(height: 24),
+                    const Divider(),
+                    const SizedBox(height: 12),
+                    Text(
+                      'Personaliza tu platillo',
+                      style: GoogleFonts.poppins(
+                        fontSize: 15,
+                        fontWeight: FontWeight.bold,
+                        color: colorTextoOscuro,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Toca para cambiar: Normal ➔ Sin ➔ Extra',
+                      style: GoogleFonts.poppins(
+                        fontSize: 12,
+                        color: colorTextoGris,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    Wrap(
+                      spacing: 10,
+                      runSpacing: 10,
+                      children:
+                          platillo.ingredientes.map((ing) {
+                            int estado = estadoIngredientes[ing] ?? 0;
+                            Color color =
+                                estado == 0
+                                    ? colorExito
+                                    : (estado == 1
+                                        ? Colors.redAccent
+                                        : colorAmarilloTese);
+                            IconData icono =
+                                estado == 0
+                                    ? Icons.check
+                                    : (estado == 1 ? Icons.close : Icons.add);
+                            String prefijo =
+                                estado == 0
+                                    ? ''
+                                    : (estado == 1 ? 'Sin ' : 'Extra ');
+                            bool tachado = estado == 1;
+
+                            return GestureDetector(
+                              onTap: () {
+                                setState(() {
+                                  estadoIngredientes[ing] =
+                                      (estado + 1) % 3; // Clicla entre 0, 1 y 2
+                                });
+                              },
+                              child: AnimatedContainer(
+                                duration: const Duration(milliseconds: 200),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 14,
+                                  vertical: 8,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: color.withValues(alpha: 0.1),
+                                  borderRadius: BorderRadius.circular(20),
+                                  border: Border.all(
+                                    color: color.withValues(alpha: 0.5),
+                                  ),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(icono, size: 14, color: color),
+                                    const SizedBox(width: 6),
+                                    Text(
+                                      '$prefijo$ing',
+                                      style: GoogleFonts.poppins(
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w600,
+                                        decoration:
+                                            tachado
+                                                ? TextDecoration.lineThrough
+                                                : null,
+                                        color: color,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            );
+                          }).toList(),
+                    ),
+                  ],
+
+                  const SizedBox(height: 24),
+                  const Divider(),
+                  const SizedBox(height: 16),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
@@ -310,8 +415,20 @@ class _PantallaDetallePlatilloState extends State<PantallaDetallePlatillo> {
                     ),
                   ),
                   onPressed: () {
+                    // GENERAMOS LA LISTA DE PERSONALIZACIÓN
+                    List<String> personalizacionFinal = [];
+                    estadoIngredientes.forEach((ing, estado) {
+                      if (estado == 1) personalizacionFinal.add('Sin $ing');
+                      if (estado == 2) personalizacionFinal.add('Extra $ing');
+                    });
+
+                    // CLONAMOS EL PLATILLO CON LOS CAMBIOS
+                    final platilloPersonalizado = widget.platillo.copyWith(
+                      personalizacion: personalizacionFinal,
+                    );
+
                     for (int i = 0; i < cantidad; i++) {
-                      widget.onAgregar(platillo);
+                      widget.onAgregar(platilloPersonalizado);
                     }
                     Navigator.pop(context, true);
                   },

@@ -24,7 +24,6 @@ const Map<String, Color> colorPorCategoria = {
 
 Color acentoDeCategoria(String categoria) =>
     colorPorCategoria[categoria] ?? colorVerdeTese;
-
 Color colorTextoSobreAcento(Color fondo) =>
     fondo == colorVerdeTese ? Colors.white : colorVerdeOscuro;
 
@@ -32,12 +31,13 @@ class MiPedidoDummy {
   final String id;
   final double total;
   final String fecha;
-  final String notas;
+  int estado;
+
   MiPedidoDummy({
     required this.id,
     required this.total,
     required this.fecha,
-    required this.notas,
+    this.estado = 0,
   });
 }
 
@@ -51,7 +51,21 @@ class NavegacionEstudiante extends StatefulWidget {
 class _NavegacionEstudianteState extends State<NavegacionEstudiante> {
   int _indiceActual = 0;
   List<Platillo> carritoGlobal = [];
-  List<MiPedidoDummy> misPedidosHistorial = [];
+
+  List<MiPedidoDummy> misPedidosHistorial = [
+    MiPedidoDummy(
+      id: '#TESE-1200',
+      total: 65.0,
+      fecha: 'Hoy, 10:45 AM',
+      estado: 2,
+    ),
+    MiPedidoDummy(
+      id: '#TESE-4029',
+      total: 90.0,
+      fecha: 'Hoy, 10:50 AM',
+      estado: 1,
+    ),
+  ];
 
   void _actualizarCarrito(Platillo p) {
     setState(() {
@@ -139,8 +153,8 @@ class _NavegacionEstudianteState extends State<NavegacionEstudiante> {
                         MiPedidoDummy(
                           id: '#TESE-${Random().nextInt(9000) + 1000}',
                           total: resultado['total'],
-                          fecha: 'Hoy, 10:30 AM',
-                          notas: resultado['notas'],
+                          fecha: 'Hoy, 10:55 AM',
+                          estado: 0,
                         ),
                       );
                       _indiceActual = 1;
@@ -182,6 +196,100 @@ class MisPedidosScreen extends StatelessWidget {
   final List<MiPedidoDummy> historial;
   const MisPedidosScreen({super.key, required this.historial});
 
+  void _mostrarInfoEstados(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          title: Row(
+            children: [
+              const Icon(Icons.info_outline, color: colorVerdeTese, size: 28),
+              const SizedBox(width: 10),
+              Text(
+                'Estados del Pedido',
+                style: GoogleFonts.poppins(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 18,
+                  color: colorVerdeTese,
+                ),
+              ),
+            ],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _filaInfoColor(
+                Colors.grey[400]!,
+                'Recibido',
+                'La cafetería está confirmando tu pedido.',
+              ),
+              const SizedBox(height: 12),
+              _filaInfoColor(
+                colorAmarilloTese,
+                'Preparando',
+                '¡El chef ya está cocinando tus alimentos!',
+              ),
+              const SizedBox(height: 12),
+              _filaInfoColor(
+                colorExito,
+                '¡Listo!',
+                'Ya puedes acercarte a la ventanilla a recogerlo.',
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text(
+                'Entendido',
+                style: GoogleFonts.poppins(
+                  fontWeight: FontWeight.bold,
+                  color: colorVerdeTese,
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _filaInfoColor(Color color, String titulo, String subtitulo) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          margin: const EdgeInsets.only(top: 4),
+          width: 16,
+          height: 16,
+          decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                titulo,
+                style: GoogleFonts.poppins(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 15,
+                ),
+              ),
+              Text(
+                subtitulo,
+                style: GoogleFonts.poppins(fontSize: 13, color: colorTextoGris),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return SafeArea(
@@ -190,13 +298,26 @@ class MisPedidosScreen extends StatelessWidget {
         children: [
           Padding(
             padding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
-            child: Text(
-              'Mis Pedidos',
-              style: GoogleFonts.poppins(
-                fontSize: 26,
-                fontWeight: FontWeight.bold,
-                color: colorVerdeTese,
-              ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'Mis Pedidos',
+                  style: GoogleFonts.poppins(
+                    fontSize: 26,
+                    fontWeight: FontWeight.bold,
+                    color: colorVerdeTese,
+                  ),
+                ),
+                IconButton(
+                  icon: const Icon(
+                    Icons.help_outline,
+                    color: colorTextoGris,
+                    size: 28,
+                  ),
+                  onPressed: () => _mostrarInfoEstados(context),
+                ),
+              ],
             ),
           ),
           Expanded(
@@ -227,6 +348,21 @@ class MisPedidosScreen extends StatelessWidget {
                       itemCount: historial.length,
                       itemBuilder: (context, index) {
                         final pedido = historial[index];
+
+                        Color colorEstado = Colors.grey[400]!;
+                        String textoEstado = 'Recibido';
+                        IconData iconoEstado = Icons.access_time;
+
+                        if (pedido.estado == 1) {
+                          colorEstado = colorAmarilloTese;
+                          textoEstado = 'Preparando';
+                          iconoEstado = Icons.soup_kitchen;
+                        } else if (pedido.estado == 2) {
+                          colorEstado = colorExito;
+                          textoEstado = '¡Listo!';
+                          iconoEstado = Icons.check_circle;
+                        }
+
                         return FadeInUp(
                           child: GestureDetector(
                             onTap: () {
@@ -243,7 +379,6 @@ class MisPedidosScreen extends StatelessWidget {
                             },
                             child: Container(
                               margin: const EdgeInsets.only(bottom: 14),
-                              padding: const EdgeInsets.all(16),
                               decoration: BoxDecoration(
                                 color: Colors.white,
                                 borderRadius: BorderRadius.circular(20),
@@ -257,44 +392,83 @@ class MisPedidosScreen extends StatelessWidget {
                                   ),
                                 ],
                                 border: Border.all(
-                                  color: colorVerdeTese.withValues(alpha: 0.1),
+                                  color: colorEstado.withValues(alpha: 0.5),
+                                  width: 1.5,
                                 ),
                               ),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Row(
-                                    mainAxisAlignment:
-                                        MainAxisAlignment.spaceBetween,
+                              child: ClipRRect(
+                                borderRadius: BorderRadius.circular(20),
+                                child: IntrinsicHeight(
+                                  child: Row(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.stretch,
                                     children: [
-                                      Row(
-                                        children: [
-                                          Container(
-                                            padding: const EdgeInsets.all(12),
-                                            decoration: BoxDecoration(
-                                              color: colorAmarilloTese
-                                                  .withValues(alpha: 0.2),
-                                              borderRadius:
-                                                  BorderRadius.circular(12),
-                                            ),
-                                            child: const Icon(
-                                              Icons.receipt_long,
-                                              color: colorAmarilloTese,
-                                            ),
-                                          ),
-                                          const SizedBox(width: 16),
-                                          Column(
+                                      Container(width: 8, color: colorEstado),
+                                      Expanded(
+                                        child: Padding(
+                                          padding: const EdgeInsets.all(16),
+                                          child: Column(
                                             crossAxisAlignment:
                                                 CrossAxisAlignment.start,
                                             children: [
-                                              Text(
-                                                pedido.id,
-                                                style: GoogleFonts.poppins(
-                                                  fontWeight: FontWeight.bold,
-                                                  fontSize: 18,
-                                                  color: colorVerdeTese,
-                                                ),
+                                              Row(
+                                                mainAxisAlignment:
+                                                    MainAxisAlignment
+                                                        .spaceBetween,
+                                                children: [
+                                                  Text(
+                                                    pedido.id,
+                                                    style: GoogleFonts.poppins(
+                                                      fontWeight:
+                                                          FontWeight.w900,
+                                                      fontSize: 18,
+                                                      color: colorVerdeTese,
+                                                    ),
+                                                  ),
+                                                  Container(
+                                                    padding:
+                                                        const EdgeInsets.symmetric(
+                                                          horizontal: 10,
+                                                          vertical: 4,
+                                                        ),
+                                                    decoration: BoxDecoration(
+                                                      color: colorEstado
+                                                          .withValues(
+                                                            alpha: 0.15,
+                                                          ),
+                                                      borderRadius:
+                                                          BorderRadius.circular(
+                                                            10,
+                                                          ),
+                                                    ),
+                                                    child: Row(
+                                                      children: [
+                                                        Icon(
+                                                          iconoEstado,
+                                                          size: 14,
+                                                          color: colorEstado,
+                                                        ),
+                                                        const SizedBox(
+                                                          width: 4,
+                                                        ),
+                                                        Text(
+                                                          textoEstado,
+                                                          style:
+                                                              GoogleFonts.poppins(
+                                                                fontSize: 12,
+                                                                fontWeight:
+                                                                    FontWeight
+                                                                        .bold,
+                                                                color:
+                                                                    colorEstado,
+                                                              ),
+                                                        ),
+                                                      ],
+                                                    ),
+                                                  ),
+                                                ],
                                               ),
+                                              const SizedBox(height: 8),
                                               Text(
                                                 pedido.fecha,
                                                 style: GoogleFonts.poppins(
@@ -302,41 +476,62 @@ class MisPedidosScreen extends StatelessWidget {
                                                   color: colorTextoGris,
                                                 ),
                                               ),
+
+                                              // BOTON CONDICIONAL PARA CALIFICAR
+                                              if (pedido.estado == 2) ...[
+                                                const SizedBox(height: 16),
+                                                SizedBox(
+                                                  width: double.infinity,
+                                                  child: OutlinedButton.icon(
+                                                    style: OutlinedButton.styleFrom(
+                                                      foregroundColor:
+                                                          colorAmarilloTese,
+                                                      side: const BorderSide(
+                                                        color:
+                                                            colorAmarilloTese,
+                                                      ),
+                                                      shape: RoundedRectangleBorder(
+                                                        borderRadius:
+                                                            BorderRadius.circular(
+                                                              12,
+                                                            ),
+                                                      ),
+                                                    ),
+                                                    icon: const Icon(
+                                                      Icons.star,
+                                                    ),
+                                                    label: Text(
+                                                      'Calificar comida',
+                                                      style:
+                                                          GoogleFonts.poppins(
+                                                            fontWeight:
+                                                                FontWeight.bold,
+                                                          ),
+                                                    ),
+                                                    onPressed: () {
+                                                      Navigator.push(
+                                                        context,
+                                                        MaterialPageRoute(
+                                                          builder:
+                                                              (context) =>
+                                                                  PantallaResena(
+                                                                    codigoPedido:
+                                                                        pedido
+                                                                            .id,
+                                                                  ),
+                                                        ),
+                                                      );
+                                                    },
+                                                  ),
+                                                ),
+                                              ],
                                             ],
                                           ),
-                                        ],
-                                      ),
-                                      const Icon(
-                                        Icons.arrow_forward_ios,
-                                        size: 16,
-                                        color: colorTextoGris,
+                                        ),
                                       ),
                                     ],
                                   ),
-                                  if (pedido.notas.isNotEmpty) ...[
-                                    const Divider(height: 24),
-                                    Row(
-                                      children: [
-                                        const Icon(
-                                          Icons.edit_note,
-                                          size: 16,
-                                          color: colorAmarilloTese,
-                                        ),
-                                        const SizedBox(width: 8),
-                                        Expanded(
-                                          child: Text(
-                                            'Notas: ${pedido.notas}',
-                                            style: GoogleFonts.poppins(
-                                              fontSize: 13,
-                                              color: colorTextoOscuro,
-                                              fontStyle: FontStyle.italic,
-                                            ),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ],
-                                ],
+                                ),
                               ),
                             ),
                           ),
@@ -378,6 +573,7 @@ class _CatalogoEstudianteScreenState extends State<CatalogoEstudianteScreen> {
       calificacion: 4.7,
       tiempoPrep: '10-15 min',
       popular: true,
+      ingredientes: ['Cebolla', 'Crema', 'Queso', 'Pollo'],
     ),
     Platillo(
       id: '2',
@@ -389,11 +585,12 @@ class _CatalogoEstudianteScreenState extends State<CatalogoEstudianteScreen> {
       descripcion: 'Hot cakes esponjositos, con miel y mantequilla al gusto.',
       calificacion: 4.5,
       tiempoPrep: '8-10 min',
+      ingredientes: ['Mantequilla', 'Miel'],
     ),
     Platillo(
       id: '3',
       nombre: 'Licuado de Fresa',
-      local: 'Jugos TESE',
+      local: 'Kiosko Biblioteca',
       precio: 30.0,
       categoria: 'Desayunos',
       icono: Icons.local_drink,
@@ -413,6 +610,7 @@ class _CatalogoEstudianteScreenState extends State<CatalogoEstudianteScreen> {
       calificacion: 4.8,
       tiempoPrep: '12-15 min',
       popular: true,
+      ingredientes: ['Queso', 'Jitomate', 'Cebolla', 'Mayonesa', 'Mostaza'],
     ),
     Platillo(
       id: '5',
@@ -425,6 +623,7 @@ class _CatalogoEstudianteScreenState extends State<CatalogoEstudianteScreen> {
       calificacion: 4.9,
       tiempoPrep: '10 min',
       popular: true,
+      ingredientes: ['Piña', 'Cebolla', 'Cilantro', 'Salsa Roja'],
     ),
     Platillo(
       id: '6',
@@ -452,7 +651,7 @@ class _CatalogoEstudianteScreenState extends State<CatalogoEstudianteScreen> {
     Platillo(
       id: '8',
       nombre: 'Jugo de Naranja',
-      local: 'Jugos TESE',
+      local: 'Kiosko Biblioteca',
       precio: 25.0,
       categoria: 'Bebidas',
       icono: Icons.emoji_food_beverage,
@@ -503,20 +702,16 @@ class _CatalogoEstudianteScreenState extends State<CatalogoEstudianteScreen> {
     'Bebidas',
     'Postres',
   ];
-
   final List<String> _locales = const [
     'Todos',
     'Cafetería Central',
     'Kiosko Sistemas',
-    'Jugos TESE',
+    'Kiosko Biblioteca',
   ];
-
   String _categoriaSeleccionada = 'Todos';
   String _localSeleccionado = 'Todos';
-
   final TextEditingController _busquedaCtrl = TextEditingController();
   String _terminoBusqueda = '';
-
   int _promoIndex = 0;
   final List<String> promociones = [
     '¡2x1 en Chilaquiles hoy!',
@@ -574,15 +769,12 @@ class _CatalogoEstudianteScreenState extends State<CatalogoEstudianteScreen> {
             ),
       ),
     );
-    if (agregado == true) {
-      _mostrarAlertaExito(platillo.nombre);
-    }
+    if (agregado == true) _mostrarAlertaExito(platillo.nombre);
   }
 
   @override
   Widget build(BuildContext context) {
     final platillosFiltrados = _platillosFiltrados;
-
     return Scaffold(
       body: Container(
         decoration: BoxDecoration(
@@ -597,96 +789,119 @@ class _CatalogoEstudianteScreenState extends State<CatalogoEstudianteScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Padding(
-                padding: const EdgeInsets.fromLTRB(20, 16, 20, 4),
-                child: Text(
-                  '¿Dónde comeremos hoy?',
-                  style: GoogleFonts.poppins(
-                    fontSize: 25,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
+              Container(
+                padding: const EdgeInsets.only(bottom: 20),
+                decoration: BoxDecoration(
+                  color: colorVerdeTese,
+                  borderRadius: const BorderRadius.vertical(
+                    bottom: Radius.circular(30),
                   ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: colorVerdeTese.withValues(alpha: 0.3),
+                      blurRadius: 10,
+                      offset: const Offset(0, 5),
+                    ),
+                  ],
                 ),
-              ),
-              Padding(
-                padding: const EdgeInsets.fromLTRB(20, 0, 20, 14),
-                child: Text(
-                  'Selecciona tu kiosco favorito',
-                  style: GoogleFonts.poppins(
-                    fontSize: 13.5,
-                    color: Colors.white.withValues(alpha: 0.85),
-                  ),
-                ),
-              ),
-              SizedBox(
-                height: 90,
-                child: ListView.separated(
-                  scrollDirection: Axis.horizontal,
-                  padding: const EdgeInsets.symmetric(horizontal: 20),
-                  itemCount: _locales.length,
-                  separatorBuilder: (_, __) => const SizedBox(width: 12),
-                  itemBuilder: (context, index) {
-                    final local = _locales[index];
-                    final seleccionada = local == _localSeleccionado;
-                    return GestureDetector(
-                      onTap: () {
-                        HapticFeedback.selectionClick();
-                        setState(() => _localSeleccionado = local);
-                      },
-                      child: AnimatedContainer(
-                        duration: const Duration(milliseconds: 200),
-                        width: 95,
-                        padding: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                          color:
-                              seleccionada
-                                  ? colorAmarilloTese
-                                  : Colors.white.withValues(alpha: 0.9),
-                          borderRadius: BorderRadius.circular(18),
-                          boxShadow:
-                              seleccionada
-                                  ? [
-                                    BoxShadow(
-                                      color: colorAmarilloTese.withValues(
-                                        alpha: 0.4,
-                                      ),
-                                      blurRadius: 8,
-                                      offset: const Offset(0, 4),
-                                    ),
-                                  ]
-                                  : [],
-                        ),
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(
-                              local == 'Todos' ? Icons.map : Icons.storefront,
-                              color:
-                                  seleccionada
-                                      ? colorVerdeOscuro
-                                      : colorVerdeTese,
-                              size: 28,
-                            ),
-                            const SizedBox(height: 6),
-                            Text(
-                              local,
-                              textAlign: TextAlign.center,
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                              style: GoogleFonts.poppins(
-                                fontSize: 11,
-                                fontWeight: FontWeight.bold,
-                                color:
-                                    seleccionada
-                                        ? colorVerdeOscuro
-                                        : colorTextoOscuro,
-                              ),
-                            ),
-                          ],
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(20, 16, 20, 4),
+                      child: Text(
+                        '¿Dónde comeremos hoy?',
+                        style: GoogleFonts.poppins(
+                          fontSize: 25,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
                         ),
                       ),
-                    );
-                  },
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(20, 0, 20, 14),
+                      child: Text(
+                        'Selecciona tu kiosco favorito',
+                        style: GoogleFonts.poppins(
+                          fontSize: 13.5,
+                          color: Colors.white.withValues(alpha: 0.85),
+                        ),
+                      ),
+                    ),
+                    SizedBox(
+                      height: 90,
+                      child: ListView.separated(
+                        scrollDirection: Axis.horizontal,
+                        padding: const EdgeInsets.symmetric(horizontal: 20),
+                        itemCount: _locales.length,
+                        separatorBuilder: (_, __) => const SizedBox(width: 12),
+                        itemBuilder: (context, index) {
+                          final local = _locales[index];
+                          final seleccionada = local == _localSeleccionado;
+                          return GestureDetector(
+                            onTap: () {
+                              HapticFeedback.selectionClick();
+                              setState(() => _localSeleccionado = local);
+                            },
+                            child: AnimatedContainer(
+                              duration: const Duration(milliseconds: 200),
+                              width: 95,
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color:
+                                    seleccionada
+                                        ? colorAmarilloTese
+                                        : Colors.white,
+                                borderRadius: BorderRadius.circular(18),
+                                boxShadow:
+                                    seleccionada
+                                        ? [
+                                          BoxShadow(
+                                            color: colorAmarilloTese.withValues(
+                                              alpha: 0.4,
+                                            ),
+                                            blurRadius: 8,
+                                            offset: const Offset(0, 4),
+                                          ),
+                                        ]
+                                        : [],
+                              ),
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(
+                                    local == 'Todos'
+                                        ? Icons.map
+                                        : Icons.storefront,
+                                    color:
+                                        seleccionada
+                                            ? colorVerdeOscuro
+                                            : colorVerdeTese,
+                                    size: 28,
+                                  ),
+                                  const SizedBox(height: 6),
+                                  Text(
+                                    local,
+                                    textAlign: TextAlign.center,
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: GoogleFonts.poppins(
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.bold,
+                                      color:
+                                          seleccionada
+                                              ? colorVerdeOscuro
+                                              : colorTextoOscuro,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                  ],
                 ),
               ),
               const SizedBox(height: 16),
@@ -780,7 +995,7 @@ class _CatalogoEstudianteScreenState extends State<CatalogoEstudianteScreen> {
               const SizedBox(height: 14),
               CarouselSlider(
                 options: CarouselOptions(
-                  height: 130.0,
+                  height: 110.0,
                   autoPlay: true,
                   enlargeCenterPage: true,
                   autoPlayInterval: const Duration(seconds: 4),
@@ -828,7 +1043,7 @@ class _CatalogoEstudianteScreenState extends State<CatalogoEstudianteScreen> {
                                 Icon(
                                   Icons.local_fire_department,
                                   color: colorTexto,
-                                  size: 46,
+                                  size: 36,
                                 ),
                                 Expanded(
                                   child: Padding(
@@ -838,7 +1053,7 @@ class _CatalogoEstudianteScreenState extends State<CatalogoEstudianteScreen> {
                                     child: Text(
                                       texto,
                                       style: GoogleFonts.poppins(
-                                        fontSize: 17.0,
+                                        fontSize: 15.0,
                                         color: colorTexto,
                                         fontWeight: FontWeight.bold,
                                       ),
@@ -1072,6 +1287,79 @@ class _CatalogoEstudianteScreenState extends State<CatalogoEstudianteScreen> {
                             );
                           },
                         ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class PedidoEnviadoScreen extends StatelessWidget {
+  const PedidoEnviadoScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: colorVerdeTese,
+      body: Center(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 24.0),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              BounceInDown(
+                child: Image.asset(
+                  'assets/compraHecha.png',
+                  height: 220,
+                  fit: BoxFit.contain,
+                ),
+              ),
+              const SizedBox(height: 30),
+              FadeInUp(
+                child: Text(
+                  '¡Pedido Enviado!',
+                  style: GoogleFonts.poppins(
+                    fontSize: 32,
+                    fontWeight: FontWeight.w900,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+              FadeInUp(
+                delay: const Duration(milliseconds: 200),
+                child: Text(
+                  'Tu orden ya está en la cafetería.\nRevisa el menú de "Mis Pedidos" para ver el estado en tiempo real.',
+                  textAlign: TextAlign.center,
+                  style: GoogleFonts.poppins(
+                    fontSize: 16,
+                    color: Colors.white70,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 40),
+              FadeInUp(
+                delay: const Duration(milliseconds: 400),
+                child: ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: colorAmarilloTese,
+                    minimumSize: const Size(double.infinity, 55),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(15),
+                    ),
+                  ),
+                  onPressed: () => Navigator.pop(context),
+                  child: Text(
+                    'Ir a mis pedidos',
+                    style: GoogleFonts.poppins(
+                      color: colorVerdeOscuro,
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
               ),
             ],
           ),

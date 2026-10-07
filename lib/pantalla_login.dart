@@ -2,8 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:animate_do/animate_do.dart';
 import 'colores.dart';
-import 'pantalla_menu.dart';
+import 'pantalla_menu.dart'; // Para navegar a la app después del login
 
+// ==========================================
+// PANTALLA DE LOGIN
+// ==========================================
 class LoginEstudianteScreen extends StatelessWidget {
   const LoginEstudianteScreen({super.key});
 
@@ -64,7 +67,7 @@ class LoginEstudianteScreen extends StatelessWidget {
                     FadeInLeft(
                       child: TextField(
                         decoration: InputDecoration(
-                          labelText: 'Matrícula',
+                          labelText: 'Matrícula / No. Empleado',
                           prefixIcon: const Icon(
                             Icons.badge,
                             color: colorVerdeTese,
@@ -163,6 +166,12 @@ class LoginEstudianteScreen extends StatelessWidget {
   }
 }
 
+// ==========================================
+// PANTALLA DE REGISTRO (MULTIRROL)
+// ==========================================
+// ==========================================
+// PANTALLA DE REGISTRO (MULTIRROL ACTUALIZADO)
+// ==========================================
 class RegistroEstudianteScreen extends StatefulWidget {
   const RegistroEstudianteScreen({super.key});
 
@@ -172,14 +181,25 @@ class RegistroEstudianteScreen extends StatefulWidget {
 }
 
 class _RegistroEstudianteScreenState extends State<RegistroEstudianteScreen> {
-  String? carreraSeleccionada;
-  final List<String> carrerasTese = [
-    'Ing. en Sistemas Computacionales',
-    'Ing. Informática',
+  // VARIABLES DE ESTADO PARA LA LÓGICA INTELIGENTE
+  String rolSeleccionado = 'Estudiante';
+  final List<String> opcionesRol = ['Estudiante', 'Maestro', 'Directivo'];
+
+  String? areaSeleccionada;
+  // LA LISTA OFICIAL DE CARRERAS DEL TESE
+  final List<String> areasTese = [
+    'Ing. Aeronáutica',
+    'Ing. Bioquímica',
     'Ing. Electrónica',
-    'Arquitectura',
-    'Contaduría',
-    'Otra',
+    'Ing. en Gestión Empresarial',
+    'Ing. Industrial',
+    'Ing. Informática',
+    'Ing. Mecánica',
+    'Ing. Mecatrónica',
+    'Ing. Química',
+    'Ing. en Sistemas Computacionales',
+    'Lic. en Contaduría Pública',
+    'Otra Área / Administrativo',
   ];
 
   void _simularRegistro() async {
@@ -205,11 +225,19 @@ class _RegistroEstudianteScreenState extends State<RegistroEstudianteScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // TEXTOS DINÁMICOS SEGÚN EL ROL ELEGIDO
+    String labelIdentificador =
+        rolSeleccionado == 'Estudiante' ? 'Matrícula' : 'Número de Empleado';
+    IconData iconIdentificador =
+        rolSeleccionado == 'Estudiante' ? Icons.badge : Icons.work_outline;
+    String labelArea =
+        rolSeleccionado == 'Estudiante' ? 'Carrera' : 'Departamento / Academia';
+
     return Scaffold(
       backgroundColor: colorFondoCrema,
       appBar: AppBar(
         title: Text(
-          'Nuevo Estudiante',
+          'Crear Cuenta',
           style: GoogleFonts.poppins(
             color: colorVerdeTese,
             fontWeight: FontWeight.bold,
@@ -223,6 +251,7 @@ class _RegistroEstudianteScreenState extends State<RegistroEstudianteScreen> {
         padding: const EdgeInsets.all(24.0),
         child: Column(
           children: [
+            // FOTO DE PERFIL
             FadeInDown(
               child: Stack(
                 alignment: Alignment.bottomRight,
@@ -263,6 +292,8 @@ class _RegistroEstudianteScreenState extends State<RegistroEstudianteScreen> {
               ),
             ),
             const SizedBox(height: 28),
+
+            // FORMULARIO CON SOMBRA
             Container(
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
@@ -278,7 +309,34 @@ class _RegistroEstudianteScreenState extends State<RegistroEstudianteScreen> {
               ),
               child: Column(
                 children: [
+                  // 1. SELECTOR DE ROL
                   FadeInLeft(
+                    delay: const Duration(milliseconds: 50),
+                    child: DropdownButtonFormField<String>(
+                      isExpanded: true,
+                      decoration: _decoracionCampo(
+                        '¿Qué rol tienes?',
+                        Icons.groups,
+                      ),
+                      value: rolSeleccionado,
+                      items:
+                          opcionesRol
+                              .map(
+                                (r) =>
+                                    DropdownMenuItem(value: r, child: Text(r)),
+                              )
+                              .toList(),
+                      onChanged: (val) {
+                        setState(() {
+                          rolSeleccionado = val!;
+                        });
+                      },
+                    ),
+                  ),
+                  const SizedBox(height: 15),
+
+                  // 2. NOMBRE
+                  FadeInRight(
                     delay: const Duration(milliseconds: 100),
                     child: TextField(
                       decoration: _decoracionCampo(
@@ -288,39 +346,72 @@ class _RegistroEstudianteScreenState extends State<RegistroEstudianteScreen> {
                     ),
                   ),
                   const SizedBox(height: 15),
-                  FadeInRight(
+
+                  // 3. MATRÍCULA / NÓMINA (DINÁMICO)
+                  FadeInLeft(
                     delay: const Duration(milliseconds: 200),
                     child: TextField(
                       keyboardType: TextInputType.number,
-                      decoration: _decoracionCampo('Matrícula', Icons.badge),
+                      decoration: _decoracionCampo(
+                        labelIdentificador,
+                        iconIdentificador,
+                      ),
                     ),
                   ),
                   const SizedBox(height: 15),
-                  FadeInLeft(
+
+                  // 4. CARRERA / DEPARTAMENTO OFICIAL TESE
+                  FadeInRight(
                     delay: const Duration(milliseconds: 300),
                     child: DropdownButtonFormField<String>(
-                      decoration: _decoracionCampo('Carrera', Icons.school),
-                      value: carreraSeleccionada,
+                      isExpanded: true,
+                      decoration: _decoracionCampo(labelArea, Icons.school),
+                      value: areaSeleccionada,
                       items:
-                          carrerasTese
+                          areasTese
                               .map(
-                                (c) =>
-                                    DropdownMenuItem(value: c, child: Text(c)),
+                                (c) => DropdownMenuItem(
+                                  value: c,
+                                  child: Text(
+                                    c,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
                               )
                               .toList(),
                       onChanged:
-                          (val) => setState(() => carreraSeleccionada = val),
+                          (val) => setState(() => areaSeleccionada = val),
                     ),
                   ),
                   const SizedBox(height: 15),
+
+                  // 5. CORREO INSTITUCIONAL (¡NUEVO!)
+                  FadeInLeft(
+                    delay: const Duration(milliseconds: 350),
+                    child: TextField(
+                      keyboardType: TextInputType.emailAddress,
+                      decoration: _decoracionCampo(
+                        'Correo Institucional',
+                        Icons.email,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 15),
+
+                  // 6. TELÉFONO
                   FadeInRight(
                     delay: const Duration(milliseconds: 400),
                     child: TextField(
                       keyboardType: TextInputType.phone,
-                      decoration: _decoracionCampo('Teléfono', Icons.phone),
+                      decoration: _decoracionCampo(
+                        'Teléfono a 10 dígitos',
+                        Icons.phone,
+                      ),
                     ),
                   ),
                   const SizedBox(height: 15),
+
+                  // 7. CONTRASEÑA
                   FadeInLeft(
                     delay: const Duration(milliseconds: 500),
                     child: TextField(
@@ -331,29 +422,47 @@ class _RegistroEstudianteScreenState extends State<RegistroEstudianteScreen> {
                       ),
                     ),
                   ),
+                  const SizedBox(height: 15),
+
+                  // 8. CONFIRMAR CONTRASEÑA (¡NUEVO!)
+                  FadeInRight(
+                    delay: const Duration(milliseconds: 550),
+                    child: TextField(
+                      obscureText: true,
+                      decoration: _decoracionCampo(
+                        'Confirmar Contraseña',
+                        Icons.lock_clock,
+                      ),
+                    ),
+                  ),
                 ],
               ),
             ),
             const SizedBox(height: 28),
+
+            // BOTÓN REGISTRAR
             FadeInUp(
               delay: const Duration(milliseconds: 600),
-              child: ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: colorVerdeTese,
-                  elevation: 4,
-                  shadowColor: colorVerdeTese.withValues(alpha: 0.5),
-                  minimumSize: const Size(double.infinity, 55),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(15),
+              child: SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: colorVerdeTese,
+                    elevation: 4,
+                    shadowColor: colorVerdeTese.withValues(alpha: 0.5),
+                    minimumSize: const Size(double.infinity, 55),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(15),
+                    ),
                   ),
-                ),
-                onPressed: _simularRegistro,
-                child: Text(
-                  'Registrarme',
-                  style: GoogleFonts.poppins(
-                    color: Colors.white,
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
+                  onPressed: _simularRegistro,
+                  child: Text(
+                    'Registrarme',
+                    style: GoogleFonts.poppins(
+                      color: Colors.white,
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                 ),
               ),

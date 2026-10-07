@@ -1,3 +1,4 @@
+import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -6,7 +7,8 @@ import 'package:confetti/confetti.dart';
 import 'package:audioplayers/audioplayers.dart';
 import 'colores.dart';
 import 'modelos.dart';
-import 'pantalla_menu.dart';
+
+final AudioPlayer reproductorGlobal = AudioPlayer();
 
 class CarritoScreen extends StatefulWidget {
   final List<Platillo> carrito;
@@ -123,6 +125,15 @@ class _CarritoScreenState extends State<CarritoScreen> {
                         ),
                         onPressed: () {
                           HapticFeedback.heavyImpact();
+                          try {
+                            reproductorGlobal.play(
+                              AssetSource('exito.mp3'),
+                              volume: 1.0,
+                            );
+                          } catch (e) {
+                            debugPrint('Error: $e');
+                          }
+
                           if (context.mounted) {
                             Navigator.pop(context);
                             widget.onVaciar();
@@ -237,7 +248,7 @@ class _CarritoScreenState extends State<CarritoScreen> {
                             ),
                             padding: const EdgeInsets.symmetric(
                               horizontal: 16,
-                              vertical: 6,
+                              vertical: 10,
                             ),
                             decoration: BoxDecoration(
                               color: Colors.white,
@@ -259,6 +270,17 @@ class _CarritoScreenState extends State<CarritoScreen> {
                                   color: colorTextoOscuro,
                                 ),
                               ),
+                              subtitle:
+                                  item.personalizacion.isNotEmpty
+                                      ? Text(
+                                        item.personalizacion.join(' • '),
+                                        style: GoogleFonts.poppins(
+                                          fontSize: 12,
+                                          color: Colors.redAccent,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      )
+                                      : null,
                               trailing: Text(
                                 '\$${item.precio.toStringAsFixed(2)}',
                                 style: GoogleFonts.poppins(
@@ -294,27 +316,6 @@ class _CarritoScreenState extends State<CarritoScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    TextField(
-                      controller: _notasCtrl,
-                      decoration: InputDecoration(
-                        hintText: 'Instrucciones especiales (ej. Sin cebolla)',
-                        hintStyle: GoogleFonts.poppins(
-                          fontSize: 13,
-                          color: colorTextoGris,
-                        ),
-                        prefixIcon: const Icon(
-                          Icons.edit_note,
-                          color: colorAmarilloTese,
-                        ),
-                        filled: true,
-                        fillColor: colorFondoCrema,
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: BorderSide.none,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 20),
                     Text(
                       'Método de pago al recoger:',
                       style: GoogleFonts.poppins(
@@ -487,108 +488,6 @@ class _CarritoScreenState extends State<CarritoScreen> {
   }
 }
 
-class PedidoEnviadoScreen extends StatefulWidget {
-  const PedidoEnviadoScreen({super.key});
-
-  @override
-  State<PedidoEnviadoScreen> createState() => _PedidoEnviadoScreenState();
-}
-
-class _PedidoEnviadoScreenState extends State<PedidoEnviadoScreen> {
-  final AudioPlayer _audioPlayerExito = AudioPlayer();
-
-  @override
-  void initState() {
-    super.initState();
-    _reproducirSonido();
-  }
-
-  void _reproducirSonido() async {
-    try {
-      await _audioPlayerExito.play(AssetSource('exito.mp3'), volume: 1.0);
-    } catch (e) {
-      debugPrint('Error reproduciendo sonido: $e');
-    }
-  }
-
-  @override
-  void dispose() {
-    _audioPlayerExito.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: colorVerdeTese,
-      body: Center(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24.0),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              BounceInDown(
-                child: Image.asset(
-                  'assets/compraHecha.png',
-                  height: 220,
-                  fit: BoxFit.contain,
-                ),
-              ),
-              const SizedBox(height: 30),
-              FadeInUp(
-                child: Text(
-                  '¡Pedido Enviado!',
-                  style: GoogleFonts.poppins(
-                    fontSize: 32,
-                    fontWeight: FontWeight.w900,
-                    color: Colors.white,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 16),
-              FadeInUp(
-                delay: const Duration(milliseconds: 200),
-                child: Text(
-                  'Tu orden ya está en la cafetería.\nRevisa el menú de "Mis Pedidos" para ver el estado en tiempo real.',
-                  textAlign: TextAlign.center,
-                  style: GoogleFonts.poppins(
-                    fontSize: 16,
-                    color: Colors.white70,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 40),
-              FadeInUp(
-                delay: const Duration(milliseconds: 400),
-                child: ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: colorAmarilloTese,
-                    minimumSize: const Size(double.infinity, 55),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(15),
-                    ),
-                  ),
-                  onPressed: () {
-                    Navigator.pop(context);
-                  },
-                  child: Text(
-                    'Ir a mis pedidos',
-                    style: GoogleFonts.poppins(
-                      color: colorVerdeOscuro,
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
 class SalaEsperaScreen extends StatefulWidget {
   final String codigoPedido;
   const SalaEsperaScreen({super.key, required this.codigoPedido});
@@ -646,6 +545,10 @@ class _SalaEsperaScreenState extends State<SalaEsperaScreen> {
         elevation: 0,
         centerTitle: true,
         iconTheme: IconThemeData(color: colorTextoTop),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () => Navigator.pop(context),
+        ),
       ),
       body: Stack(
         children: [
@@ -720,7 +623,8 @@ class _SalaEsperaScreenState extends State<SalaEsperaScreen> {
         titulo: '¡Ya está listo!',
         subtitulo: 'Muestra tu código para recoger tu comida.',
         cargando: false,
-        mostrarBoton: false,
+        mostrarBoton: true,
+        accionBoton: () => Navigator.pop(context),
         imagenAsset: 'assets/patito_listo.png',
         colorTextoTitulo: Colors.white,
         colorTextoSub: Colors.white70,
@@ -791,13 +695,16 @@ class _BarraProgresoPedido extends StatelessWidget {
 class _PantallaEstadoFull extends StatelessWidget {
   final String titulo, subtitulo, imagenAsset;
   final bool cargando, mostrarBoton;
+  final VoidCallback? accionBoton;
   final Color colorTextoTitulo, colorTextoSub;
+
   const _PantallaEstadoFull({
     super.key,
     required this.titulo,
     required this.subtitulo,
     required this.cargando,
     this.mostrarBoton = false,
+    this.accionBoton,
     required this.imagenAsset,
     required this.colorTextoTitulo,
     required this.colorTextoSub,
@@ -834,6 +741,181 @@ class _PantallaEstadoFull extends StatelessWidget {
                 color: colorAmarilloTese,
                 strokeWidth: 2.6,
               ),
+            if (mostrarBoton)
+              ZoomIn(
+                child: ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.white,
+                    minimumSize: const Size(double.infinity, 55),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(15),
+                    ),
+                  ),
+                  onPressed: accionBoton,
+                  child: const Text(
+                    'Volver al Menú',
+                    style: TextStyle(
+                      color: colorExito,
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ==========================================
+// PANTALLA INDEPENDIENTE DE RESEÑAS
+// ==========================================
+class PantallaResena extends StatefulWidget {
+  final String codigoPedido;
+  const PantallaResena({super.key, required this.codigoPedido});
+
+  @override
+  State<PantallaResena> createState() => _PantallaResenaState();
+}
+
+class _PantallaResenaState extends State<PantallaResena> {
+  int estrellasSeleccionadas = 0;
+  final TextEditingController _comentarioCtrl = TextEditingController();
+
+  @override
+  void dispose() {
+    _comentarioCtrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: colorFondoCrema,
+      appBar: AppBar(
+        title: Text(
+          'Calificar Orden',
+          style: GoogleFonts.poppins(
+            color: colorVerdeTese,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        iconTheme: const IconThemeData(color: colorVerdeTese),
+      ),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(24.0),
+        child: Column(
+          children: [
+            BounceInDown(
+              child: Image.asset('assets/disfrutaTuComida.png', height: 180),
+            ),
+            const SizedBox(height: 24),
+            Text(
+              '¿Qué te pareció?',
+              style: GoogleFonts.poppins(
+                fontSize: 28,
+                fontWeight: FontWeight.w900,
+                color: colorVerdeTese,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Califica tu experiencia con la orden ${widget.codigoPedido}',
+              textAlign: TextAlign.center,
+              style: GoogleFonts.poppins(fontSize: 15, color: colorTextoGris),
+            ),
+            const SizedBox(height: 40),
+
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: List.generate(5, (index) {
+                return GestureDetector(
+                  onTap: () {
+                    HapticFeedback.heavyImpact();
+                    setState(() => estrellasSeleccionadas = index + 1);
+                  },
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 200),
+                    child: Icon(
+                      index < estrellasSeleccionadas
+                          ? Icons.star_rounded
+                          : Icons.star_outline_rounded,
+                      color:
+                          index < estrellasSeleccionadas
+                              ? colorAmarilloTese
+                              : Colors.grey[300],
+                      size: 55,
+                    ),
+                  ),
+                );
+              }),
+            ),
+            const SizedBox(height: 40),
+
+            FadeInUp(
+              child: TextField(
+                controller: _comentarioCtrl,
+                maxLines: 3,
+                decoration: InputDecoration(
+                  hintText: 'Cuéntanos qué te gustó más (Opcional)',
+                  hintStyle: GoogleFonts.poppins(
+                    color: colorTextoGris,
+                    fontSize: 14,
+                  ),
+                  filled: true,
+                  fillColor: Colors.white,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(20),
+                    borderSide: BorderSide.none,
+                  ),
+                  contentPadding: const EdgeInsets.all(20),
+                ),
+              ),
+            ),
+            const SizedBox(height: 50),
+
+            FadeInUp(
+              delay: const Duration(milliseconds: 200),
+              child: SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: colorVerdeTese,
+                    minimumSize: const Size(double.infinity, 60),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(18),
+                    ),
+                  ),
+                  onPressed:
+                      estrellasSeleccionadas == 0
+                          ? null
+                          : () {
+                            HapticFeedback.heavyImpact();
+                            Navigator.pop(context);
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text(
+                                  '¡Gracias por ayudarnos a mejorar! 💛',
+                                ),
+                                backgroundColor: colorExito,
+                              ),
+                            );
+                          },
+                  child: Text(
+                    'Enviar Reseña',
+                    style: GoogleFonts.poppins(
+                      color: Colors.white,
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ),
+            ),
           ],
         ),
       ),
