@@ -43,6 +43,9 @@ dependencies:
   curved_navigation_bar: ^1.0.6
   confetti: ^0.8.0
   audioplayers: ^6.6.0
+  firebase_core: 2.32.0
+  firebase_auth: 4.19.4
+  cloud_firestore: 4.17.2
   
 
 dev_dependencies:
