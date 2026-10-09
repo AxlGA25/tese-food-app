@@ -3,8 +3,6 @@ import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:animate_do/animate_do.dart';
 import 'package:curved_navigation_bar/curved_navigation_bar.dart';
-import 'package:carousel_slider/carousel_slider.dart';
-import 'package:smooth_page_indicator/smooth_page_indicator.dart';
 import 'package:awesome_snackbar_content/awesome_snackbar_content.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'colores.dart';
@@ -102,10 +100,12 @@ class _NavegacionEstudianteState extends State<NavegacionEstudiante> {
                 backgroundColor: colorAmarilloTese,
                 elevation: 6,
                 onPressed: () async {
-                  if (carritoGlobal.isEmpty) return;
+                  if (carritoGlobal.isEmpty) {
+                    return;
+                  }
                   HapticFeedback.lightImpact();
 
-                  final Map<String, dynamic>? resultado = await Navigator.push(
+                  await Navigator.push(
                     context,
                     MaterialPageRoute(
                       builder:
@@ -115,21 +115,6 @@ class _NavegacionEstudianteState extends State<NavegacionEstudiante> {
                           ),
                     ),
                   );
-
-                  if (resultado != null && context.mounted) {
-                    setState(() {
-                      _indiceActual = 1;
-                    });
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder:
-                            (context) => SalaEsperaScreen(
-                              codigoPedido: resultado['codigo'] as String,
-                            ),
-                      ),
-                    );
-                  }
                 },
                 icon: Badge(
                   isLabelVisible: carritoGlobal.isNotEmpty,
@@ -156,97 +141,48 @@ class _NavegacionEstudianteState extends State<NavegacionEstudiante> {
 class MisPedidosScreen extends StatelessWidget {
   const MisPedidosScreen({super.key});
 
-  void _mostrarInfoEstados(BuildContext context) {
+  void _eliminarPedido(BuildContext context, String docId) {
     showDialog(
       context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20),
-          ),
-          title: Row(
-            children: [
-              const Icon(Icons.info_outline, color: colorVerdeTese, size: 28),
-              const SizedBox(width: 10),
-              Text(
-                'Estados del Pedido',
-                style: GoogleFonts.poppins(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 18,
-                  color: colorVerdeTese,
-                ),
-              ),
-            ],
-          ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              _filaInfoColor(
-                Colors.grey[400]!,
-                'Recibido',
-                'La cafetería está confirmando tu pedido.',
-              ),
-              const SizedBox(height: 12),
-              _filaInfoColor(
-                colorAmarilloTese,
-                'Preparando',
-                '¡El chef ya está cocinando tus alimentos!',
-              ),
-              const SizedBox(height: 12),
-              _filaInfoColor(
-                colorExito,
-                '¡Listo!',
-                'Ya puedes acercarte a la ventanilla a recogerlo.',
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: Text(
-                'Entendido',
-                style: GoogleFonts.poppins(
-                  fontWeight: FontWeight.bold,
-                  color: colorVerdeTese,
-                ),
-              ),
+      builder:
+          (ctx) => AlertDialog(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(20),
             ),
-          ],
-        );
-      },
-    );
-  }
-
-  Widget _filaInfoColor(Color color, String titulo, String subtitulo) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Container(
-          margin: const EdgeInsets.only(top: 4),
-          width: 16,
-          height: 16,
-          decoration: BoxDecoration(color: color, shape: BoxShape.circle),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                titulo,
-                style: GoogleFonts.poppins(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 15,
-                ),
+            title: Text(
+              '¿Eliminar pedido?',
+              style: GoogleFonts.poppins(fontWeight: FontWeight.bold),
+            ),
+            content: Text(
+              'Este pedido se quitará de tu historial permanentemente.',
+              style: GoogleFonts.poppins(fontSize: 13.5, color: colorTextoGris),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text('Cancelar'),
               ),
-              Text(
-                subtitulo,
-                style: GoogleFonts.poppins(fontSize: 13, color: colorTextoGris),
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.redAccent,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                onPressed: () {
+                  Navigator.pop(ctx);
+                  FirebaseFirestore.instance
+                      .collection('Pedidos')
+                      .doc(docId)
+                      .delete();
+                },
+                child: const Text(
+                  'Eliminar',
+                  style: TextStyle(color: Colors.white),
+                ),
               ),
             ],
           ),
-        ),
-      ],
     );
   }
 
@@ -258,26 +194,13 @@ class MisPedidosScreen extends StatelessWidget {
         children: [
           Padding(
             padding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  'Mis Pedidos',
-                  style: GoogleFonts.poppins(
-                    fontSize: 26,
-                    fontWeight: FontWeight.bold,
-                    color: colorVerdeTese,
-                  ),
-                ),
-                IconButton(
-                  icon: const Icon(
-                    Icons.help_outline,
-                    color: colorTextoGris,
-                    size: 28,
-                  ),
-                  onPressed: () => _mostrarInfoEstados(context),
-                ),
-              ],
+            child: Text(
+              'Mis Pedidos',
+              style: GoogleFonts.poppins(
+                fontSize: 26,
+                fontWeight: FontWeight.bold,
+                color: colorVerdeTese,
+              ),
             ),
           ),
           Expanded(
@@ -288,23 +211,6 @@ class MisPedidosScreen extends StatelessWidget {
                       .where('alumno', isEqualTo: 'Axel Guerrero')
                       .snapshots(),
               builder: (context, snapshot) {
-                if (snapshot.hasError) {
-                  debugPrint(snapshot.error.toString());
-                  return Center(
-                    child: Padding(
-                      padding: const EdgeInsets.all(20.0),
-                      child: Text(
-                        'Construyendo base de datos...\nEspera unos minutos si es tu primer pedido.',
-                        textAlign: TextAlign.center,
-                        style: GoogleFonts.poppins(
-                          color: Colors.redAccent,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                  );
-                }
-
                 if (snapshot.connectionState == ConnectionState.waiting) {
                   return const Center(
                     child: CircularProgressIndicator(color: colorVerdeTese),
@@ -339,8 +245,12 @@ class MisPedidosScreen extends StatelessWidget {
                   final bData = b.data() as Map<String, dynamic>;
                   final Timestamp? tA = aData['horaLlegada'] as Timestamp?;
                   final Timestamp? tB = bData['horaLlegada'] as Timestamp?;
-                  if (tA == null) return -1;
-                  if (tB == null) return 1;
+                  if (tA == null) {
+                    return -1;
+                  }
+                  if (tB == null) {
+                    return 1;
+                  }
                   return tB.compareTo(tA);
                 });
 
@@ -353,6 +263,7 @@ class MisPedidosScreen extends StatelessWidget {
 
                     int estadoReal = data['estado'] ?? 0;
                     String idPedido = data['idPedido'] ?? '#TESE-0000';
+                    bool yaCalificado = data['calificado'] ?? false;
 
                     Color colorEstado = Colors.grey[400]!;
                     String textoEstado = 'Recibido';
@@ -372,66 +283,55 @@ class MisPedidosScreen extends StatelessWidget {
                       iconoEstado = Icons.task_alt;
                     }
 
-                    return FadeInUp(
-                      child: GestureDetector(
-                        onTap: () {
-                          HapticFeedback.selectionClick();
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder:
-                                  (context) =>
-                                      SalaEsperaScreen(codigoPedido: idPedido),
-                            ),
-                          );
-                        },
-                        child: Container(
-                          margin: const EdgeInsets.only(bottom: 14),
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(20),
-                            boxShadow: [
-                              BoxShadow(
-                                color: colorVerdeTese.withValues(alpha: 0.05),
-                                blurRadius: 10,
-                                offset: const Offset(0, 4),
-                              ),
-                            ],
-                            border: Border.all(
-                              color: colorEstado.withValues(alpha: 0.5),
-                              width: 1.5,
-                            ),
+                    return Container(
+                      margin: const EdgeInsets.only(bottom: 14),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(20),
+                        boxShadow: [
+                          BoxShadow(
+                            color: colorVerdeTese.withValues(alpha: 0.05),
+                            blurRadius: 10,
+                            offset: const Offset(0, 4),
                           ),
-                          child: ClipRRect(
-                            borderRadius: BorderRadius.circular(20),
-                            child: IntrinsicHeight(
-                              child: Row(
-                                crossAxisAlignment: CrossAxisAlignment.stretch,
-                                children: [
-                                  Container(width: 8, color: colorEstado),
-                                  Expanded(
-                                    child: Padding(
-                                      padding: const EdgeInsets.all(16),
-                                      child: Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
+                        ],
+                        border: Border.all(
+                          color: colorEstado.withValues(alpha: 0.5),
+                          width: 1.5,
+                        ),
+                      ),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(20),
+                        child: IntrinsicHeight(
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              Container(width: 8, color: colorEstado),
+                              Expanded(
+                                child: Padding(
+                                  padding: const EdgeInsets.all(16),
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Row(
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.spaceBetween,
                                         children: [
+                                          Text(
+                                            idPedido,
+                                            style: GoogleFonts.poppins(
+                                              fontWeight: FontWeight.w900,
+                                              fontSize: 18,
+                                              color: colorVerdeTese,
+                                            ),
+                                          ),
                                           Row(
-                                            mainAxisAlignment:
-                                                MainAxisAlignment.spaceBetween,
                                             children: [
-                                              Text(
-                                                idPedido,
-                                                style: GoogleFonts.poppins(
-                                                  fontWeight: FontWeight.w900,
-                                                  fontSize: 18,
-                                                  color: colorVerdeTese,
-                                                ),
-                                              ),
                                               Container(
                                                 padding:
                                                     const EdgeInsets.symmetric(
-                                                      horizontal: 10,
+                                                      horizontal: 9,
                                                       vertical: 4,
                                                     ),
                                                 decoration: BoxDecoration(
@@ -462,67 +362,85 @@ class MisPedidosScreen extends StatelessWidget {
                                                   ],
                                                 ),
                                               ),
+                                              if (estadoReal >= 3) ...[
+                                                const SizedBox(width: 4),
+                                                IconButton(
+                                                  icon: const Icon(
+                                                    Icons.delete_outline,
+                                                    color: Colors.redAccent,
+                                                    size: 20,
+                                                  ),
+                                                  onPressed:
+                                                      () => _eliminarPedido(
+                                                        context,
+                                                        pedido.id,
+                                                      ),
+                                                ),
+                                              ],
                                             ],
                                           ),
-                                          const SizedBox(height: 8),
-                                          Text(
-                                            data['horaLlegada'] != null
-                                                ? 'Hoy, hace un momento'
-                                                : 'Procesando...',
-                                            style: GoogleFonts.poppins(
-                                              fontSize: 13,
-                                              color: colorTextoGris,
-                                            ),
-                                          ),
-                                          if (estadoReal == 2 ||
-                                              estadoReal == 3) ...[
-                                            const SizedBox(height: 16),
-                                            SizedBox(
-                                              width: double.infinity,
-                                              child: OutlinedButton.icon(
-                                                style: OutlinedButton.styleFrom(
-                                                  foregroundColor:
-                                                      colorAmarilloTese,
-                                                  side: const BorderSide(
-                                                    color: colorAmarilloTese,
-                                                  ),
-                                                  shape: RoundedRectangleBorder(
-                                                    borderRadius:
-                                                        BorderRadius.circular(
-                                                          12,
-                                                        ),
-                                                  ),
-                                                ),
-                                                icon: const Icon(Icons.star),
-                                                label: Text(
-                                                  'Calificar comida',
-                                                  style: GoogleFonts.poppins(
-                                                    fontWeight: FontWeight.bold,
-                                                  ),
-                                                ),
-                                                onPressed: () {
-                                                  Navigator.push(
-                                                    context,
-                                                    MaterialPageRoute(
-                                                      builder:
-                                                          (context) =>
-                                                              PantallaResena(
-                                                                codigoPedido:
-                                                                    idPedido,
-                                                              ),
-                                                    ),
-                                                  );
-                                                },
-                                              ),
-                                            ),
-                                          ],
                                         ],
                                       ),
-                                    ),
+                                      const SizedBox(height: 8),
+                                      Text(
+                                        data['horaLlegada'] != null
+                                            ? 'Hoy'
+                                            : 'Procesando...',
+                                        style: GoogleFonts.poppins(
+                                          fontSize: 13,
+                                          color: colorTextoGris,
+                                        ),
+                                      ),
+                                      if ((estadoReal == 2 ||
+                                              estadoReal == 3) &&
+                                          !yaCalificado) ...[
+                                        const SizedBox(height: 12),
+                                        SizedBox(
+                                          width: double.infinity,
+                                          child: OutlinedButton.icon(
+                                            style: OutlinedButton.styleFrom(
+                                              foregroundColor:
+                                                  colorAmarilloTese,
+                                              side: const BorderSide(
+                                                color: colorAmarilloTese,
+                                              ),
+                                              shape: RoundedRectangleBorder(
+                                                borderRadius:
+                                                    BorderRadius.circular(12),
+                                              ),
+                                            ),
+                                            icon: const Icon(
+                                              Icons.star,
+                                              size: 18,
+                                            ),
+                                            label: Text(
+                                              'Calificar comida',
+                                              style: GoogleFonts.poppins(
+                                                fontWeight: FontWeight.bold,
+                                                fontSize: 13,
+                                              ),
+                                            ),
+                                            onPressed: () {
+                                              Navigator.push(
+                                                context,
+                                                MaterialPageRoute(
+                                                  builder:
+                                                      (context) =>
+                                                          PantallaResena(
+                                                            codigoPedido:
+                                                                idPedido,
+                                                          ),
+                                                ),
+                                              );
+                                            },
+                                          ),
+                                        ),
+                                      ],
+                                    ],
                                   ),
-                                ],
+                                ),
                               ),
-                            ),
+                            ],
                           ),
                         ),
                       ),
@@ -570,12 +488,6 @@ class _CatalogoEstudianteScreenState extends State<CatalogoEstudianteScreen> {
   String _localSeleccionado = 'Todos';
   final TextEditingController _busquedaCtrl = TextEditingController();
   String _terminoBusqueda = '';
-  int _promoIndex = 0;
-  final List<String> promociones = [
-    '¡2x1 en Chilaquiles hoy!',
-    'Combo Godín a solo \$50',
-    'Postre gratis en compras > \$100',
-  ];
 
   List<Platillo> _filtrarLista(List<Platillo> menuDisponibles) {
     return menuDisponibles.where((p) {
@@ -627,7 +539,9 @@ class _CatalogoEstudianteScreenState extends State<CatalogoEstudianteScreen> {
             ),
       ),
     );
-    if (agregado == true) _mostrarAlertaExito(platillo.nombre);
+    if (agregado == true) {
+      _mostrarAlertaExito(platillo.nombre);
+    }
   }
 
   @override
@@ -850,95 +764,6 @@ class _CatalogoEstudianteScreenState extends State<CatalogoEstudianteScreen> {
                 ),
               ),
               const SizedBox(height: 14),
-              CarouselSlider(
-                options: CarouselOptions(
-                  height: 110.0,
-                  autoPlay: true,
-                  enlargeCenterPage: true,
-                  autoPlayInterval: const Duration(seconds: 4),
-                  onPageChanged:
-                      (index, reason) => setState(() => _promoIndex = index),
-                ),
-                items:
-                    promociones.asMap().entries.map((entry) {
-                      final index = entry.key;
-                      final texto = entry.value;
-                      const gradientes = [
-                        [colorAmarilloTese, Color(0xFFF07B1D)],
-                        [colorRosa, Color(0xFFE88F82)],
-                        [colorSalvia, colorVerdeTese],
-                      ];
-                      const textosClaros = [true, false, true];
-                      final gradiente = gradientes[index % gradientes.length];
-                      final colorTexto =
-                          textosClaros[index % textosClaros.length]
-                              ? Colors.white
-                              : colorVerdeOscuro;
-                      return Builder(
-                        builder: (BuildContext context) {
-                          return Container(
-                            width: MediaQuery.of(context).size.width,
-                            margin: const EdgeInsets.symmetric(horizontal: 5.0),
-                            decoration: BoxDecoration(
-                              gradient: LinearGradient(
-                                begin: Alignment.topLeft,
-                                end: Alignment.bottomRight,
-                                colors: gradiente,
-                              ),
-                              borderRadius: BorderRadius.circular(22),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withValues(alpha: 0.18),
-                                  blurRadius: 12,
-                                  offset: const Offset(0, 6),
-                                ),
-                              ],
-                            ),
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                              children: [
-                                Icon(
-                                  Icons.local_fire_department,
-                                  color: colorTexto,
-                                  size: 36,
-                                ),
-                                Expanded(
-                                  child: Padding(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 8,
-                                    ),
-                                    child: Text(
-                                      texto,
-                                      style: GoogleFonts.poppins(
-                                        fontSize: 15.0,
-                                        color: colorTexto,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                      textAlign: TextAlign.center,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          );
-                        },
-                      );
-                    }).toList(),
-              ),
-              const SizedBox(height: 8),
-              Center(
-                child: AnimatedSmoothIndicator(
-                  activeIndex: _promoIndex,
-                  count: promociones.length,
-                  effect: ExpandingDotsEffect(
-                    dotHeight: 7,
-                    dotWidth: 7,
-                    activeDotColor: colorVerdeTese,
-                    dotColor: colorVerdeTese.withValues(alpha: 0.2),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 10),
               Expanded(
                 child: StreamBuilder<QuerySnapshot>(
                   stream:
@@ -1020,7 +845,7 @@ class _CatalogoEstudianteScreenState extends State<CatalogoEstudianteScreen> {
                         final platillo = platillosFiltrados[index];
                         final acento = acentoDeCategoria(platillo.categoria);
                         return FadeInUp(
-                          delay: Duration(milliseconds: 70 * index),
+                          delay: Duration(milliseconds: 60 * index),
                           child: GestureDetector(
                             onTap: () => _abrirDetalle(platillo),
                             child: Container(
