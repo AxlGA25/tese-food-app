@@ -7,14 +7,13 @@ import 'package:curved_navigation_bar/curved_navigation_bar.dart';
 import 'package:carousel_slider/carousel_slider.dart';
 import 'package:smooth_page_indicator/smooth_page_indicator.dart';
 import 'package:awesome_snackbar_content/awesome_snackbar_content.dart';
-import 'package:cloud_firestore/cloud_firestore.dart'; // IMPORTANTE: LIBRERÍA DE FIREBASE
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'dart:ui';
 import 'colores.dart';
 import 'modelos.dart';
 import 'pantalla_perfil.dart';
 import 'pantalla_pedido.dart';
 import 'pantalla_detalle_platillo.dart';
-import 'pantalla_pedido.dart';
 
 const Map<String, Color> colorPorCategoria = {
   'Todos': colorVerdeTese,
@@ -29,22 +28,6 @@ Color acentoDeCategoria(String categoria) =>
 Color colorTextoSobreAcento(Color fondo) =>
     fondo == colorVerdeTese ? Colors.white : colorVerdeOscuro;
 
-class MiPedidoDummy {
-  final String id;
-  final double total;
-  final String fecha;
-  final String notas;
-  int estado;
-
-  MiPedidoDummy({
-    required this.id,
-    required this.total,
-    required this.fecha,
-    required this.notas,
-    this.estado = 0,
-  });
-}
-
 class NavegacionEstudiante extends StatefulWidget {
   const NavegacionEstudiante({super.key});
 
@@ -55,23 +38,6 @@ class NavegacionEstudiante extends StatefulWidget {
 class _NavegacionEstudianteState extends State<NavegacionEstudiante> {
   int _indiceActual = 0;
   List<Platillo> carritoGlobal = [];
-
-  List<MiPedidoDummy> misPedidosHistorial = [
-    MiPedidoDummy(
-      id: '#TESE-1200',
-      total: 65.0,
-      fecha: 'Hoy, 10:45 AM',
-      notas: '',
-      estado: 2,
-    ),
-    MiPedidoDummy(
-      id: '#TESE-4029',
-      total: 90.0,
-      fecha: 'Hoy, 10:50 AM',
-      notas: 'Sin cebolla',
-      estado: 1,
-    ),
-  ];
 
   void _actualizarCarrito(Platillo p) {
     setState(() {
@@ -92,7 +58,7 @@ class _NavegacionEstudianteState extends State<NavegacionEstudiante> {
         carrito: carritoGlobal,
         onAgregar: _actualizarCarrito,
       ),
-      MisPedidosScreen(historial: misPedidosHistorial),
+      const MisPedidosScreen(), // YA NO LE PASAMOS LA LISTA FALSA
       const PerfilEstudianteScreen(),
     ];
 
@@ -153,28 +119,10 @@ class _NavegacionEstudianteState extends State<NavegacionEstudiante> {
                   );
 
                   if (resultado != null) {
+                    // Si pagó con éxito, cambiamos a la pestaña 1 (Mis Pedidos)
                     setState(() {
-                      misPedidosHistorial.insert(
-                        0,
-                        MiPedidoDummy(
-                          id: '#TESE-${Random().nextInt(9000) + 1000}',
-                          total: resultado['total'],
-                          fecha: 'Hoy, 10:55 AM',
-                          notas: resultado['notas'],
-                          estado: 0,
-                        ),
-                      );
                       _indiceActual = 1;
                     });
-
-                    if (context.mounted) {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => const PedidoEnviadoScreen(),
-                        ),
-                      );
-                    }
                   }
                 },
                 icon: Badge(
@@ -200,8 +148,7 @@ class _NavegacionEstudianteState extends State<NavegacionEstudiante> {
 }
 
 class MisPedidosScreen extends StatelessWidget {
-  final List<MiPedidoDummy> historial;
-  const MisPedidosScreen({super.key, required this.historial});
+  const MisPedidosScreen({super.key});
 
   void _mostrarInfoEstados(BuildContext context) {
     showDialog(
@@ -327,200 +274,235 @@ class MisPedidosScreen extends StatelessWidget {
               ],
             ),
           ),
+
+          // ==========================================
+          // STREAM BUILDER PARA LEER EL HISTORIAL DE PEDIDOS REALES
+          // ==========================================
           Expanded(
-            child:
-                historial.isEmpty
-                    ? Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Image.asset(
-                            'assets/esperandoPedido.png',
-                            height: 150,
+            child: StreamBuilder<QuerySnapshot>(
+              // Leemos de la colección Pedidos (solo los de Axel por ahora) y ordenados del mas nuevo al mas viejo
+              stream:
+                  FirebaseFirestore.instance
+                      .collection('Pedidos')
+                      .where('alumno', isEqualTo: 'Axel Guerrero')
+                      .orderBy('horaLlegada', descending: true)
+                      .snapshots(),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(
+                    child: CircularProgressIndicator(color: colorVerdeTese),
+                  );
+                }
+
+                if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                  return Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Image.asset('assets/esperandoPedido.png', height: 150),
+                        const SizedBox(height: 20),
+                        Text(
+                          'No tienes pedidos activos',
+                          style: GoogleFonts.poppins(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w600,
+                            color: colorTextoGris,
                           ),
-                          const SizedBox(height: 20),
-                          Text(
-                            'No tienes pedidos activos',
-                            style: GoogleFonts.poppins(
-                              fontSize: 18,
-                              fontWeight: FontWeight.w600,
-                              color: colorTextoGris,
+                        ),
+                      ],
+                    ),
+                  );
+                }
+
+                final historial = snapshot.data!.docs;
+
+                return ListView.builder(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  itemCount: historial.length,
+                  itemBuilder: (context, index) {
+                    final pedido = historial[index];
+                    int estadoReal = pedido['estado'] ?? 0;
+
+                    Color colorEstado = Colors.grey[400]!;
+                    String textoEstado = 'Recibido';
+                    IconData iconoEstado = Icons.access_time;
+                    if (estadoReal == 1) {
+                      colorEstado = colorAmarilloTese;
+                      textoEstado = 'Preparando';
+                      iconoEstado = Icons.soup_kitchen;
+                    } else if (estadoReal == 2) {
+                      colorEstado = colorExito;
+                      textoEstado = '¡Listo!';
+                      iconoEstado = Icons.check_circle;
+                    } else if (estadoReal >= 3) {
+                      colorEstado = colorTextoGris;
+                      textoEstado = 'Entregado';
+                      iconoEstado = Icons.task_alt;
+                    }
+
+                    return FadeInUp(
+                      child: GestureDetector(
+                        onTap: () {
+                          HapticFeedback.selectionClick();
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder:
+                                  (context) =>
+                                      SalaEsperaScreen(codigoPedido: pedido.id),
+                            ),
+                          );
+                        },
+                        child: Container(
+                          margin: const EdgeInsets.only(bottom: 14),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(20),
+                            boxShadow: [
+                              BoxShadow(
+                                color: colorVerdeTese.withValues(alpha: 0.05),
+                                blurRadius: 10,
+                                offset: const Offset(0, 4),
+                              ),
+                            ],
+                            border: Border.all(
+                              color: colorEstado.withValues(alpha: 0.5),
+                              width: 1.5,
                             ),
                           ),
-                        ],
-                      ),
-                    )
-                    : ListView.builder(
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      itemCount: historial.length,
-                      itemBuilder: (context, index) {
-                        final pedido = historial[index];
-
-                        Color colorEstado = Colors.grey[400]!;
-                        String textoEstado = 'Recibido';
-                        IconData iconoEstado = Icons.access_time;
-
-                        if (pedido.estado == 1) {
-                          colorEstado = colorAmarilloTese;
-                          textoEstado = 'Preparando';
-                          iconoEstado = Icons.soup_kitchen;
-                        } else if (pedido.estado == 2) {
-                          colorEstado = colorExito;
-                          textoEstado = '¡Listo!';
-                          iconoEstado = Icons.check_circle;
-                        }
-
-                        return FadeInUp(
-                          child: GestureDetector(
-                            onTap: () {
-                              HapticFeedback.selectionClick();
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder:
-                                      (context) => SalaEsperaScreen(
-                                        codigoPedido: pedido.id,
-                                      ),
-                                ),
-                              );
-                            },
-                            child: Container(
-                              margin: const EdgeInsets.only(bottom: 14),
-                              decoration: BoxDecoration(
-                                color: Colors.white,
-                                borderRadius: BorderRadius.circular(20),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: colorVerdeTese.withValues(
-                                      alpha: 0.05,
-                                    ),
-                                    blurRadius: 10,
-                                    offset: const Offset(0, 4),
-                                  ),
-                                ],
-                                border: Border.all(
-                                  color: colorEstado.withValues(alpha: 0.5),
-                                  width: 1.5,
-                                ),
-                              ),
-                              child: ClipRRect(
-                                borderRadius: BorderRadius.circular(20),
-                                child: IntrinsicHeight(
-                                  child: Row(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.stretch,
-                                    children: [
-                                      Container(width: 8, color: colorEstado),
-                                      Expanded(
-                                        child: Padding(
-                                          padding: const EdgeInsets.all(16),
-                                          child: Column(
-                                            crossAxisAlignment:
-                                                CrossAxisAlignment.start,
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(20),
+                            child: IntrinsicHeight(
+                              child: Row(
+                                crossAxisAlignment: CrossAxisAlignment.stretch,
+                                children: [
+                                  Container(width: 8, color: colorEstado),
+                                  Expanded(
+                                    child: Padding(
+                                      padding: const EdgeInsets.all(16),
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Row(
+                                            mainAxisAlignment:
+                                                MainAxisAlignment.spaceBetween,
                                             children: [
-                                              Row(
-                                                mainAxisAlignment:
-                                                    MainAxisAlignment
-                                                        .spaceBetween,
-                                                children: [
-                                                  Text(
-                                                    pedido.id,
-                                                    style: GoogleFonts.poppins(
-                                                      fontWeight:
-                                                          FontWeight.w900,
-                                                      fontSize: 18,
-                                                      color: colorVerdeTese,
-                                                    ),
-                                                  ),
-                                                  Container(
-                                                    padding:
-                                                        const EdgeInsets.symmetric(
-                                                          horizontal: 10,
-                                                          vertical: 4,
-                                                        ),
-                                                    decoration: BoxDecoration(
-                                                      color: colorEstado
-                                                          .withValues(
-                                                            alpha: 0.15,
-                                                          ),
-                                                      borderRadius:
-                                                          BorderRadius.circular(
-                                                            10,
-                                                          ),
-                                                    ),
-                                                    child: Row(
-                                                      children: [
-                                                        Icon(
-                                                          iconoEstado,
-                                                          size: 14,
-                                                          color: colorEstado,
-                                                        ),
-                                                        const SizedBox(
-                                                          width: 4,
-                                                        ),
-                                                        Text(
-                                                          textoEstado,
-                                                          style:
-                                                              GoogleFonts.poppins(
-                                                                fontSize: 12,
-                                                                fontWeight:
-                                                                    FontWeight
-                                                                        .bold,
-                                                                color:
-                                                                    colorEstado,
-                                                              ),
-                                                        ),
-                                                      ],
-                                                    ),
-                                                  ),
-                                                ],
-                                              ),
-                                              const SizedBox(height: 8),
                                               Text(
-                                                pedido.fecha,
+                                                pedido.id,
                                                 style: GoogleFonts.poppins(
-                                                  fontSize: 13,
-                                                  color: colorTextoGris,
+                                                  fontWeight: FontWeight.w900,
+                                                  fontSize: 18,
+                                                  color: colorVerdeTese,
                                                 ),
                                               ),
-                                              if (pedido.notas.isNotEmpty) ...[
-                                                const Divider(height: 24),
-                                                Row(
-                                                  children: [
-                                                    const Icon(
-                                                      Icons.edit_note,
-                                                      size: 16,
-                                                      color: colorAmarilloTese,
+                                              Container(
+                                                padding:
+                                                    const EdgeInsets.symmetric(
+                                                      horizontal: 10,
+                                                      vertical: 4,
                                                     ),
-                                                    const SizedBox(width: 8),
-                                                    Expanded(
-                                                      child: Text(
-                                                        'Notas: ${pedido.notas}',
-                                                        style: GoogleFonts.poppins(
-                                                          fontSize: 13,
-                                                          color:
-                                                              colorTextoOscuro,
-                                                          fontStyle:
-                                                              FontStyle.italic,
-                                                        ),
-                                                      ),
+                                                decoration: BoxDecoration(
+                                                  color: colorEstado.withValues(
+                                                    alpha: 0.15,
+                                                  ),
+                                                  borderRadius:
+                                                      BorderRadius.circular(10),
+                                                ),
+                                                child: Row(
+                                                  children: [
+                                                    Icon(
+                                                      iconoEstado,
+                                                      size: 14,
+                                                      color: colorEstado,
+                                                    ),
+                                                    const SizedBox(width: 4),
+                                                    Text(
+                                                      textoEstado,
+                                                      style:
+                                                          GoogleFonts.poppins(
+                                                            fontSize: 12,
+                                                            fontWeight:
+                                                                FontWeight.bold,
+                                                            color: colorEstado,
+                                                          ),
                                                     ),
                                                   ],
                                                 ),
-                                              ],
+                                              ),
                                             ],
                                           ),
-                                        ),
+                                          const SizedBox(height: 8),
+
+                                          // Validamos si Firebase nos mandó la fecha correctamente
+                                          Text(
+                                            pedido['horaLlegada'] != null
+                                                ? 'Hoy, hace un momento'
+                                                : 'Procesando...',
+                                            style: GoogleFonts.poppins(
+                                              fontSize: 13,
+                                              color: colorTextoGris,
+                                            ),
+                                          ),
+
+                                          // CONDICIONAL DEL BOTON CALIFICAR
+                                          if (estadoReal == 2 ||
+                                              estadoReal == 3) ...[
+                                            const SizedBox(height: 16),
+                                            SizedBox(
+                                              width: double.infinity,
+                                              child: OutlinedButton.icon(
+                                                style: OutlinedButton.styleFrom(
+                                                  foregroundColor:
+                                                      colorAmarilloTese,
+                                                  side: const BorderSide(
+                                                    color: colorAmarilloTese,
+                                                  ),
+                                                  shape: RoundedRectangleBorder(
+                                                    borderRadius:
+                                                        BorderRadius.circular(
+                                                          12,
+                                                        ),
+                                                  ),
+                                                ),
+                                                icon: const Icon(Icons.star),
+                                                label: Text(
+                                                  'Calificar comida',
+                                                  style: GoogleFonts.poppins(
+                                                    fontWeight: FontWeight.bold,
+                                                  ),
+                                                ),
+                                                onPressed: () {
+                                                  Navigator.push(
+                                                    context,
+                                                    MaterialPageRoute(
+                                                      builder:
+                                                          (context) =>
+                                                              PantallaResena(
+                                                                codigoPedido:
+                                                                    pedido.id,
+                                                              ),
+                                                    ),
+                                                  );
+                                                },
+                                              ),
+                                            ),
+                                          ],
+                                        ],
                                       ),
-                                    ],
+                                    ),
                                   ),
-                                ),
+                                ],
                               ),
                             ),
                           ),
-                        );
-                      },
-                    ),
+                        ),
+                      ),
+                    );
+                  },
+                );
+              },
+            ),
           ),
         ],
       ),
@@ -566,6 +548,20 @@ class _CatalogoEstudianteScreenState extends State<CatalogoEstudianteScreen> {
     'Combo Godín a solo \$50',
     'Postre gratis en compras > \$100',
   ];
+
+  List<Platillo> _filtrarLista(List<Platillo> menuDisponibles) {
+    return menuDisponibles.where((p) {
+      final coincideCategoria =
+          _categoriaSeleccionada == 'Todos' ||
+          p.categoria == _categoriaSeleccionada;
+      final coincideLocal =
+          _localSeleccionado == 'Todos' || p.local == _localSeleccionado;
+      final coincideBusqueda =
+          _terminoBusqueda.isEmpty ||
+          p.nombre.toLowerCase().contains(_terminoBusqueda.toLowerCase());
+      return coincideCategoria && coincideLocal && coincideBusqueda;
+    }).toList();
+  }
 
   @override
   void dispose() {
@@ -916,9 +912,6 @@ class _CatalogoEstudianteScreenState extends State<CatalogoEstudianteScreen> {
               ),
               const SizedBox(height: 10),
 
-              // ==========================================
-              // EL MAGICO STREAM BUILDER (ESCUCHA LA NUBE)
-              // ==========================================
               Expanded(
                 child: StreamBuilder<QuerySnapshot>(
                   stream:
@@ -926,22 +919,18 @@ class _CatalogoEstudianteScreenState extends State<CatalogoEstudianteScreen> {
                           .collection('Menu_Platillos')
                           .snapshots(),
                   builder: (context, snapshot) {
-                    if (snapshot.connectionState == ConnectionState.waiting) {
+                    if (snapshot.connectionState == ConnectionState.waiting)
                       return const Center(
                         child: CircularProgressIndicator(color: colorVerdeTese),
                       );
-                    }
-
-                    if (snapshot.hasError) {
+                    if (snapshot.hasError)
                       return Center(
                         child: Text(
                           'Error al cargar el menú',
                           style: const TextStyle(color: Colors.red),
                         ),
                       );
-                    }
-
-                    if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                    if (!snapshot.hasData || snapshot.data!.docs.isEmpty)
                       return Center(
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
@@ -962,34 +951,16 @@ class _CatalogoEstudianteScreenState extends State<CatalogoEstudianteScreen> {
                           ],
                         ),
                       );
-                    }
 
-                    // Traducción Firebase -> App
                     List<Platillo> menuDisponibles =
                         snapshot.data!.docs
                             .map((doc) => Platillo.fromFirestore(doc))
                             .toList();
+                    List<Platillo> platillosFiltrados = _filtrarLista(
+                      menuDisponibles,
+                    );
 
-                    // Aplicamos filtros de la UI
-                    List<Platillo> platillosFiltrados =
-                        menuDisponibles.where((p) {
-                          final coincideCategoria =
-                              _categoriaSeleccionada == 'Todos' ||
-                              p.categoria == _categoriaSeleccionada;
-                          final coincideLocal =
-                              _localSeleccionado == 'Todos' ||
-                              p.local == _localSeleccionado;
-                          final coincideBusqueda =
-                              _terminoBusqueda.isEmpty ||
-                              p.nombre.toLowerCase().contains(
-                                _terminoBusqueda.toLowerCase(),
-                              );
-                          return coincideCategoria &&
-                              coincideLocal &&
-                              coincideBusqueda;
-                        }).toList();
-
-                    if (platillosFiltrados.isEmpty) {
+                    if (platillosFiltrados.isEmpty)
                       return Center(
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
@@ -1010,7 +981,6 @@ class _CatalogoEstudianteScreenState extends State<CatalogoEstudianteScreen> {
                           ],
                         ),
                       );
-                    }
 
                     return ListView.builder(
                       padding: const EdgeInsets.fromLTRB(16, 0, 16, 90),

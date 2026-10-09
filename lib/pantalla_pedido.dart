@@ -5,8 +5,10 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:animate_do/animate_do.dart';
 import 'package:confetti/confetti.dart';
 import 'package:audioplayers/audioplayers.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'colores.dart';
 import 'modelos.dart';
+import 'pantalla_menu.dart';
 
 final AudioPlayer reproductorGlobal = AudioPlayer();
 
@@ -26,6 +28,7 @@ class CarritoScreen extends StatefulWidget {
 class _CarritoScreenState extends State<CarritoScreen> {
   String metodoPago = 'Efectivo';
   final TextEditingController _notasCtrl = TextEditingController();
+  bool _estaCargando = false;
 
   @override
   void dispose() {
@@ -40,122 +43,190 @@ class _CarritoScreenState extends State<CarritoScreen> {
       backgroundColor: Colors.transparent,
       isScrollControlled: true,
       builder:
-          (context) => Container(
-            padding: EdgeInsets.only(
-              bottom: MediaQuery.of(context).viewInsets.bottom + 24,
-              top: 24,
-              left: 24,
-              right: 24,
-            ),
-            decoration: const BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.only(
-                topLeft: Radius.circular(30),
-                topRight: Radius.circular(30),
-              ),
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Center(
-                  child: Container(
-                    width: 50,
-                    height: 5,
-                    decoration: BoxDecoration(
-                      color: Colors.grey[300],
-                      borderRadius: BorderRadius.circular(10),
-                    ),
+          (context) => StatefulBuilder(
+            builder: (context, setStateModal) {
+              return Container(
+                padding: EdgeInsets.only(
+                  bottom: MediaQuery.of(context).viewInsets.bottom + 24,
+                  top: 24,
+                  left: 24,
+                  right: 24,
+                ),
+                decoration: const BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.only(
+                    topLeft: Radius.circular(30),
+                    topRight: Radius.circular(30),
                   ),
                 ),
-                const SizedBox(height: 20),
-                const Icon(
-                  Icons.info_outline,
-                  size: 60,
-                  color: colorAmarilloTese,
-                ),
-                const SizedBox(height: 16),
-                Text(
-                  'Confirmar Compra',
-                  style: GoogleFonts.poppins(
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
-                    color: colorTextoOscuro,
-                  ),
-                ),
-                const SizedBox(height: 10),
-                Text(
-                  'Estás a punto de enviar tu pedido a la cafetería por un total de \$${total.toStringAsFixed(2)}.',
-                  textAlign: TextAlign.center,
-                  style: GoogleFonts.poppins(
-                    color: colorTextoGris,
-                    fontSize: 14,
-                  ),
-                ),
-                const SizedBox(height: 30),
-                Row(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
                   children: [
-                    Expanded(
-                      child: OutlinedButton(
-                        style: OutlinedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(vertical: 16),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(15),
-                          ),
-                          side: BorderSide(color: Colors.grey[300]!),
-                        ),
-                        onPressed: () => Navigator.pop(context),
-                        child: Text(
-                          'Cancelar',
-                          style: GoogleFonts.poppins(
-                            color: colorTextoGris,
-                            fontWeight: FontWeight.bold,
-                          ),
+                    Center(
+                      child: Container(
+                        width: 50,
+                        height: 5,
+                        decoration: BoxDecoration(
+                          color: Colors.grey[300],
+                          borderRadius: BorderRadius.circular(10),
                         ),
                       ),
                     ),
-                    const SizedBox(width: 15),
-                    Expanded(
-                      child: ElevatedButton(
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: colorExito,
-                          padding: const EdgeInsets.symmetric(vertical: 16),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(15),
-                          ),
-                        ),
-                        onPressed: () {
-                          HapticFeedback.heavyImpact();
-                          try {
-                            reproductorGlobal.play(
-                              AssetSource('exito.mp3'),
-                              volume: 1.0,
-                            );
-                          } catch (e) {
-                            debugPrint('Error: $e');
-                          }
-
-                          if (context.mounted) {
-                            Navigator.pop(context);
-                            widget.onVaciar();
-                            Navigator.pop(context, {
-                              'total': total,
-                              'notas': _notasCtrl.text,
-                            });
-                          }
-                        },
-                        child: Text(
-                          '¡Pagar!',
-                          style: GoogleFonts.poppins(
-                            color: Colors.white,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
+                    const SizedBox(height: 20),
+                    const Icon(
+                      Icons.info_outline,
+                      size: 60,
+                      color: colorAmarilloTese,
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      'Confirmar Compra',
+                      style: GoogleFonts.poppins(
+                        fontSize: 24,
+                        fontWeight: FontWeight.bold,
+                        color: colorTextoOscuro,
                       ),
+                    ),
+                    const SizedBox(height: 10),
+                    Text(
+                      'Estás a punto de enviar tu pedido a la cafetería por un total de \$${total.toStringAsFixed(2)}.',
+                      textAlign: TextAlign.center,
+                      style: GoogleFonts.poppins(
+                        color: colorTextoGris,
+                        fontSize: 14,
+                      ),
+                    ),
+                    const SizedBox(height: 30),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: OutlinedButton(
+                            style: OutlinedButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(vertical: 16),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(15),
+                              ),
+                              side: BorderSide(color: Colors.grey[300]!),
+                            ),
+                            onPressed:
+                                _estaCargando
+                                    ? null
+                                    : () => Navigator.pop(context),
+                            child: Text(
+                              'Cancelar',
+                              style: GoogleFonts.poppins(
+                                color: colorTextoGris,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 15),
+                        Expanded(
+                          child: ElevatedButton(
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: colorExito,
+                              padding: const EdgeInsets.symmetric(vertical: 16),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(15),
+                              ),
+                            ),
+                            onPressed:
+                                _estaCargando
+                                    ? null
+                                    : () async {
+                                      HapticFeedback.heavyImpact();
+                                      setStateModal(() {
+                                        _estaCargando = true;
+                                      });
+
+                                      try {
+                                        String codigoUnico =
+                                            '#TESE-${Random().nextInt(90000) + 10000}';
+
+                                        // Unimos la lista y sus notas de extra/sin en un texto
+                                        String detallesCocina = widget.carrito
+                                            .map((p) {
+                                              String personalizacion =
+                                                  p.personalizacion.isNotEmpty
+                                                      ? '\n  • ${p.personalizacion.join('\n  • ')}'
+                                                      : '';
+                                              return '1x ${p.nombre}$personalizacion';
+                                            })
+                                            .join('\n\n');
+
+                                        String notasAdicionales =
+                                            _notasCtrl.text.trim();
+                                        if (notasAdicionales.isNotEmpty) {
+                                          detallesCocina +=
+                                              '\n\nNOTAS: $notasAdicionales';
+                                        }
+
+                                        // GUARDAMOS EN LA NUBE REAL
+                                        await FirebaseFirestore.instance
+                                            .collection('Pedidos')
+                                            .doc(codigoUnico)
+                                            .set({
+                                              'idPedido': codigoUnico,
+                                              'alumno': 'Axel Guerrero',
+                                              'detalle': detallesCocina,
+                                              'metodoPago': metodoPago,
+                                              'notas': notasAdicionales,
+                                              'total': total,
+                                              'estado': 0,
+                                              'horaLlegada':
+                                                  FieldValue.serverTimestamp(),
+                                            });
+
+                                        try {
+                                          reproductorGlobal.play(
+                                            AssetSource('exito.mp3'),
+                                            volume: 1.0,
+                                          );
+                                        } catch (e) {
+                                          debugPrint("Audio Error");
+                                        }
+
+                                        if (context.mounted) {
+                                          Navigator.pop(context);
+                                          widget.onVaciar();
+                                          Navigator.pop(context, {
+                                            'total': total,
+                                            'notas': _notasCtrl.text,
+                                            'codigo': codigoUnico,
+                                          });
+                                        }
+                                      } catch (e) {
+                                        setStateModal(() {
+                                          _estaCargando = false;
+                                        });
+                                      }
+                                    },
+                            child:
+                                _estaCargando
+                                    ? const SizedBox(
+                                      height: 20,
+                                      width: 20,
+                                      child: CircularProgressIndicator(
+                                        color: Colors.white,
+                                        strokeWidth: 2,
+                                      ),
+                                    )
+                                    : Text(
+                                      '¡Pagar!',
+                                      style: GoogleFonts.poppins(
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),
-              ],
-            ),
+              );
+            },
           ),
     );
   }
@@ -316,6 +387,27 @@ class _CarritoScreenState extends State<CarritoScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    TextField(
+                      controller: _notasCtrl,
+                      decoration: InputDecoration(
+                        hintText: 'Instrucciones opcionales extras',
+                        hintStyle: GoogleFonts.poppins(
+                          fontSize: 13,
+                          color: colorTextoGris,
+                        ),
+                        prefixIcon: const Icon(
+                          Icons.edit_note,
+                          color: colorAmarilloTese,
+                        ),
+                        filled: true,
+                        fillColor: colorFondoCrema,
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide.none,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 20),
                     Text(
                       'Método de pago al recoger:',
                       style: GoogleFonts.poppins(
@@ -488,6 +580,9 @@ class _CarritoScreenState extends State<CarritoScreen> {
   }
 }
 
+// ==========================================
+// SALA DE ESPERA (CONECTADA EN TIEMPO REAL)
+// ==========================================
 class SalaEsperaScreen extends StatefulWidget {
   final String codigoPedido;
   const SalaEsperaScreen({super.key, required this.codigoPedido});
@@ -497,8 +592,8 @@ class SalaEsperaScreen extends StatefulWidget {
 }
 
 class _SalaEsperaScreenState extends State<SalaEsperaScreen> {
-  int estadoActual = 0;
   late final ConfettiController _confettiController;
+  int _ultimoEstadoLeido = -1; // Para que el confeti no explote mil veces
 
   @override
   void initState() {
@@ -506,7 +601,6 @@ class _SalaEsperaScreenState extends State<SalaEsperaScreen> {
     _confettiController = ConfettiController(
       duration: const Duration(seconds: 2),
     );
-    _simularAvancePedido();
   }
 
   @override
@@ -515,84 +609,104 @@ class _SalaEsperaScreenState extends State<SalaEsperaScreen> {
     super.dispose();
   }
 
-  void _simularAvancePedido() async {
-    await Future.delayed(const Duration(seconds: 4));
-    if (mounted) setState(() => estadoActual = 1);
-    await Future.delayed(const Duration(seconds: 4));
-    if (mounted) {
-      setState(() => estadoActual = 2);
-      _confettiController.play();
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
-    Color colorFondo = estadoActual == 2 ? colorExito : Colors.white;
-    Color colorTextoTop = estadoActual == 2 ? Colors.white : colorVerdeTese;
-    return Scaffold(
-      backgroundColor: colorFondo,
-      extendBodyBehindAppBar: true,
-      appBar: AppBar(
-        title: Text(
-          'Orden: ${widget.codigoPedido}',
-          style: GoogleFonts.poppins(
-            color: colorTextoTop,
-            fontWeight: FontWeight.bold,
-            fontSize: 22,
-          ),
-        ),
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        centerTitle: true,
-        iconTheme: IconThemeData(color: colorTextoTop),
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
-          onPressed: () => Navigator.pop(context),
-        ),
-      ),
-      body: Stack(
-        children: [
-          AnimatedContainer(
-            duration: const Duration(milliseconds: 800),
-            color: colorFondo,
-            width: double.infinity,
-            height: double.infinity,
-            child: SafeArea(
-              child: Column(
-                children: [
-                  const SizedBox(height: 90),
-                  _BarraProgresoPedido(
-                    estadoActual: estadoActual,
-                    colorTexto: colorTextoTop,
-                  ),
-                  Expanded(
-                    child: AnimatedSwitcher(
-                      duration: const Duration(milliseconds: 800),
-                      child: _construirPantallaPorEstado(estadoActual),
-                    ),
-                  ),
-                ],
+    // ESCUCHAMOS EL DOCUMENTO EXACTO DE ESTA COMPRA EN LA NUBE
+    return StreamBuilder<DocumentSnapshot>(
+      stream:
+          FirebaseFirestore.instance
+              .collection('Pedidos')
+              .doc(widget.codigoPedido)
+              .snapshots(),
+      builder: (context, snapshot) {
+        // Si hay un error o está cargando, mostramos la pantalla genérica de carga
+        if (!snapshot.hasData || !snapshot.data!.exists) {
+          return const Scaffold(
+            backgroundColor: colorVerdeTese,
+            body: Center(
+              child: CircularProgressIndicator(color: colorAmarilloTese),
+            ),
+          );
+        }
+
+        // Leemos el estado real que la cafetería apretó en su tablet
+        int estadoActual = snapshot.data!.get('estado') ?? 0;
+
+        // Disparamos el confeti solo la primera vez que llegue al estado 2 (Listo)
+        if (estadoActual == 2 && _ultimoEstadoLeido != 2) {
+          _confettiController.play();
+          _ultimoEstadoLeido = 2;
+        }
+
+        Color colorFondo = estadoActual == 2 ? colorExito : Colors.white;
+        Color colorTextoTop = estadoActual == 2 ? Colors.white : colorVerdeTese;
+
+        return Scaffold(
+          backgroundColor: colorFondo,
+          extendBodyBehindAppBar: true,
+          appBar: AppBar(
+            title: Text(
+              'Orden: ${widget.codigoPedido}',
+              style: GoogleFonts.poppins(
+                color: colorTextoTop,
+                fontWeight: FontWeight.bold,
+                fontSize: 22,
               ),
             ),
-          ),
-          Align(
-            alignment: Alignment.topCenter,
-            child: ConfettiWidget(
-              confettiController: _confettiController,
-              blastDirectionality: BlastDirectionality.explosive,
-              shouldLoop: false,
-              numberOfParticles: 24,
-              gravity: 0.25,
-              colors: const [
-                colorAmarilloTese,
-                colorExito,
-                Colors.white,
-                colorVerdeTese,
-              ],
+            backgroundColor: Colors.transparent,
+            elevation: 0,
+            centerTitle: true,
+            iconTheme: IconThemeData(color: colorTextoTop),
+            leading: IconButton(
+              icon: const Icon(Icons.arrow_back),
+              onPressed: () => Navigator.pop(context),
             ),
           ),
-        ],
-      ),
+          body: Stack(
+            children: [
+              AnimatedContainer(
+                duration: const Duration(milliseconds: 800),
+                color: colorFondo,
+                width: double.infinity,
+                height: double.infinity,
+                child: SafeArea(
+                  child: Column(
+                    children: [
+                      const SizedBox(height: 90),
+                      _BarraProgresoPedido(
+                        estadoActual: estadoActual,
+                        colorTexto: colorTextoTop,
+                      ),
+                      Expanded(
+                        child: AnimatedSwitcher(
+                          duration: const Duration(milliseconds: 800),
+                          child: _construirPantallaPorEstado(estadoActual),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              Align(
+                alignment: Alignment.topCenter,
+                child: ConfettiWidget(
+                  confettiController: _confettiController,
+                  blastDirectionality: BlastDirectionality.explosive,
+                  shouldLoop: false,
+                  numberOfParticles: 24,
+                  gravity: 0.25,
+                  colors: const [
+                    colorAmarilloTese,
+                    colorExito,
+                    Colors.white,
+                    colorVerdeTese,
+                  ],
+                ),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 
@@ -601,7 +715,7 @@ class _SalaEsperaScreenState extends State<SalaEsperaScreen> {
       return _PantallaEstadoFull(
         key: const ValueKey(0),
         titulo: 'Pedido Recibido',
-        subtitulo: 'Esperando confirmación...',
+        subtitulo: 'Esperando confirmación de la cafetería...',
         cargando: true,
         imagenAsset: 'assets/patito_recibido.png',
         colorTextoTitulo: colorVerdeTese,
@@ -611,7 +725,7 @@ class _SalaEsperaScreenState extends State<SalaEsperaScreen> {
       return _PantallaEstadoFull(
         key: const ValueKey(1),
         titulo: 'En Preparación',
-        subtitulo: '¡Preparando tus hambreados!',
+        subtitulo: '¡El Chef está cocinando tus hambreados!',
         cargando: true,
         imagenAsset: 'assets/patito_chef.png',
         colorTextoTitulo: colorVerdeTese,
@@ -640,7 +754,6 @@ class _BarraProgresoPedido extends StatelessWidget {
     required this.estadoActual,
     required this.colorTexto,
   });
-
   @override
   Widget build(BuildContext context) {
     final etiquetas = ['Recibido', 'Preparando', 'Listo'];
@@ -697,7 +810,6 @@ class _PantallaEstadoFull extends StatelessWidget {
   final bool cargando, mostrarBoton;
   final VoidCallback? accionBoton;
   final Color colorTextoTitulo, colorTextoSub;
-
   const _PantallaEstadoFull({
     super.key,
     required this.titulo,
@@ -769,9 +881,6 @@ class _PantallaEstadoFull extends StatelessWidget {
   }
 }
 
-// ==========================================
-// PANTALLA INDEPENDIENTE DE RESEÑAS
-// ==========================================
 class PantallaResena extends StatefulWidget {
   final String codigoPedido;
   const PantallaResena({super.key, required this.codigoPedido});
@@ -829,7 +938,6 @@ class _PantallaResenaState extends State<PantallaResena> {
               style: GoogleFonts.poppins(fontSize: 15, color: colorTextoGris),
             ),
             const SizedBox(height: 40),
-
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: List.generate(5, (index) {
@@ -855,7 +963,6 @@ class _PantallaResenaState extends State<PantallaResena> {
               }),
             ),
             const SizedBox(height: 40),
-
             FadeInUp(
               child: TextField(
                 controller: _comentarioCtrl,
@@ -877,7 +984,6 @@ class _PantallaResenaState extends State<PantallaResena> {
               ),
             ),
             const SizedBox(height: 50),
-
             FadeInUp(
               delay: const Duration(milliseconds: 200),
               child: SizedBox(
@@ -917,104 +1023,6 @@ class _PantallaResenaState extends State<PantallaResena> {
               ),
             ),
           ],
-        ),
-      ),
-    );
-  }
-}
-
-// ==========================================
-// PANTALLA: ÉXITO AL ENVIAR PEDIDO
-// ==========================================
-class PedidoEnviadoScreen extends StatefulWidget {
-  const PedidoEnviadoScreen({super.key});
-
-  @override
-  State<PedidoEnviadoScreen> createState() => _PedidoEnviadoScreenState();
-}
-
-class _PedidoEnviadoScreenState extends State<PedidoEnviadoScreen> {
-  @override
-  void initState() {
-    super.initState();
-    // ¡SUENA EL PATO INMORTAL!
-    _reproducirSonido();
-  }
-
-  void _reproducirSonido() {
-    try {
-      reproductorGlobal.play(AssetSource('exito.mp3'), volume: 1.0);
-    } catch (e) {
-      debugPrint('Error de audio: $e');
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: colorVerdeTese,
-      body: Center(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24.0),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              BounceInDown(
-                child: Image.asset(
-                  'assets/compraHecha.png',
-                  height: 220,
-                  fit: BoxFit.contain,
-                ),
-              ),
-              const SizedBox(height: 30),
-              FadeInUp(
-                child: Text(
-                  '¡Pedido Enviado!',
-                  style: GoogleFonts.poppins(
-                    fontSize: 32,
-                    fontWeight: FontWeight.w900,
-                    color: Colors.white,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 16),
-              FadeInUp(
-                delay: const Duration(milliseconds: 200),
-                child: Text(
-                  'Tu orden ya está en la cafetería.\nRevisa el menú de "Mis Pedidos" para ver el estado en tiempo real.',
-                  textAlign: TextAlign.center,
-                  style: GoogleFonts.poppins(
-                    fontSize: 16,
-                    color: Colors.white70,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 40),
-              FadeInUp(
-                delay: const Duration(milliseconds: 400),
-                child: ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: colorAmarilloTese,
-                    minimumSize: const Size(double.infinity, 55),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(15),
-                    ),
-                  ),
-                  onPressed: () {
-                    Navigator.pop(context);
-                  },
-                  child: Text(
-                    'Ir a mis pedidos',
-                    style: GoogleFonts.poppins(
-                      color: colorVerdeOscuro,
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
         ),
       ),
     );
