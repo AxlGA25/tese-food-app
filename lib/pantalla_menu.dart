@@ -7,12 +7,14 @@ import 'package:curved_navigation_bar/curved_navigation_bar.dart';
 import 'package:carousel_slider/carousel_slider.dart';
 import 'package:smooth_page_indicator/smooth_page_indicator.dart';
 import 'package:awesome_snackbar_content/awesome_snackbar_content.dart';
+import 'package:cloud_firestore/cloud_firestore.dart'; // IMPORTANTE: LIBRERÍA DE FIREBASE
 import 'dart:ui';
 import 'colores.dart';
 import 'modelos.dart';
 import 'pantalla_perfil.dart';
 import 'pantalla_pedido.dart';
 import 'pantalla_detalle_platillo.dart';
+import 'pantalla_pedido.dart';
 
 const Map<String, Color> colorPorCategoria = {
   'Todos': colorVerdeTese,
@@ -31,12 +33,14 @@ class MiPedidoDummy {
   final String id;
   final double total;
   final String fecha;
+  final String notas;
   int estado;
 
   MiPedidoDummy({
     required this.id,
     required this.total,
     required this.fecha,
+    required this.notas,
     this.estado = 0,
   });
 }
@@ -57,12 +61,14 @@ class _NavegacionEstudianteState extends State<NavegacionEstudiante> {
       id: '#TESE-1200',
       total: 65.0,
       fecha: 'Hoy, 10:45 AM',
+      notas: '',
       estado: 2,
     ),
     MiPedidoDummy(
       id: '#TESE-4029',
       total: 90.0,
       fecha: 'Hoy, 10:50 AM',
+      notas: 'Sin cebolla',
       estado: 1,
     ),
   ];
@@ -154,6 +160,7 @@ class _NavegacionEstudianteState extends State<NavegacionEstudiante> {
                           id: '#TESE-${Random().nextInt(9000) + 1000}',
                           total: resultado['total'],
                           fecha: 'Hoy, 10:55 AM',
+                          notas: resultado['notas'],
                           estado: 0,
                         ),
                       );
@@ -476,53 +483,29 @@ class MisPedidosScreen extends StatelessWidget {
                                                   color: colorTextoGris,
                                                 ),
                                               ),
-
-                                              // BOTON CONDICIONAL PARA CALIFICAR
-                                              if (pedido.estado == 2) ...[
-                                                const SizedBox(height: 16),
-                                                SizedBox(
-                                                  width: double.infinity,
-                                                  child: OutlinedButton.icon(
-                                                    style: OutlinedButton.styleFrom(
-                                                      foregroundColor:
-                                                          colorAmarilloTese,
-                                                      side: const BorderSide(
-                                                        color:
-                                                            colorAmarilloTese,
-                                                      ),
-                                                      shape: RoundedRectangleBorder(
-                                                        borderRadius:
-                                                            BorderRadius.circular(
-                                                              12,
-                                                            ),
-                                                      ),
+                                              if (pedido.notas.isNotEmpty) ...[
+                                                const Divider(height: 24),
+                                                Row(
+                                                  children: [
+                                                    const Icon(
+                                                      Icons.edit_note,
+                                                      size: 16,
+                                                      color: colorAmarilloTese,
                                                     ),
-                                                    icon: const Icon(
-                                                      Icons.star,
-                                                    ),
-                                                    label: Text(
-                                                      'Calificar comida',
-                                                      style:
-                                                          GoogleFonts.poppins(
-                                                            fontWeight:
-                                                                FontWeight.bold,
-                                                          ),
-                                                    ),
-                                                    onPressed: () {
-                                                      Navigator.push(
-                                                        context,
-                                                        MaterialPageRoute(
-                                                          builder:
-                                                              (context) =>
-                                                                  PantallaResena(
-                                                                    codigoPedido:
-                                                                        pedido
-                                                                            .id,
-                                                                  ),
+                                                    const SizedBox(width: 8),
+                                                    Expanded(
+                                                      child: Text(
+                                                        'Notas: ${pedido.notas}',
+                                                        style: GoogleFonts.poppins(
+                                                          fontSize: 13,
+                                                          color:
+                                                              colorTextoOscuro,
+                                                          fontStyle:
+                                                              FontStyle.italic,
                                                         ),
-                                                      );
-                                                    },
-                                                  ),
+                                                      ),
+                                                    ),
+                                                  ],
                                                 ),
                                               ],
                                             ],
@@ -560,141 +543,6 @@ class CatalogoEstudianteScreen extends StatefulWidget {
 }
 
 class _CatalogoEstudianteScreenState extends State<CatalogoEstudianteScreen> {
-  final List<Platillo> menuDisponibles = [
-    Platillo(
-      id: '1',
-      nombre: 'Chilaquiles Verdes',
-      local: 'Cafetería Central',
-      precio: 45.0,
-      categoria: 'Desayunos',
-      icono: Icons.breakfast_dining,
-      descripcion:
-          'Totopos bañados en salsa verde, con crema, queso fresco y cebolla.',
-      calificacion: 4.7,
-      tiempoPrep: '10-15 min',
-      popular: true,
-      ingredientes: ['Cebolla', 'Crema', 'Queso', 'Pollo'],
-    ),
-    Platillo(
-      id: '2',
-      nombre: 'Hot Cakes con Miel',
-      local: 'Cafetería Central',
-      precio: 35.0,
-      categoria: 'Desayunos',
-      icono: Icons.bakery_dining,
-      descripcion: 'Hot cakes esponjositos, con miel y mantequilla al gusto.',
-      calificacion: 4.5,
-      tiempoPrep: '8-10 min',
-      ingredientes: ['Mantequilla', 'Miel'],
-    ),
-    Platillo(
-      id: '3',
-      nombre: 'Licuado de Fresa',
-      local: 'Kiosko Biblioteca',
-      precio: 30.0,
-      categoria: 'Desayunos',
-      icono: Icons.local_drink,
-      descripcion: 'Licuado cremoso de fresa con leche, bien frío.',
-      calificacion: 4.6,
-      tiempoPrep: '5 min',
-    ),
-    Platillo(
-      id: '4',
-      nombre: 'Hamburguesa Clásica',
-      local: 'Kiosko Sistemas',
-      precio: 65.0,
-      categoria: 'Comida',
-      icono: Icons.lunch_dining,
-      descripcion:
-          'Carne a la plancha, queso, lechuga, jitomate y nuestra salsa especial.',
-      calificacion: 4.8,
-      tiempoPrep: '12-15 min',
-      popular: true,
-      ingredientes: ['Queso', 'Jitomate', 'Cebolla', 'Mayonesa', 'Mostaza'],
-    ),
-    Platillo(
-      id: '5',
-      nombre: 'Orden de Tacos (4)',
-      local: 'Cafetería Central',
-      precio: 40.0,
-      categoria: 'Comida',
-      icono: Icons.dinner_dining,
-      descripcion: 'Cuatro tacos al pastor con piña, cebolla y cilantro.',
-      calificacion: 4.9,
-      tiempoPrep: '10 min',
-      popular: true,
-      ingredientes: ['Piña', 'Cebolla', 'Cilantro', 'Salsa Roja'],
-    ),
-    Platillo(
-      id: '6',
-      nombre: 'Torta de Milanesa',
-      local: 'Kiosko Sistemas',
-      precio: 55.0,
-      categoria: 'Comida',
-      icono: Icons.fastfood,
-      descripcion:
-          'Milanesa empanizada con aguacate, jitomate, frijoles y mayonesa.',
-      calificacion: 4.6,
-      tiempoPrep: '12 min',
-    ),
-    Platillo(
-      id: '7',
-      nombre: 'Arroz con Pollo',
-      local: 'Cafetería Central',
-      precio: 50.0,
-      categoria: 'Comida',
-      icono: Icons.rice_bowl,
-      descripcion: 'Arroz guisado con pollo deshebrado y verduras salteadas.',
-      calificacion: 4.4,
-      tiempoPrep: '15 min',
-    ),
-    Platillo(
-      id: '8',
-      nombre: 'Jugo de Naranja',
-      local: 'Kiosko Biblioteca',
-      precio: 25.0,
-      categoria: 'Bebidas',
-      icono: Icons.emoji_food_beverage,
-      descripcion: 'Jugo de naranja recién exprimido, bien frío.',
-      calificacion: 4.5,
-      tiempoPrep: '5 min',
-    ),
-    Platillo(
-      id: '9',
-      nombre: 'Café Americano',
-      local: 'Cafetería Central',
-      precio: 20.0,
-      categoria: 'Bebidas',
-      icono: Icons.coffee,
-      descripcion: 'Café negro recién hecho, tamaño grande.',
-      calificacion: 4.3,
-      tiempoPrep: '3 min',
-    ),
-    Platillo(
-      id: '10',
-      nombre: 'Gelatina de Mosaico',
-      local: 'Cafetería Central',
-      precio: 15.0,
-      categoria: 'Postres',
-      icono: Icons.icecream,
-      descripcion: 'Gelatina de varios sabores en cuadritos, con leche.',
-      calificacion: 4.2,
-      tiempoPrep: 'Listo',
-    ),
-    Platillo(
-      id: '11',
-      nombre: 'Pay de Queso',
-      local: 'Kiosko Sistemas',
-      precio: 30.0,
-      categoria: 'Postres',
-      icono: Icons.cake,
-      descripcion: 'Rebanada de pay de queso cremoso con zarzamora.',
-      calificacion: 4.7,
-      tiempoPrep: 'Listo',
-      popular: true,
-    ),
-  ];
-
   final List<String> _categorias = const [
     'Todos',
     'Desayunos',
@@ -718,20 +566,6 @@ class _CatalogoEstudianteScreenState extends State<CatalogoEstudianteScreen> {
     'Combo Godín a solo \$50',
     'Postre gratis en compras > \$100',
   ];
-
-  List<Platillo> get _platillosFiltrados {
-    return menuDisponibles.where((p) {
-      final coincideCategoria =
-          _categoriaSeleccionada == 'Todos' ||
-          p.categoria == _categoriaSeleccionada;
-      final coincideLocal =
-          _localSeleccionado == 'Todos' || p.local == _localSeleccionado;
-      final coincideBusqueda =
-          _terminoBusqueda.isEmpty ||
-          p.nombre.toLowerCase().contains(_terminoBusqueda.toLowerCase());
-      return coincideCategoria && coincideLocal && coincideBusqueda;
-    }).toList();
-  }
 
   @override
   void dispose() {
@@ -774,7 +608,6 @@ class _CatalogoEstudianteScreenState extends State<CatalogoEstudianteScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final platillosFiltrados = _platillosFiltrados;
     return Scaffold(
       body: Container(
         decoration: BoxDecoration(
@@ -1082,283 +915,278 @@ class _CatalogoEstudianteScreenState extends State<CatalogoEstudianteScreen> {
                 ),
               ),
               const SizedBox(height: 10),
+
+              // ==========================================
+              // EL MAGICO STREAM BUILDER (ESCUCHA LA NUBE)
+              // ==========================================
               Expanded(
-                child:
-                    platillosFiltrados.isEmpty
-                        ? Center(
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(
-                                Icons.search_off,
-                                size: 52,
-                                color: colorTextoGris.withValues(alpha: 0.5),
+                child: StreamBuilder<QuerySnapshot>(
+                  stream:
+                      FirebaseFirestore.instance
+                          .collection('Menu_Platillos')
+                          .snapshots(),
+                  builder: (context, snapshot) {
+                    if (snapshot.connectionState == ConnectionState.waiting) {
+                      return const Center(
+                        child: CircularProgressIndicator(color: colorVerdeTese),
+                      );
+                    }
+
+                    if (snapshot.hasError) {
+                      return Center(
+                        child: Text(
+                          'Error al cargar el menú',
+                          style: const TextStyle(color: Colors.red),
+                        ),
+                      );
+                    }
+
+                    if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                      return Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              Icons.search_off,
+                              size: 52,
+                              color: colorTextoGris.withValues(alpha: 0.5),
+                            ),
+                            const SizedBox(height: 10),
+                            Text(
+                              'El menú está vacío',
+                              style: GoogleFonts.poppins(
+                                color: colorTextoGris,
+                                fontWeight: FontWeight.w600,
                               ),
-                              const SizedBox(height: 10),
-                              Text(
-                                'No encontramos nada aquí',
-                                style: GoogleFonts.poppins(
-                                  color: colorTextoGris,
-                                  fontWeight: FontWeight.w600,
-                                ),
+                            ),
+                          ],
+                        ),
+                      );
+                    }
+
+                    // Traducción Firebase -> App
+                    List<Platillo> menuDisponibles =
+                        snapshot.data!.docs
+                            .map((doc) => Platillo.fromFirestore(doc))
+                            .toList();
+
+                    // Aplicamos filtros de la UI
+                    List<Platillo> platillosFiltrados =
+                        menuDisponibles.where((p) {
+                          final coincideCategoria =
+                              _categoriaSeleccionada == 'Todos' ||
+                              p.categoria == _categoriaSeleccionada;
+                          final coincideLocal =
+                              _localSeleccionado == 'Todos' ||
+                              p.local == _localSeleccionado;
+                          final coincideBusqueda =
+                              _terminoBusqueda.isEmpty ||
+                              p.nombre.toLowerCase().contains(
+                                _terminoBusqueda.toLowerCase(),
+                              );
+                          return coincideCategoria &&
+                              coincideLocal &&
+                              coincideBusqueda;
+                        }).toList();
+
+                    if (platillosFiltrados.isEmpty) {
+                      return Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              Icons.search_off,
+                              size: 52,
+                              color: colorTextoGris.withValues(alpha: 0.5),
+                            ),
+                            const SizedBox(height: 10),
+                            Text(
+                              'No encontramos nada aquí',
+                              style: GoogleFonts.poppins(
+                                color: colorTextoGris,
+                                fontWeight: FontWeight.w600,
                               ),
-                            ],
-                          ),
-                        )
-                        : ListView.builder(
-                          padding: const EdgeInsets.fromLTRB(16, 0, 16, 90),
-                          itemCount: platillosFiltrados.length,
-                          itemBuilder: (context, index) {
-                            final platillo = platillosFiltrados[index];
-                            final acento = acentoDeCategoria(
-                              platillo.categoria,
-                            );
-                            return FadeInUp(
-                              delay: Duration(milliseconds: 70 * index),
-                              child: GestureDetector(
-                                onTap: () => _abrirDetalle(platillo),
-                                child: Container(
-                                  margin: const EdgeInsets.only(bottom: 14),
-                                  padding: const EdgeInsets.all(14),
-                                  decoration: BoxDecoration(
-                                    color: Colors.white,
-                                    borderRadius: BorderRadius.circular(20),
-                                    boxShadow: [
-                                      BoxShadow(
-                                        color: colorVerdeTese.withValues(
-                                          alpha: 0.07,
-                                        ),
-                                        blurRadius: 14,
-                                        offset: const Offset(0, 6),
-                                      ),
-                                    ],
+                            ),
+                          ],
+                        ),
+                      );
+                    }
+
+                    return ListView.builder(
+                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 90),
+                      itemCount: platillosFiltrados.length,
+                      itemBuilder: (context, index) {
+                        final platillo = platillosFiltrados[index];
+                        final acento = acentoDeCategoria(platillo.categoria);
+                        return FadeInUp(
+                          delay: Duration(milliseconds: 70 * index),
+                          child: GestureDetector(
+                            onTap: () => _abrirDetalle(platillo),
+                            child: Container(
+                              margin: const EdgeInsets.only(bottom: 14),
+                              padding: const EdgeInsets.all(14),
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(20),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: colorVerdeTese.withValues(
+                                      alpha: 0.07,
+                                    ),
+                                    blurRadius: 14,
+                                    offset: const Offset(0, 6),
                                   ),
-                                  child: Row(
+                                ],
+                              ),
+                              child: Row(
+                                children: [
+                                  Stack(
+                                    clipBehavior: Clip.none,
                                     children: [
-                                      Stack(
-                                        clipBehavior: Clip.none,
-                                        children: [
-                                          Container(
-                                            padding: const EdgeInsets.all(14),
-                                            decoration: BoxDecoration(
-                                              color: acento.withValues(
-                                                alpha: 0.16,
-                                              ),
-                                              borderRadius:
-                                                  BorderRadius.circular(16),
-                                            ),
-                                            child: Icon(
-                                              platillo.icono,
-                                              color: colorTextoOscuro,
-                                              size: 28,
-                                            ),
+                                      Container(
+                                        padding: const EdgeInsets.all(14),
+                                        decoration: BoxDecoration(
+                                          color: acento.withValues(alpha: 0.16),
+                                          borderRadius: BorderRadius.circular(
+                                            16,
                                           ),
-                                          if (platillo.popular)
-                                            Positioned(
-                                              top: -6,
-                                              left: -6,
-                                              child: Container(
-                                                padding:
-                                                    const EdgeInsets.symmetric(
-                                                      horizontal: 5,
-                                                      vertical: 1,
-                                                    ),
-                                                decoration: BoxDecoration(
-                                                  color: colorAmarilloTese,
-                                                  borderRadius:
-                                                      BorderRadius.circular(8),
-                                                  boxShadow: [
-                                                    BoxShadow(
-                                                      color: Colors.black
-                                                          .withValues(
-                                                            alpha: 0.15,
-                                                          ),
-                                                      blurRadius: 4,
-                                                    ),
-                                                  ],
-                                                ),
-                                                child: const Text(
-                                                  '🔥',
-                                                  style: TextStyle(
-                                                    fontSize: 11,
-                                                  ),
-                                                ),
-                                              ),
-                                            ),
-                                        ],
+                                        ),
+                                        child: Icon(
+                                          platillo.icono,
+                                          color: colorTextoOscuro,
+                                          size: 28,
+                                        ),
                                       ),
-                                      const SizedBox(width: 14),
-                                      Expanded(
-                                        child: Column(
-                                          crossAxisAlignment:
-                                              CrossAxisAlignment.start,
-                                          children: [
-                                            Text(
-                                              platillo.nombre,
-                                              style: GoogleFonts.poppins(
-                                                fontWeight: FontWeight.w600,
-                                                fontSize: 15.5,
-                                                color: colorTextoOscuro,
-                                              ),
+                                      if (platillo.popular)
+                                        Positioned(
+                                          top: -6,
+                                          left: -6,
+                                          child: Container(
+                                            padding: const EdgeInsets.symmetric(
+                                              horizontal: 5,
+                                              vertical: 1,
                                             ),
-                                            const SizedBox(height: 3),
-                                            Text(
-                                              platillo.local,
-                                              style: GoogleFonts.poppins(
-                                                fontSize: 12.5,
-                                                color: colorTextoGris,
-                                              ),
-                                            ),
-                                            const SizedBox(height: 4),
-                                            Row(
-                                              children: [
-                                                const Icon(
-                                                  Icons.star_rounded,
-                                                  size: 14,
-                                                  color: colorAmarilloTese,
-                                                ),
-                                                const SizedBox(width: 2),
-                                                Text(
-                                                  platillo.calificacion
-                                                      .toStringAsFixed(1),
-                                                  style: GoogleFonts.poppins(
-                                                    fontSize: 11.5,
-                                                    fontWeight: FontWeight.w600,
-                                                    color: colorTextoOscuro,
-                                                  ),
-                                                ),
-                                                const SizedBox(width: 8),
-                                                Icon(
-                                                  Icons.schedule,
-                                                  size: 12,
-                                                  color: colorTextoGris,
-                                                ),
-                                                const SizedBox(width: 2),
-                                                Text(
-                                                  platillo.tiempoPrep,
-                                                  style: GoogleFonts.poppins(
-                                                    fontSize: 11.5,
-                                                    color: colorTextoGris,
-                                                  ),
+                                            decoration: BoxDecoration(
+                                              color: colorAmarilloTese,
+                                              borderRadius:
+                                                  BorderRadius.circular(8),
+                                              boxShadow: [
+                                                BoxShadow(
+                                                  color: Colors.black
+                                                      .withValues(alpha: 0.15),
+                                                  blurRadius: 4,
                                                 ),
                                               ],
                                             ),
-                                            const SizedBox(height: 6),
-                                            Container(
-                                              padding:
-                                                  const EdgeInsets.symmetric(
-                                                    horizontal: 10,
-                                                    vertical: 3,
-                                                  ),
-                                              decoration: BoxDecoration(
-                                                color: acento.withValues(
-                                                  alpha: 0.16,
-                                                ),
-                                                borderRadius:
-                                                    BorderRadius.circular(30),
+                                            child: const Text(
+                                              '🔥',
+                                              style: TextStyle(fontSize: 11),
+                                            ),
+                                          ),
+                                        ),
+                                    ],
+                                  ),
+                                  const SizedBox(width: 14),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          platillo.nombre,
+                                          style: GoogleFonts.poppins(
+                                            fontWeight: FontWeight.w600,
+                                            fontSize: 15.5,
+                                            color: colorTextoOscuro,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 3),
+                                        Text(
+                                          platillo.local,
+                                          style: GoogleFonts.poppins(
+                                            fontSize: 12.5,
+                                            color: colorTextoGris,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 4),
+                                        Row(
+                                          children: [
+                                            const Icon(
+                                              Icons.star_rounded,
+                                              size: 14,
+                                              color: colorAmarilloTese,
+                                            ),
+                                            const SizedBox(width: 2),
+                                            Text(
+                                              platillo.calificacion
+                                                  .toStringAsFixed(1),
+                                              style: GoogleFonts.poppins(
+                                                fontSize: 11.5,
+                                                fontWeight: FontWeight.w600,
+                                                color: colorTextoOscuro,
                                               ),
-                                              child: Text(
-                                                '\$${platillo.precio.toInt()}',
-                                                style: GoogleFonts.poppins(
-                                                  fontWeight: FontWeight.w700,
-                                                  color: colorTextoOscuro,
-                                                  fontSize: 13,
-                                                ),
+                                            ),
+                                            const SizedBox(width: 8),
+                                            Icon(
+                                              Icons.schedule,
+                                              size: 12,
+                                              color: colorTextoGris,
+                                            ),
+                                            const SizedBox(width: 2),
+                                            Text(
+                                              platillo.tiempoPrep,
+                                              style: GoogleFonts.poppins(
+                                                fontSize: 11.5,
+                                                color: colorTextoGris,
                                               ),
                                             ),
                                           ],
                                         ),
-                                      ),
-                                      IconButton(
-                                        icon: const Icon(
-                                          Icons.add_circle,
-                                          color: colorAmarilloTese,
-                                          size: 36,
+                                        const SizedBox(height: 6),
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 10,
+                                            vertical: 3,
+                                          ),
+                                          decoration: BoxDecoration(
+                                            color: acento.withValues(
+                                              alpha: 0.16,
+                                            ),
+                                            borderRadius: BorderRadius.circular(
+                                              30,
+                                            ),
+                                          ),
+                                          child: Text(
+                                            '\$${platillo.precio.toInt()}',
+                                            style: GoogleFonts.poppins(
+                                              fontWeight: FontWeight.w700,
+                                              color: colorTextoOscuro,
+                                              fontSize: 13,
+                                            ),
+                                          ),
                                         ),
-                                        onPressed: () {
-                                          widget.onAgregar(platillo);
-                                          _mostrarAlertaExito(platillo.nombre);
-                                        },
-                                      ),
-                                    ],
+                                      ],
+                                    ),
                                   ),
-                                ),
+                                  IconButton(
+                                    icon: const Icon(
+                                      Icons.add_circle,
+                                      color: colorAmarilloTese,
+                                      size: 36,
+                                    ),
+                                    onPressed: () {
+                                      widget.onAgregar(platillo);
+                                      _mostrarAlertaExito(platillo.nombre);
+                                    },
+                                  ),
+                                ],
                               ),
-                            );
-                          },
-                        ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class PedidoEnviadoScreen extends StatelessWidget {
-  const PedidoEnviadoScreen({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: colorVerdeTese,
-      body: Center(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24.0),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              BounceInDown(
-                child: Image.asset(
-                  'assets/compraHecha.png',
-                  height: 220,
-                  fit: BoxFit.contain,
-                ),
-              ),
-              const SizedBox(height: 30),
-              FadeInUp(
-                child: Text(
-                  '¡Pedido Enviado!',
-                  style: GoogleFonts.poppins(
-                    fontSize: 32,
-                    fontWeight: FontWeight.w900,
-                    color: Colors.white,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 16),
-              FadeInUp(
-                delay: const Duration(milliseconds: 200),
-                child: Text(
-                  'Tu orden ya está en la cafetería.\nRevisa el menú de "Mis Pedidos" para ver el estado en tiempo real.',
-                  textAlign: TextAlign.center,
-                  style: GoogleFonts.poppins(
-                    fontSize: 16,
-                    color: Colors.white70,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 40),
-              FadeInUp(
-                delay: const Duration(milliseconds: 400),
-                child: ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: colorAmarilloTese,
-                    minimumSize: const Size(double.infinity, 55),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(15),
-                    ),
-                  ),
-                  onPressed: () => Navigator.pop(context),
-                  child: Text(
-                    'Ir a mis pedidos',
-                    style: GoogleFonts.poppins(
-                      color: colorVerdeOscuro,
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
+                            ),
+                          ),
+                        );
+                      },
+                    );
+                  },
                 ),
               ),
             ],

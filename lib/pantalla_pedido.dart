@@ -922,3 +922,101 @@ class _PantallaResenaState extends State<PantallaResena> {
     );
   }
 }
+
+// ==========================================
+// PANTALLA: ÉXITO AL ENVIAR PEDIDO
+// ==========================================
+class PedidoEnviadoScreen extends StatefulWidget {
+  const PedidoEnviadoScreen({super.key});
+
+  @override
+  State<PedidoEnviadoScreen> createState() => _PedidoEnviadoScreenState();
+}
+
+class _PedidoEnviadoScreenState extends State<PedidoEnviadoScreen> {
+  @override
+  void initState() {
+    super.initState();
+    // ¡SUENA EL PATO INMORTAL!
+    _reproducirSonido();
+  }
+
+  void _reproducirSonido() {
+    try {
+      reproductorGlobal.play(AssetSource('exito.mp3'), volume: 1.0);
+    } catch (e) {
+      debugPrint('Error de audio: $e');
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: colorVerdeTese,
+      body: Center(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 24.0),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              BounceInDown(
+                child: Image.asset(
+                  'assets/compraHecha.png',
+                  height: 220,
+                  fit: BoxFit.contain,
+                ),
+              ),
+              const SizedBox(height: 30),
+              FadeInUp(
+                child: Text(
+                  '¡Pedido Enviado!',
+                  style: GoogleFonts.poppins(
+                    fontSize: 32,
+                    fontWeight: FontWeight.w900,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+              FadeInUp(
+                delay: const Duration(milliseconds: 200),
+                child: Text(
+                  'Tu orden ya está en la cafetería.\nRevisa el menú de "Mis Pedidos" para ver el estado en tiempo real.',
+                  textAlign: TextAlign.center,
+                  style: GoogleFonts.poppins(
+                    fontSize: 16,
+                    color: Colors.white70,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 40),
+              FadeInUp(
+                delay: const Duration(milliseconds: 400),
+                child: ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: colorAmarilloTese,
+                    minimumSize: const Size(double.infinity, 55),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(15),
+                    ),
+                  ),
+                  onPressed: () {
+                    Navigator.pop(context);
+                  },
+                  child: Text(
+                    'Ir a mis pedidos',
+                    style: GoogleFonts.poppins(
+                      color: colorVerdeOscuro,
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}

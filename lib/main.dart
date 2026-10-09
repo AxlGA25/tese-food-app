@@ -19,8 +19,6 @@ Future<void> main() async {
   runApp(const TeseHambreadosApp());
 }
 
-// ... de aquí para abajo tu class TeseHambreadosApp se queda igualita ...
-
 class TeseHambreadosApp extends StatelessWidget {
   const TeseHambreadosApp({super.key});
 
