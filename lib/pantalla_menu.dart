@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -391,7 +392,6 @@ class MisPedidosScreen extends StatelessWidget {
                                           color: colorTextoGris,
                                         ),
                                       ),
-                                      // BOTÓN DE CALIFICAR LA COMIDA DE ESTE PEDIDO
                                       if ((estadoReal == 2 ||
                                               estadoReal == 3) &&
                                           !yaCalificado) ...[
@@ -867,21 +867,51 @@ class _CatalogoEstudianteScreenState extends State<CatalogoEstudianteScreen> {
                               ),
                               child: Row(
                                 children: [
+                                  // ==========================================
+                                  // 📸 FOTO REAL DEL PLATILLO O ÍCONO RESPALDO
+                                  // ==========================================
                                   Stack(
                                     clipBehavior: Clip.none,
                                     children: [
                                       Container(
-                                        padding: const EdgeInsets.all(14),
+                                        width: 58,
+                                        height: 58,
                                         decoration: BoxDecoration(
                                           color: acento.withValues(alpha: 0.16),
                                           borderRadius: BorderRadius.circular(
                                             16,
                                           ),
                                         ),
-                                        child: Icon(
-                                          platillo.icono,
-                                          color: colorTextoOscuro,
-                                          size: 28,
+                                        child: ClipRRect(
+                                          borderRadius: BorderRadius.circular(
+                                            16,
+                                          ),
+                                          child:
+                                              platillo.fotos.isNotEmpty
+                                                  ? Image.memory(
+                                                    base64Decode(
+                                                      platillo.fotos.first,
+                                                    ),
+                                                    width: 58,
+                                                    height: 58,
+                                                    fit: BoxFit.cover,
+                                                    errorBuilder:
+                                                        (_, __, ___) => Center(
+                                                          child: Icon(
+                                                            platillo.icono,
+                                                            color:
+                                                                colorTextoOscuro,
+                                                            size: 28,
+                                                          ),
+                                                        ),
+                                                  )
+                                                  : Center(
+                                                    child: Icon(
+                                                      platillo.icono,
+                                                      color: colorTextoOscuro,
+                                                      size: 28,
+                                                    ),
+                                                  ),
                                         ),
                                       ),
                                       if (platillo.popular)
@@ -937,9 +967,7 @@ class _CatalogoEstudianteScreenState extends State<CatalogoEstudianteScreen> {
                                         ),
                                         const SizedBox(height: 5),
 
-                                        // ==========================================
-                                        // ⭐ RANKING DINÁMICO EN TIEMPO REAL
-                                        // ==========================================
+                                        // ⭐ RANKING DINÁMICO
                                         Row(
                                           children: [
                                             if (platillo.calificacion > 0) ...[

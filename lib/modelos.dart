@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:cloud_firestore/cloud_firestore.dart'; // LA MAGIA DE FIREBASE
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class Platillo {
   final String id;
@@ -10,10 +10,12 @@ class Platillo {
   final IconData icono;
   final String descripcion;
   final double calificacion;
+  final int numCalificaciones;
   final String tiempoPrep;
   final bool popular;
   final List<String> ingredientes;
   final List<String> personalizacion;
+  final List<String> fotos; // 📸 Lista de 1 a 3 fotos en Base64
 
   Platillo({
     required this.id,
@@ -23,14 +25,16 @@ class Platillo {
     this.categoria = 'Comida',
     this.icono = Icons.fastfood,
     this.descripcion = '',
-    this.calificacion = 4.5,
+    this.calificacion = 0.0,
+    this.numCalificaciones = 0,
     this.tiempoPrep = '10 min',
     this.popular = false,
     this.ingredientes = const [],
     this.personalizacion = const [],
+    this.fotos = const [],
   });
 
-  Platillo copyWith({List<String>? personalizacion}) {
+  Platillo copyWith({List<String>? personalizacion, List<String>? fotos}) {
     return Platillo(
       id: id,
       nombre: nombre,
@@ -40,47 +44,46 @@ class Platillo {
       icono: icono,
       descripcion: descripcion,
       calificacion: calificacion,
+      numCalificaciones: numCalificaciones,
       tiempoPrep: tiempoPrep,
       popular: popular,
       ingredientes: ingredientes,
       personalizacion: personalizacion ?? this.personalizacion,
+      fotos: fotos ?? this.fotos,
     );
   }
 
   // ========================================================
   // ✨ TRADUCTOR FIREBASE -> FLUTTER
-  // Toma el "Documento" de la nube y lo convierte en un Platillo
   // ========================================================
   factory Platillo.fromFirestore(DocumentSnapshot doc) {
-    Map data = doc.data() as Map<String, dynamic>;
+    Map data = doc.data() as Map<String, dynamic>? ?? {};
 
     return Platillo(
-      id: doc.id, // El ID de letras raras que autogeneró Firebase
+      id: doc.id,
       nombre: data['nombre'] ?? 'Sin Nombre',
       local: data['local'] ?? 'Cafetería',
-      precio: (data['precio'] ?? 0).toDouble(), // Asegura que sea decimal
+      precio: (data['precio'] ?? 0).toDouble(),
       categoria: data['categoria'] ?? 'Comida',
       descripcion: data['descripcion'] ?? '',
-      calificacion: (data['calificacion'] ?? 5.0).toDouble(),
+      calificacion: (data['calificacion'] ?? 0.0).toDouble(),
+      numCalificaciones: (data['numCalificaciones'] ?? 0) as int,
       tiempoPrep: data['tiempoPrep'] ?? '15 min',
       popular: data['popular'] ?? false,
-
-      // Si la base de datos trae ingredientes, los lee. Si no, pone lista vacía.
       ingredientes:
           data['ingredientes'] != null
               ? List<String>.from(data['ingredientes'])
               : [],
-
-      // Lógica de íconos automáticos basados en el texto de Firebase
+      // Leemos la lista de fotos (si no tiene, deja lista vacía)
+      fotos: data['fotos'] != null ? List<String>.from(data['fotos']) : [],
       icono: _iconoPorCategoria(data['categoria']),
     );
   }
 
-  // Función auxiliar para decidir qué ícono dibujar
   static IconData _iconoPorCategoria(String? categoria) {
     if (categoria == 'Desayunos') return Icons.breakfast_dining;
     if (categoria == 'Bebidas') return Icons.local_drink;
     if (categoria == 'Postres') return Icons.cake;
-    return Icons.lunch_dining; // Por defecto
+    return Icons.lunch_dining;
   }
 }

@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:animate_do/animate_do.dart';
@@ -21,13 +22,13 @@ class PantallaDetallePlatillo extends StatefulWidget {
 
 class _PantallaDetallePlatilloState extends State<PantallaDetallePlatillo> {
   int cantidad = 1;
+  int _fotoActualIndex = 0;
   // 0 = Normal (Verde), 1 = Sin (Rojo), 2 = Extra (Amarillo)
   Map<String, int> estadoIngredientes = {};
 
   @override
   void initState() {
     super.initState();
-    // Iniciamos todos los ingredientes en estado 0 (Normal)
     for (var ing in widget.platillo.ingredientes) {
       estadoIngredientes[ing] = 0;
     }
@@ -42,8 +43,14 @@ class _PantallaDetallePlatilloState extends State<PantallaDetallePlatillo> {
       child: Container(
         padding: const EdgeInsets.all(10),
         decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.85),
+          color: Colors.white.withValues(alpha: 0.9),
           shape: BoxShape.circle,
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.15),
+              blurRadius: 8,
+            ),
+          ],
         ),
         child: Icon(icono, color: colorTextoOscuro, size: 20),
       ),
@@ -95,44 +102,103 @@ class _PantallaDetallePlatilloState extends State<PantallaDetallePlatillo> {
     final platillo = widget.platillo;
     final acento = acentoDeCategoria(platillo.categoria);
     final total = platillo.precio * cantidad;
+    final bool tieneFotos = platillo.fotos.isNotEmpty;
 
     return Scaffold(
       backgroundColor: colorFondoCrema,
       body: Column(
         children: [
+          // ==========================================
+          // 📸 HEADER CON FOTOS DESLIZABLES O ÍCONO
+          // ==========================================
           Stack(
             children: [
               Container(
-                height: 250,
+                height: 260,
                 width: double.infinity,
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [acento, acento.withValues(alpha: 0.75)],
-                  ),
-                  borderRadius: const BorderRadius.only(
+                decoration: const BoxDecoration(
+                  borderRadius: BorderRadius.only(
                     bottomLeft: Radius.circular(36),
                     bottomRight: Radius.circular(36),
                   ),
                 ),
-                child: Center(
-                  child: ZoomIn(
-                    child: Container(
-                      padding: const EdgeInsets.all(28),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.22),
-                        shape: BoxShape.circle,
-                      ),
-                      child: Icon(
-                        platillo.icono,
-                        size: 72,
+                child: ClipRRect(
+                  borderRadius: const BorderRadius.only(
+                    bottomLeft: Radius.circular(36),
+                    bottomRight: Radius.circular(36),
+                  ),
+                  child:
+                      tieneFotos
+                          ? PageView.builder(
+                            itemCount: platillo.fotos.length,
+                            onPageChanged:
+                                (i) => setState(() => _fotoActualIndex = i),
+                            itemBuilder: (context, index) {
+                              return Image.memory(
+                                base64Decode(platillo.fotos[index]),
+                                fit: BoxFit.cover,
+                                width: double.infinity,
+                                height: 260,
+                              );
+                            },
+                          )
+                          : Container(
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                                colors: [
+                                  acento,
+                                  acento.withValues(alpha: 0.75),
+                                ],
+                              ),
+                            ),
+                            child: Center(
+                              child: ZoomIn(
+                                child: Container(
+                                  padding: const EdgeInsets.all(26),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white.withValues(alpha: 0.22),
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: Icon(
+                                    platillo.icono,
+                                    size: 70,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                ),
+              ),
+
+              // INDICADOR DE FOTOS (1/3, 2/3) SI TIENE MÁS DE UNA
+              if (tieneFotos && platillo.fotos.length > 1)
+                Positioned(
+                  bottom: 16,
+                  right: 20,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 4,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.black.withValues(alpha: 0.65),
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    child: Text(
+                      '${_fotoActualIndex + 1} / ${platillo.fotos.length}',
+                      style: GoogleFonts.poppins(
                         color: Colors.white,
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
                       ),
                     ),
                   ),
                 ),
-              ),
+
+              // BOTONES SUPERIORES (REGRESAR Y POPULAR)
               SafeArea(
                 child: Padding(
                   padding: const EdgeInsets.symmetric(
@@ -153,8 +219,14 @@ class _PantallaDetallePlatilloState extends State<PantallaDetallePlatillo> {
                             vertical: 6,
                           ),
                           decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: 0.9),
+                            color: Colors.white.withValues(alpha: 0.95),
                             borderRadius: BorderRadius.circular(20),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: 0.1),
+                                blurRadius: 6,
+                              ),
+                            ],
                           ),
                           child: Text(
                             '🔥 Popular',
@@ -173,6 +245,10 @@ class _PantallaDetallePlatilloState extends State<PantallaDetallePlatillo> {
               ),
             ],
           ),
+
+          // ==========================================
+          // DETALLE Y PERSONALIZACIÓN DE INGREDIENTES
+          // ==========================================
           Expanded(
             child: SingleChildScrollView(
               padding: const EdgeInsets.fromLTRB(22, 22, 22, 16),
@@ -206,7 +282,11 @@ class _PantallaDetallePlatilloState extends State<PantallaDetallePlatillo> {
                   const SizedBox(height: 6),
                   Row(
                     children: [
-                      Icon(Icons.storefront, size: 15, color: colorTextoGris),
+                      const Icon(
+                        Icons.storefront,
+                        size: 15,
+                        color: colorTextoGris,
+                      ),
                       const SizedBox(width: 4),
                       Text(
                         platillo.local,
@@ -224,7 +304,9 @@ class _PantallaDetallePlatilloState extends State<PantallaDetallePlatillo> {
                     children: [
                       _chipInfo(
                         Icons.star_rounded,
-                        '${platillo.calificacion} ★',
+                        platillo.calificacion <= 0
+                            ? 'Nuevo ✨'
+                            : '${platillo.calificacion.toStringAsFixed(1)} ★',
                         colorAmarilloTese,
                       ),
                       _chipInfo(
@@ -235,7 +317,7 @@ class _PantallaDetallePlatilloState extends State<PantallaDetallePlatillo> {
                       _chipInfo(Icons.local_offer, platillo.categoria, acento),
                     ],
                   ),
-                  const SizedBox(height: 24),
+                  const SizedBox(height: 22),
                   Text(
                     'Descripción',
                     style: GoogleFonts.poppins(
@@ -256,11 +338,9 @@ class _PantallaDetallePlatilloState extends State<PantallaDetallePlatillo> {
                     ),
                   ),
 
-                  // ==========================================
-                  // SECCIÓN DE INGREDIENTES (PERSONALIZACIÓN)
-                  // ==========================================
+                  // INGREDIENTES PERSONALIZABLES
                   if (platillo.ingredientes.isNotEmpty) ...[
-                    const SizedBox(height: 24),
+                    const SizedBox(height: 22),
                     const Divider(),
                     const SizedBox(height: 12),
                     Text(
@@ -279,7 +359,7 @@ class _PantallaDetallePlatilloState extends State<PantallaDetallePlatillo> {
                         color: colorTextoGris,
                       ),
                     ),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 14),
                     Wrap(
                       spacing: 10,
                       runSpacing: 10,
@@ -305,8 +385,7 @@ class _PantallaDetallePlatilloState extends State<PantallaDetallePlatillo> {
                             return GestureDetector(
                               onTap: () {
                                 setState(() {
-                                  estadoIngredientes[ing] =
-                                      (estado + 1) % 3; // Clicla entre 0, 1 y 2
+                                  estadoIngredientes[ing] = (estado + 1) % 3;
                                 });
                               },
                               child: AnimatedContainer(
@@ -347,9 +426,9 @@ class _PantallaDetallePlatilloState extends State<PantallaDetallePlatillo> {
                     ),
                   ],
 
-                  const SizedBox(height: 24),
+                  const SizedBox(height: 22),
                   const Divider(),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 14),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
@@ -364,7 +443,9 @@ class _PantallaDetallePlatilloState extends State<PantallaDetallePlatillo> {
                       Row(
                         children: [
                           _botonCantidad(Icons.remove, () {
-                            if (cantidad > 1) setState(() => cantidad--);
+                            if (cantidad > 1) {
+                              setState(() => cantidad--);
+                            }
                           }),
                           Padding(
                             padding: const EdgeInsets.symmetric(horizontal: 18),
@@ -389,8 +470,10 @@ class _PantallaDetallePlatilloState extends State<PantallaDetallePlatillo> {
               ),
             ),
           ),
+
+          // BOTÓN AGREGAR AL CARRITO
           Container(
-            padding: const EdgeInsets.fromLTRB(22, 18, 22, 18),
+            padding: const EdgeInsets.fromLTRB(22, 16, 22, 18),
             decoration: const BoxDecoration(
               color: Colors.white,
               boxShadow: [
@@ -415,14 +498,12 @@ class _PantallaDetallePlatilloState extends State<PantallaDetallePlatillo> {
                     ),
                   ),
                   onPressed: () {
-                    // GENERAMOS LA LISTA DE PERSONALIZACIÓN
                     List<String> personalizacionFinal = [];
                     estadoIngredientes.forEach((ing, estado) {
                       if (estado == 1) personalizacionFinal.add('Sin $ing');
                       if (estado == 2) personalizacionFinal.add('Extra $ing');
                     });
 
-                    // CLONAMOS EL PLATILLO CON LOS CAMBIOS
                     final platilloPersonalizado = widget.platillo.copyWith(
                       personalizacion: personalizacionFinal,
                     );

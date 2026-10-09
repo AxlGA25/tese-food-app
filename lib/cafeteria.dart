@@ -1,8 +1,10 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:animate_do/animate_do.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:image_picker/image_picker.dart';
 import 'colores.dart';
 import 'pantalla_inicio.dart';
 
@@ -173,7 +175,7 @@ class DashboardNavegacionLocal extends StatefulWidget {
 }
 
 class _DashboardNavegacionLocalState extends State<DashboardNavegacionLocal> {
-  int _indiceActual = 0; // 0 = Comandas, 1 = Existencias, 2 = Opiniones
+  int _indiceActual = 0;
   int _filtroEstado = -1;
 
   int _minutosEspera(Timestamp? hora) {
@@ -598,9 +600,6 @@ class _DashboardNavegacionLocalState extends State<DashboardNavegacionLocal> {
     );
   }
 
-  // ==========================================
-  // 1. VISTA COMANDAS KDS
-  // ==========================================
   Widget _vistaPedidosDidi() {
     return StreamBuilder<QuerySnapshot>(
       stream:
@@ -954,9 +953,6 @@ class _DashboardNavegacionLocalState extends State<DashboardNavegacionLocal> {
     );
   }
 
-  // ==========================================
-  // 2. VISTA MENÚ CON AJUSTE DE EXISTENCIAS
-  // ==========================================
   Widget _vistaMenuDidi() {
     return StreamBuilder<QuerySnapshot>(
       stream:
@@ -983,6 +979,7 @@ class _DashboardNavegacionLocalState extends State<DashboardNavegacionLocal> {
               final String nombre = data['nombre'] ?? 'Sin nombre';
               final dynamic precio = data['precio'] ?? 0;
               final double calif = (data['calificacion'] ?? 0.0).toDouble();
+              final List fotos = data['fotos'] ?? [];
 
               return FadeInUp(
                 child: Container(
@@ -1001,8 +998,10 @@ class _DashboardNavegacionLocalState extends State<DashboardNavegacionLocal> {
                   ),
                   child: Row(
                     children: [
+                      // 📸 FOTO REAL DEL PLATILLO O ÍCONO
                       Container(
-                        padding: const EdgeInsets.all(10),
+                        width: 48,
+                        height: 48,
                         decoration: BoxDecoration(
                           color:
                               agotado
@@ -1010,9 +1009,29 @@ class _DashboardNavegacionLocalState extends State<DashboardNavegacionLocal> {
                                   : colorVerdeTese.withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(12),
                         ),
-                        child: Icon(
-                          Icons.fastfood,
-                          color: agotado ? colorTextoGris : colorVerdeTese,
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(12),
+                          child:
+                              fotos.isNotEmpty
+                                  ? Image.memory(
+                                    base64Decode(fotos[0]),
+                                    fit: BoxFit.cover,
+                                    errorBuilder:
+                                        (_, __, ___) => Icon(
+                                          Icons.fastfood,
+                                          color:
+                                              agotado
+                                                  ? colorTextoGris
+                                                  : colorVerdeTese,
+                                        ),
+                                  )
+                                  : Icon(
+                                    Icons.fastfood,
+                                    color:
+                                        agotado
+                                            ? colorTextoGris
+                                            : colorVerdeTese,
+                                  ),
                         ),
                       ),
                       const SizedBox(width: 12),
@@ -1133,9 +1152,6 @@ class _DashboardNavegacionLocalState extends State<DashboardNavegacionLocal> {
     );
   }
 
-  // ==========================================
-  // ⭐ 3. VISTA OPINIONES Y CRÍTICAS (NUEVA)
-  // ==========================================
   Widget _vistaResenasDidi() {
     return StreamBuilder<QuerySnapshot>(
       stream: FirebaseFirestore.instance.collection('Resenas').snapshots(),
@@ -1304,6 +1320,9 @@ class _DashboardNavegacionLocalState extends State<DashboardNavegacionLocal> {
   }
 }
 
+// ==========================================================
+// 📸 AGREGAR PLATILLO CON HASTA 3 FOTOS AUTÓNOMAS
+// ==========================================================
 class AgregarPlatilloScreen extends StatefulWidget {
   const AgregarPlatilloScreen({super.key});
 
@@ -1316,6 +1335,9 @@ class _AgregarPlatilloScreenState extends State<AgregarPlatilloScreen> {
   final TextEditingController _precioCtrl = TextEditingController();
   final TextEditingController _ingredienteCtrl = TextEditingController();
   final List<String> _ingredientesPersonalizados = [];
+  final List<String> _fotosBase64 = []; // 📸 Lista de 1 a 3 fotos
+  final ImagePicker _picker = ImagePicker();
+
   int _existencias = 10;
   bool _estaCargando = false;
 
@@ -1325,6 +1347,81 @@ class _AgregarPlatilloScreenState extends State<AgregarPlatilloScreen> {
     _precioCtrl.dispose();
     _ingredienteCtrl.dispose();
     super.dispose();
+  }
+
+  Future<void> _seleccionarFoto(ImageSource source) async {
+    if (_fotosBase64.length >= 3) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Solo se permiten hasta 3 fotos por platillo.'),
+        ),
+      );
+      return;
+    }
+
+    try {
+      // 💡 REDUCTOR AUTÓNOMO: Máximo 600x600 y calidad al 50% (Pesa ~25 KB)
+      final XFile? imagen = await _picker.pickImage(
+        source: source,
+        maxWidth: 600,
+        maxHeight: 600,
+        imageQuality: 50,
+      );
+
+      if (imagen != null) {
+        final bytes = await imagen.readAsBytes();
+        final String base64String = base64Encode(bytes);
+        setState(() {
+          _fotosBase64.add(base64String);
+        });
+      }
+    } catch (_) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No se pudo cargar la imagen.')),
+      );
+    }
+  }
+
+  void _mostrarOpcionesFoto() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder:
+          (ctx) => SafeArea(
+            child: Wrap(
+              children: [
+                ListTile(
+                  leading: const Icon(Icons.camera_alt, color: colorVerdeTese),
+                  title: Text(
+                    'Tomar foto con cámara',
+                    style: GoogleFonts.poppins(fontWeight: FontWeight.w600),
+                  ),
+                  onTap: () {
+                    Navigator.pop(ctx);
+                    _seleccionarFoto(ImageSource.camera);
+                  },
+                ),
+                ListTile(
+                  leading: const Icon(
+                    Icons.photo_library,
+                    color: colorVerdeTese,
+                  ),
+                  title: Text(
+                    'Elegir de galería',
+                    style: GoogleFonts.poppins(fontWeight: FontWeight.w600),
+                  ),
+                  onTap: () {
+                    Navigator.pop(ctx);
+                    _seleccionarFoto(ImageSource.gallery);
+                  },
+                ),
+              ],
+            ),
+          ),
+    );
   }
 
   void _guardarPlatillo() async {
@@ -1341,19 +1438,19 @@ class _AgregarPlatilloScreenState extends State<AgregarPlatilloScreen> {
         'categoria': 'Comida',
         'descripcion': 'Platillo agregado desde la app del local',
         'tiempoPrep': '15 min',
-        // Inicia en 0 para mostrarse como "Nuevo ✨" hasta que un alumno lo califique
         'calificacion': 0.0,
         'numCalificaciones': 0,
         'popular': true,
         'ingredientes': _ingredientesPersonalizados,
         'existencias': _existencias,
+        'fotos': _fotosBase64, // 📸 Guardamos la lista de 1 a 3 fotos
       });
 
       if (mounted) {
         Navigator.pop(context);
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('¡Platillo subido a la nube! ☁️🍔'),
+            content: Text('¡Platillo subido a la nube con fotos! ☁️🍔'),
             backgroundColor: colorExito,
           ),
         );
@@ -1412,6 +1509,154 @@ class _AgregarPlatilloScreenState extends State<AgregarPlatilloScreen> {
         padding: const EdgeInsets.all(22.0),
         child: Column(
           children: [
+            // ==========================================
+            // 📸 SECCIÓN DE FOTOS (1 A 3 FOTOS)
+            // ==========================================
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(22),
+                boxShadow: [
+                  BoxShadow(
+                    color: colorVerdeTese.withValues(alpha: 0.08),
+                    blurRadius: 20,
+                    offset: const Offset(0, 8),
+                  ),
+                ],
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        'Fotos del platillo (${_fotosBase64.length}/3)',
+                        style: GoogleFonts.poppins(
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                          color: colorTextoOscuro,
+                        ),
+                      ),
+                      if (_fotosBase64.length < 3)
+                        TextButton.icon(
+                          onPressed: _mostrarOpcionesFoto,
+                          icon: const Icon(
+                            Icons.add_a_photo,
+                            size: 18,
+                            color: colorVerdeTese,
+                          ),
+                          label: Text(
+                            'Agregar',
+                            style: GoogleFonts.poppins(
+                              color: colorVerdeTese,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 13,
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+                  if (_fotosBase64.isEmpty)
+                    GestureDetector(
+                      onTap: _mostrarOpcionesFoto,
+                      child: Container(
+                        height: 120,
+                        width: double.infinity,
+                        decoration: BoxDecoration(
+                          color: colorVerdeTese.withValues(alpha: 0.04),
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(
+                            color: colorVerdeTese.withValues(alpha: 0.25),
+                            style: BorderStyle.solid,
+                          ),
+                        ),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              Icons.camera_alt_outlined,
+                              size: 40,
+                              color: colorVerdeTese.withValues(alpha: 0.7),
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              'Toca para tomar foto de la comida',
+                              style: GoogleFonts.poppins(
+                                fontSize: 13,
+                                color: colorTextoGris,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    )
+                  else
+                    SizedBox(
+                      height: 105,
+                      child: ListView.separated(
+                        scrollDirection: Axis.horizontal,
+                        itemCount: _fotosBase64.length,
+                        separatorBuilder: (_, __) => const SizedBox(width: 12),
+                        itemBuilder: (context, index) {
+                          return Stack(
+                            clipBehavior: Clip.none,
+                            children: [
+                              Container(
+                                width: 100,
+                                height: 100,
+                                decoration: BoxDecoration(
+                                  borderRadius: BorderRadius.circular(14),
+                                  border: Border.all(
+                                    color: colorVerdeTese.withValues(
+                                      alpha: 0.2,
+                                    ),
+                                  ),
+                                ),
+                                child: ClipRRect(
+                                  borderRadius: BorderRadius.circular(14),
+                                  child: Image.memory(
+                                    base64Decode(_fotosBase64[index]),
+                                    fit: BoxFit.cover,
+                                  ),
+                                ),
+                              ),
+                              Positioned(
+                                top: -6,
+                                right: -6,
+                                child: GestureDetector(
+                                  onTap:
+                                      () => setState(
+                                        () => _fotosBase64.removeAt(index),
+                                      ),
+                                  child: Container(
+                                    padding: const EdgeInsets.all(4),
+                                    decoration: const BoxDecoration(
+                                      color: Colors.redAccent,
+                                      shape: BoxShape.circle,
+                                    ),
+                                    child: const Icon(
+                                      Icons.close,
+                                      size: 14,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          );
+                        },
+                      ),
+                    ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 20),
+
+            // FORMULARIO NOMBRE Y PRECIO
             Container(
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
@@ -1447,6 +1692,8 @@ class _AgregarPlatilloScreenState extends State<AgregarPlatilloScreen> {
               ),
             ),
             const SizedBox(height: 20),
+
+            // INGREDIENTES
             Container(
               width: double.infinity,
               padding: const EdgeInsets.all(20),
