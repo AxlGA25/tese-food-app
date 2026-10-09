@@ -174,9 +174,8 @@ class _DashboardNavegacionLocalState extends State<DashboardNavegacionLocal> {
 
   void _cambiarEstadoPedido(String idDoc, int estadoActual) {
     HapticFeedback.heavyImpact();
-    int nuevoEstado = estadoActual + 1;
     FirebaseFirestore.instance.collection('Pedidos').doc(idDoc).update({
-      'estado': nuevoEstado,
+      'estado': estadoActual + 1,
     });
   }
 
@@ -193,7 +192,16 @@ class _DashboardNavegacionLocalState extends State<DashboardNavegacionLocal> {
     Color colorEstado,
     String textoBoton,
   ) {
-    int estado = comanda['estado'];
+    final data = comanda.data() as Map<String, dynamic>? ?? {};
+    int estado = data['estado'] ?? 0;
+    String idPedido = data['idPedido'] ?? comanda.id;
+    double total = (data['total'] ?? 0).toDouble();
+    String alumno = data['alumno'] ?? 'Alumno';
+    String detalle = data['detalle'] ?? '';
+    String notas = data['notas']?.toString() ?? '';
+    String metodoPago = data['metodoPago'] ?? 'Efectivo';
+    Timestamp? horaLlegada = data['horaLlegada'] as Timestamp?;
+
     String imagenPatito = 'assets/pedidoPendiente.png';
     if (estado == 1) imagenPatito = 'assets/listoParaRecoger.png';
     if (estado == 2) imagenPatito = 'assets/disfrutaTuComida.png';
@@ -248,7 +256,7 @@ class _DashboardNavegacionLocalState extends State<DashboardNavegacionLocal> {
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Text(
-                      'Ticket #$numeroTicket · hace ${_minutosEspera(comanda['horaLlegada'] as Timestamp?)} min',
+                      'Ticket #$numeroTicket · hace ${_minutosEspera(horaLlegada)} min',
                       style: GoogleFonts.poppins(
                         fontSize: 12,
                         fontWeight: FontWeight.w700,
@@ -262,7 +270,7 @@ class _DashboardNavegacionLocalState extends State<DashboardNavegacionLocal> {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text(
-                      comanda['idPedido'],
+                      idPedido,
                       style: GoogleFonts.poppins(
                         fontSize: 26,
                         fontWeight: FontWeight.w900,
@@ -270,7 +278,7 @@ class _DashboardNavegacionLocalState extends State<DashboardNavegacionLocal> {
                       ),
                     ),
                     Text(
-                      '\$${comanda['total'].toStringAsFixed(2)}',
+                      '\$${total.toStringAsFixed(2)}',
                       style: GoogleFonts.poppins(
                         fontSize: 22,
                         fontWeight: FontWeight.bold,
@@ -288,7 +296,7 @@ class _DashboardNavegacionLocalState extends State<DashboardNavegacionLocal> {
                     ),
                     const SizedBox(width: 15),
                     Text(
-                      comanda['alumno'],
+                      alumno,
                       style: GoogleFonts.poppins(
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
@@ -307,7 +315,7 @@ class _DashboardNavegacionLocalState extends State<DashboardNavegacionLocal> {
                 ),
                 const SizedBox(height: 5),
                 Text(
-                  comanda['detalle'],
+                  detalle,
                   style: GoogleFonts.poppins(
                     fontSize: 17,
                     fontWeight: FontWeight.w600,
@@ -315,7 +323,7 @@ class _DashboardNavegacionLocalState extends State<DashboardNavegacionLocal> {
                   ),
                 ),
                 const SizedBox(height: 20),
-                if (comanda['notas'].toString().isNotEmpty)
+                if (notas.isNotEmpty)
                   Container(
                     width: double.infinity,
                     padding: const EdgeInsets.all(14),
@@ -349,7 +357,7 @@ class _DashboardNavegacionLocalState extends State<DashboardNavegacionLocal> {
                         ),
                         const SizedBox(height: 8),
                         Text(
-                          comanda['notas'],
+                          notas,
                           style: GoogleFonts.poppins(
                             fontSize: 15,
                             fontWeight: FontWeight.w600,
@@ -363,14 +371,14 @@ class _DashboardNavegacionLocalState extends State<DashboardNavegacionLocal> {
                 Row(
                   children: [
                     Icon(
-                      comanda['metodoPago'] == 'Efectivo'
+                      metodoPago == 'Efectivo'
                           ? Icons.payments
                           : Icons.credit_card,
                       color: colorVerdeTese,
                     ),
                     const SizedBox(width: 10),
                     Text(
-                      'Pago con: ${comanda['metodoPago']}',
+                      'Pago con: $metodoPago',
                       style: GoogleFonts.poppins(
                         fontSize: 15,
                         fontWeight: FontWeight.w600,
@@ -489,7 +497,6 @@ class _DashboardNavegacionLocalState extends State<DashboardNavegacionLocal> {
         }
 
         final pedidos = snapshot.data!.docs;
-
         if (pedidos.isEmpty) {
           return Center(
             key: const ValueKey('sinPedidos'),
@@ -530,7 +537,8 @@ class _DashboardNavegacionLocalState extends State<DashboardNavegacionLocal> {
           itemCount: pedidos.length,
           itemBuilder: (context, index) {
             final comanda = pedidos[index];
-            final int estado = comanda['estado'];
+            final data = comanda.data() as Map<String, dynamic>? ?? {};
+            final int estado = data['estado'] ?? 0;
             final numeroTicket = index + 1;
 
             Color colorEstado = Colors.grey;
@@ -608,6 +616,14 @@ class _DashboardNavegacionLocalState extends State<DashboardNavegacionLocal> {
     IconData iconoEstado,
     Color colorEstado,
   ) {
+    final data = comanda.data() as Map<String, dynamic>? ?? {};
+    int estado = data['estado'] ?? 0;
+    String idPedido = data['idPedido'] ?? comanda.id;
+    String alumno = data['alumno'] ?? 'Alumno';
+    String detalle = data['detalle'] ?? '';
+    String metodoPago = data['metodoPago'] ?? 'Efectivo';
+    Timestamp? horaLlegada = data['horaLlegada'] as Timestamp?;
+
     return Padding(
       padding: const EdgeInsets.all(16.0),
       child: Column(
@@ -620,7 +636,7 @@ class _DashboardNavegacionLocalState extends State<DashboardNavegacionLocal> {
               borderRadius: BorderRadius.circular(8),
             ),
             child: Text(
-              'Ticket #$numeroTicket · hace ${_minutosEspera(comanda['horaLlegada'] as Timestamp?)} min',
+              'Ticket #$numeroTicket · hace ${_minutosEspera(horaLlegada)} min',
               style: GoogleFonts.poppins(
                 fontSize: 11,
                 fontWeight: FontWeight.w700,
@@ -633,7 +649,7 @@ class _DashboardNavegacionLocalState extends State<DashboardNavegacionLocal> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                comanda['idPedido'],
+                idPedido,
                 style: GoogleFonts.poppins(
                   fontSize: 20,
                   fontWeight: FontWeight.w900,
@@ -647,9 +663,9 @@ class _DashboardNavegacionLocalState extends State<DashboardNavegacionLocal> {
                   size: 18,
                 ),
                 label: Text(
-                  comanda['estado'] == 0
+                  estado == 0
                       ? 'NUEVO'
-                      : (comanda['estado'] == 1 ? 'PREPARANDO' : 'LISTO'),
+                      : (estado == 1 ? 'PREPARANDO' : 'LISTO'),
                 ),
                 backgroundColor: colorEstado,
                 labelStyle: GoogleFonts.poppins(
@@ -662,7 +678,7 @@ class _DashboardNavegacionLocalState extends State<DashboardNavegacionLocal> {
           ),
           const Divider(),
           Text(
-            'Alumno: ${comanda['alumno']}',
+            'Alumno: $alumno',
             style: GoogleFonts.poppins(
               fontSize: 15,
               fontWeight: FontWeight.w600,
@@ -671,22 +687,20 @@ class _DashboardNavegacionLocalState extends State<DashboardNavegacionLocal> {
           ),
           const SizedBox(height: 10),
           Text(
-            comanda['detalle'],
+            detalle,
             style: GoogleFonts.poppins(fontSize: 14.5, color: colorTextoOscuro),
           ),
           const SizedBox(height: 10),
           Row(
             children: [
               Icon(
-                comanda['metodoPago'] == 'Efectivo'
-                    ? Icons.payments
-                    : Icons.credit_card,
+                metodoPago == 'Efectivo' ? Icons.payments : Icons.credit_card,
                 size: 16,
                 color: colorTextoGris,
               ),
               const SizedBox(width: 5),
               Text(
-                comanda['metodoPago'],
+                metodoPago,
                 style: GoogleFonts.poppins(
                   color: colorTextoGris,
                   fontWeight: FontWeight.w600,
@@ -731,9 +745,13 @@ class _DashboardNavegacionLocalState extends State<DashboardNavegacionLocal> {
             itemCount: miMenu.length,
             itemBuilder: (context, index) {
               final platillo = miMenu[index];
-              final int existencias = platillo['existencias'] ?? 0;
+              final data = platillo.data() as Map<String, dynamic>? ?? {};
+
+              final int existencias = data['existencias'] ?? 0;
               final bool agotado = existencias == 0;
-              final List ingredientes = platillo['ingredientes'] ?? [];
+              final List ingredientes = data['ingredientes'] ?? [];
+              final String nombre = data['nombre'] ?? 'Sin nombre';
+              final dynamic precio = data['precio'] ?? 0;
 
               return FadeInUp(
                 child: Container(
@@ -775,7 +793,7 @@ class _DashboardNavegacionLocalState extends State<DashboardNavegacionLocal> {
                                   children: [
                                     Flexible(
                                       child: Text(
-                                        platillo['nombre'],
+                                        nombre,
                                         style: GoogleFonts.poppins(
                                           fontWeight: FontWeight.w600,
                                           fontSize: 16,
@@ -811,7 +829,7 @@ class _DashboardNavegacionLocalState extends State<DashboardNavegacionLocal> {
                                   ],
                                 ),
                                 Text(
-                                  '\$${platillo['precio']}',
+                                  '\$$precio',
                                   style: GoogleFonts.poppins(
                                     color: colorExito,
                                     fontWeight: FontWeight.bold,
@@ -918,14 +936,13 @@ class _DashboardNavegacionLocalState extends State<DashboardNavegacionLocal> {
                 fontWeight: FontWeight.bold,
               ),
             ),
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => const AgregarPlatilloScreen(),
+            onPressed:
+                () => Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const AgregarPlatilloScreen(),
+                  ),
                 ),
-              );
-            },
           ),
         );
       },
@@ -1199,11 +1216,11 @@ class _AgregarPlatilloScreenState extends State<AgregarPlatilloScreen> {
                                 size: 18,
                                 color: Colors.redAccent,
                               ),
-                              onDeleted: () {
-                                setState(() {
-                                  _ingredientesPersonalizados.remove(ing);
-                                });
-                              },
+                              onDeleted:
+                                  () => setState(
+                                    () =>
+                                        _ingredientesPersonalizados.remove(ing),
+                                  ),
                               side: BorderSide.none,
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(12),
@@ -1254,9 +1271,7 @@ class _AgregarPlatilloScreenState extends State<AgregarPlatilloScreen> {
                         ),
                       ),
                       GestureDetector(
-                        onTap: () {
-                          setState(() => _existencias++);
-                        },
+                        onTap: () => setState(() => _existencias++),
                         child: Container(
                           padding: const EdgeInsets.all(8),
                           decoration: BoxDecoration(
