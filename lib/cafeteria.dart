@@ -21,9 +21,6 @@ Widget _botonStock(IconData icono, VoidCallback onTap) {
   );
 }
 
-// ==========================================================
-// 1. PANTALLA DE ACCESO AL LOCAL (LIMPIA SIN FLECHAS DOBLES)
-// ==========================================================
 class LoginLocalScreen extends StatelessWidget {
   const LoginLocalScreen({super.key});
 
@@ -167,9 +164,6 @@ class LoginLocalScreen extends StatelessWidget {
   }
 }
 
-// ==========================================================
-// 2. DASHBOARD ESTILO DIDI FOOD RESTAURANTE
-// ==========================================================
 class DashboardNavegacionLocal extends StatefulWidget {
   const DashboardNavegacionLocal({super.key});
 
@@ -179,11 +173,13 @@ class DashboardNavegacionLocal extends StatefulWidget {
 }
 
 class _DashboardNavegacionLocalState extends State<DashboardNavegacionLocal> {
-  int _indiceActual = 0;
-  int _filtroEstado = -1; // -1 = Todos, 0 = Nuevos, 1 = Cocinando, 2 = Listos
+  int _indiceActual = 0; // 0 = Comandas, 1 = Existencias, 2 = Opiniones
+  int _filtroEstado = -1;
 
   int _minutosEspera(Timestamp? hora) {
-    if (hora == null) return 0;
+    if (hora == null) {
+      return 0;
+    }
     return DateTime.now().difference(hora.toDate()).inMinutes;
   }
 
@@ -496,7 +492,7 @@ class _DashboardNavegacionLocalState extends State<DashboardNavegacionLocal> {
     return Scaffold(
       backgroundColor: colorFondoCrema,
       appBar: AppBar(
-        automaticallyImplyLeading: false, // 🚫 Quitamos flechas redundantes
+        automaticallyImplyLeading: false,
         elevation: 0,
         backgroundColor: Colors.white,
         title: Row(
@@ -560,7 +556,10 @@ class _DashboardNavegacionLocalState extends State<DashboardNavegacionLocal> {
       ),
       body: AnimatedSwitcher(
         duration: const Duration(milliseconds: 250),
-        child: _indiceActual == 0 ? _vistaPedidosDidi() : _vistaMenuDidi(),
+        child:
+            _indiceActual == 0
+                ? _vistaPedidosDidi()
+                : (_indiceActual == 1 ? _vistaMenuDidi() : _vistaResenasDidi()),
       ),
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
@@ -589,6 +588,10 @@ class _DashboardNavegacionLocalState extends State<DashboardNavegacionLocal> {
               icon: Icon(Icons.inventory_2_outlined),
               label: 'Existencias',
             ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.star_rate_rounded),
+              label: 'Opiniones',
+            ),
           ],
         ),
       ),
@@ -596,7 +599,7 @@ class _DashboardNavegacionLocalState extends State<DashboardNavegacionLocal> {
   }
 
   // ==========================================
-  // VISTA COMANDAS ESTILO DIDI KDS
+  // 1. VISTA COMANDAS KDS
   // ==========================================
   Widget _vistaPedidosDidi() {
     return StreamBuilder<QuerySnapshot>(
@@ -616,7 +619,6 @@ class _DashboardNavegacionLocalState extends State<DashboardNavegacionLocal> {
 
         final todosPedidos = snapshot.data!.docs;
 
-        // Contadores en tiempo real para las pestañas
         int cantNuevos =
             todosPedidos.where((d) => (d.data() as Map)['estado'] == 0).length;
         int cantCocina =
@@ -624,7 +626,6 @@ class _DashboardNavegacionLocalState extends State<DashboardNavegacionLocal> {
         int cantListos =
             todosPedidos.where((d) => (d.data() as Map)['estado'] == 2).length;
 
-        // Filtrado por botón de pestaña
         final pedidos =
             _filtroEstado == -1
                 ? todosPedidos
@@ -634,7 +635,6 @@ class _DashboardNavegacionLocalState extends State<DashboardNavegacionLocal> {
 
         return Column(
           children: [
-            // FILTROS SUPERIORES ESTILO DIDI FOOD
             Container(
               padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
               color: Colors.white,
@@ -890,7 +890,6 @@ class _DashboardNavegacionLocalState extends State<DashboardNavegacionLocal> {
                                         ),
                                       ],
                                       const SizedBox(height: 14),
-                                      // BOTÓN DE ACCIÓN RÁPIDA (UN TOQUE DIRECTO)
                                       SizedBox(
                                         width: double.infinity,
                                         height: 46,
@@ -956,7 +955,7 @@ class _DashboardNavegacionLocalState extends State<DashboardNavegacionLocal> {
   }
 
   // ==========================================
-  // VISTA MENÚ CON SWITCH RÁPIDO DE DISPONIBLE
+  // 2. VISTA MENÚ CON AJUSTE DE EXISTENCIAS
   // ==========================================
   Widget _vistaMenuDidi() {
     return StreamBuilder<QuerySnapshot>(
@@ -983,6 +982,7 @@ class _DashboardNavegacionLocalState extends State<DashboardNavegacionLocal> {
               final bool agotado = existencias == 0;
               final String nombre = data['nombre'] ?? 'Sin nombre';
               final dynamic precio = data['precio'] ?? 0;
+              final double calif = (data['calificacion'] ?? 0.0).toDouble();
 
               return FadeInUp(
                 child: Container(
@@ -1031,18 +1031,47 @@ class _DashboardNavegacionLocalState extends State<DashboardNavegacionLocal> {
                                     agotado ? TextDecoration.lineThrough : null,
                               ),
                             ),
-                            Text(
-                              '\$$precio',
-                              style: GoogleFonts.poppins(
-                                color: colorExito,
-                                fontWeight: FontWeight.bold,
-                                fontSize: 14,
-                              ),
+                            Row(
+                              children: [
+                                Text(
+                                  '\$$precio',
+                                  style: GoogleFonts.poppins(
+                                    color: colorExito,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 14,
+                                  ),
+                                ),
+                                const SizedBox(width: 10),
+                                if (calif > 0) ...[
+                                  const Icon(
+                                    Icons.star_rounded,
+                                    size: 14,
+                                    color: colorAmarilloTese,
+                                  ),
+                                  const SizedBox(width: 2),
+                                  Text(
+                                    '${calif.toStringAsFixed(1)} ★',
+                                    style: GoogleFonts.poppins(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w600,
+                                      color: colorTextoOscuro,
+                                    ),
+                                  ),
+                                ] else ...[
+                                  Text(
+                                    'Nuevo ✨',
+                                    style: GoogleFonts.poppins(
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.bold,
+                                      color: colorExito,
+                                    ),
+                                  ),
+                                ],
+                              ],
                             ),
                           ],
                         ),
                       ),
-                      // CONTROL DE STOCK COMPACTO
                       Row(
                         children: [
                           _botonStock(
@@ -1103,11 +1132,178 @@ class _DashboardNavegacionLocalState extends State<DashboardNavegacionLocal> {
       },
     );
   }
+
+  // ==========================================
+  // ⭐ 3. VISTA OPINIONES Y CRÍTICAS (NUEVA)
+  // ==========================================
+  Widget _vistaResenasDidi() {
+    return StreamBuilder<QuerySnapshot>(
+      stream: FirebaseFirestore.instance.collection('Resenas').snapshots(),
+      builder: (context, snapshot) {
+        if (!snapshot.hasData) {
+          return const Center(
+            child: CircularProgressIndicator(color: colorVerdeTese),
+          );
+        }
+
+        final resenasDocs = List<DocumentSnapshot>.from(snapshot.data!.docs);
+        resenasDocs.sort((a, b) {
+          final aData = a.data() as Map<String, dynamic>;
+          final bData = b.data() as Map<String, dynamic>;
+          final Timestamp? tA = aData['fecha'] as Timestamp?;
+          final Timestamp? tB = bData['fecha'] as Timestamp?;
+          if (tA == null) {
+            return -1;
+          }
+          if (tB == null) {
+            return 1;
+          }
+          return tB.compareTo(tA);
+        });
+
+        if (resenasDocs.isEmpty) {
+          return Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  Icons.rate_review_outlined,
+                  size: 70,
+                  color: colorVerdeTese.withValues(alpha: 0.3),
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  'Sin opiniones todavía',
+                  style: GoogleFonts.poppins(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: colorVerdeTese,
+                  ),
+                ),
+                Text(
+                  'Cuando los alumnos califiquen su comida, verás sus críticas aquí.',
+                  style: GoogleFonts.poppins(
+                    fontSize: 13,
+                    color: colorTextoGris,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+              ],
+            ),
+          );
+        }
+
+        return ListView.builder(
+          padding: const EdgeInsets.all(16),
+          itemCount: resenasDocs.length,
+          itemBuilder: (context, index) {
+            final resena = resenasDocs[index];
+            final data = resena.data() as Map<String, dynamic>;
+            final String platillo = data['platilloNombre'] ?? 'Comida';
+            final int estrellas = data['estrellas'] ?? 5;
+            final String comentario = data['comentario'] ?? '';
+            final String alumno = data['alumno'] ?? 'Alumno';
+
+            return FadeInUp(
+              delay: Duration(milliseconds: 50 * index),
+              child: Container(
+                margin: const EdgeInsets.only(bottom: 14),
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(18),
+                  boxShadow: [
+                    BoxShadow(
+                      color: colorVerdeTese.withValues(alpha: 0.05),
+                      blurRadius: 10,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Expanded(
+                          child: Text(
+                            platillo,
+                            style: GoogleFonts.poppins(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              color: colorTextoOscuro,
+                            ),
+                          ),
+                        ),
+                        Row(
+                          children: List.generate(5, (starIndex) {
+                            return Icon(
+                              starIndex < estrellas
+                                  ? Icons.star_rounded
+                                  : Icons.star_outline_rounded,
+                              color:
+                                  starIndex < estrellas
+                                      ? colorAmarilloTese
+                                      : Colors.grey[300],
+                              size: 18,
+                            );
+                          }),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    if (comentario.isNotEmpty) ...[
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: colorFondoCrema,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Text(
+                          '« $comentario »',
+                          style: GoogleFonts.poppins(
+                            fontSize: 13.5,
+                            fontStyle: FontStyle.italic,
+                            color: colorTextoOscuro,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                    ],
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          'Por: $alumno',
+                          style: GoogleFonts.poppins(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: colorTextoGris,
+                          ),
+                        ),
+                        Text(
+                          'Calificación: $estrellas/5',
+                          style: GoogleFonts.poppins(
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                            color: colorVerdeTese,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
 }
 
-// ==========================================================
-// 3. AGREGAR PLATILLO SCREEN
-// ==========================================================
 class AgregarPlatilloScreen extends StatefulWidget {
   const AgregarPlatilloScreen({super.key});
 
@@ -1132,7 +1328,9 @@ class _AgregarPlatilloScreenState extends State<AgregarPlatilloScreen> {
   }
 
   void _guardarPlatillo() async {
-    if (_nombreCtrl.text.isEmpty || _precioCtrl.text.isEmpty) return;
+    if (_nombreCtrl.text.isEmpty || _precioCtrl.text.isEmpty) {
+      return;
+    }
     setState(() => _estaCargando = true);
 
     try {
@@ -1143,7 +1341,9 @@ class _AgregarPlatilloScreenState extends State<AgregarPlatilloScreen> {
         'categoria': 'Comida',
         'descripcion': 'Platillo agregado desde la app del local',
         'tiempoPrep': '15 min',
-        'calificacion': 5.0,
+        // Inicia en 0 para mostrarse como "Nuevo ✨" hasta que un alumno lo califique
+        'calificacion': 0.0,
+        'numCalificaciones': 0,
         'popular': true,
         'ingredientes': _ingredientesPersonalizados,
         'existencias': _existencias,

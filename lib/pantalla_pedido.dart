@@ -88,7 +88,7 @@ class _CarritoScreenState extends State<CarritoScreen> {
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      'Se enviará tu orden a cocina por un total de \$${total.toStringAsFixed(2)}.\nRecuerda que pagarás con $metodoPago al recoger en ventanilla.',
+                      'Se enviará tu orden a cocina por un total de \$${total.toStringAsFixed(2)}.\nRecuerda que pagarás con $metodoPago al recoger.',
                       textAlign: TextAlign.center,
                       style: GoogleFonts.poppins(
                         color: colorTextoGris,
@@ -158,6 +158,18 @@ class _CarritoScreenState extends State<CarritoScreen> {
                                               '\n\nNOTAS: $notasAdicionales';
                                         }
 
+                                        // Guardamos la lista de platillos con sus IDs para calificarlos individualmente
+                                        List<Map<String, dynamic>>
+                                        itemsParaResena =
+                                            widget.carrito
+                                                .map(
+                                                  (p) => {
+                                                    'id': p.id,
+                                                    'nombre': p.nombre,
+                                                  },
+                                                )
+                                                .toList();
+
                                         await FirebaseFirestore.instance
                                             .collection('Pedidos')
                                             .doc(codigoUnico)
@@ -170,6 +182,7 @@ class _CarritoScreenState extends State<CarritoScreen> {
                                               'total': total,
                                               'estado': 0,
                                               'calificado': false,
+                                              'items': itemsParaResena,
                                               'horaLlegada':
                                                   FieldValue.serverTimestamp(),
                                             });
@@ -182,12 +195,9 @@ class _CarritoScreenState extends State<CarritoScreen> {
                                         } catch (_) {}
 
                                         if (context.mounted) {
-                                          Navigator.pop(
-                                            context,
-                                          ); // Cierra modal
-                                          widget.onVaciar(); // Vacía carrito
+                                          Navigator.pop(context);
+                                          widget.onVaciar();
 
-                                          // Navegamos a la pantalla de éxito del patito verde
                                           Navigator.pushReplacement(
                                             context,
                                             MaterialPageRoute(
@@ -574,9 +584,6 @@ class _CarritoScreenState extends State<CarritoScreen> {
   }
 }
 
-// ==========================================================
-// 🦆 NUEVA PANTALLA DE ÉXITO CON PATITO VERDE Y BOTONES
-// ==========================================================
 class PantallaPedidoExitoso extends StatelessWidget {
   final String codigoPedido;
   final double total;
@@ -666,7 +673,6 @@ class PantallaPedidoExitoso extends StatelessWidget {
                 ),
               ),
               const Spacer(),
-              // BOTÓN 1: RASTREAR PEDIDO
               FadeInUp(
                 delay: const Duration(milliseconds: 400),
                 child: SizedBox(
@@ -702,7 +708,6 @@ class PantallaPedidoExitoso extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 12),
-              // BOTÓN 2: VOLVER AL MENÚ
               FadeInUp(
                 delay: const Duration(milliseconds: 500),
                 child: SizedBox(
@@ -736,9 +741,6 @@ class PantallaPedidoExitoso extends StatelessWidget {
   }
 }
 
-// ==========================================================
-// SALA DE ESPERA CON CONFETI
-// ==========================================================
 class SalaEsperaScreen extends StatefulWidget {
   final String codigoPedido;
   const SalaEsperaScreen({super.key, required this.codigoPedido});
@@ -1035,7 +1037,7 @@ class _PantallaEstadoFull extends StatelessWidget {
 }
 
 // ==========================================================
-// ⭐️ PANTALLA RESEÑA CON GUARDADO EN FIREBASE Y BOTÓN OMITIR
+// ⭐️ PANTALLA RESEÑA: CALIFICA POR COMIDA + RECALCULA PROMEDIO
 // ==========================================================
 class PantallaResena extends StatefulWidget {
   final String codigoPedido;
@@ -1049,6 +1051,44 @@ class _PantallaResenaState extends State<PantallaResena> {
   int estrellasSeleccionadas = 0;
   final TextEditingController _comentarioCtrl = TextEditingController();
   bool _enviando = false;
+  bool _cargandoPedido = true;
+
+  List<Map<String, dynamic>> itemsDelPedido = [];
+  String? itemSeleccionadoId;
+  String? itemSeleccionadoNombre;
+
+  @override
+  void initState() {
+    super.initState();
+    _cargarItemsDelPedido();
+  }
+
+  void _cargarItemsDelPedido() async {
+    try {
+      final doc =
+          await FirebaseFirestore.instance
+              .collection('Pedidos')
+              .doc(widget.codigoPedido)
+              .get();
+      if (doc.exists) {
+        final data = doc.data() as Map<String, dynamic>;
+        final List rawItems = data['items'] ?? [];
+        setState(() {
+          itemsDelPedido =
+              rawItems.map((e) => Map<String, dynamic>.from(e)).toList();
+          if (itemsDelPedido.isNotEmpty) {
+            itemSeleccionadoId = itemsDelPedido.first['id'];
+            itemSeleccionadoNombre = itemsDelPedido.first['nombre'];
+          }
+          _cargandoPedido = false;
+        });
+      } else {
+        setState(() => _cargandoPedido = false);
+      }
+    } catch (_) {
+      setState(() => _cargandoPedido = false);
+    }
+  }
 
   @override
   void dispose() {
@@ -1057,20 +1097,49 @@ class _PantallaResenaState extends State<PantallaResena> {
   }
 
   void _guardarResena() async {
+    if (estrellasSeleccionadas == 0 || itemSeleccionadoId == null) {
+      return;
+    }
     setState(() => _enviando = true);
     HapticFeedback.heavyImpact();
 
     try {
-      // 1. Guardamos la reseña en una colección real en Firebase
+      // 1. Guardar la reseña en la colección 'Resenas'
       await FirebaseFirestore.instance.collection('Resenas').add({
         'codigoPedido': widget.codigoPedido,
+        'platilloId': itemSeleccionadoId,
+        'platilloNombre': itemSeleccionadoNombre ?? 'Comida',
         'estrellas': estrellasSeleccionadas,
         'comentario': _comentarioCtrl.text.trim(),
         'alumno': 'Axel Guerrero',
         'fecha': FieldValue.serverTimestamp(),
       });
 
-      // 2. Marcamos el pedido como calificado para no pedir reseña de nuevo
+      // 2. Recalcular el promedio matemático del platillo en Firestore
+      final platilloRef = FirebaseFirestore.instance
+          .collection('Menu_Platillos')
+          .doc(itemSeleccionadoId);
+      final platilloSnap = await platilloRef.get();
+
+      if (platilloSnap.exists) {
+        final pData = platilloSnap.data() as Map<String, dynamic>;
+        double califActual = (pData['calificacion'] ?? 0.0).toDouble();
+        int totalVotos = (pData['numCalificaciones'] ?? 0) as int;
+
+        // Fórmula de promedio ponderado: ((actual * votos) + nuevasEstrellas) / (votos + 1)
+        double nuevoPromedio =
+            ((califActual * totalVotos) + estrellasSeleccionadas) /
+            (totalVotos + 1);
+        // Redondeamos a un decimal
+        nuevoPromedio = double.parse(nuevoPromedio.toStringAsFixed(1));
+
+        await platilloRef.update({
+          'calificacion': nuevoPromedio,
+          'numCalificaciones': totalVotos + 1,
+        });
+      }
+
+      // 3. Marcar el pedido como calificado
       await FirebaseFirestore.instance
           .collection('Pedidos')
           .doc(widget.codigoPedido)
@@ -1081,7 +1150,7 @@ class _PantallaResenaState extends State<PantallaResena> {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text(
-              '¡Gracias por tu opinión! 💛 Tu reseña fue guardada.',
+              '¡Reseña enviada! El ranking del platillo ha cambiado. ⭐',
             ),
             backgroundColor: colorExito,
           ),
@@ -1098,7 +1167,7 @@ class _PantallaResenaState extends State<PantallaResena> {
       backgroundColor: colorFondoCrema,
       appBar: AppBar(
         title: Text(
-          'Calificar Orden',
+          'Calificar Comida',
           style: GoogleFonts.poppins(
             color: colorVerdeTese,
             fontWeight: FontWeight.bold,
@@ -1120,111 +1189,182 @@ class _PantallaResenaState extends State<PantallaResena> {
           ),
         ],
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(24.0),
-        child: Column(
-          children: [
-            BounceInDown(
-              child: Image.asset('assets/disfrutaTuComida.png', height: 160),
-            ),
-            const SizedBox(height: 20),
-            Text(
-              '¿Qué te pareció?',
-              style: GoogleFonts.poppins(
-                fontSize: 26,
-                fontWeight: FontWeight.w900,
-                color: colorVerdeTese,
-              ),
-            ),
-            const SizedBox(height: 6),
-            Text(
-              'Tu opinión ayuda a mejorar la comida de la cafetería',
-              textAlign: TextAlign.center,
-              style: GoogleFonts.poppins(fontSize: 14, color: colorTextoGris),
-            ),
-            const SizedBox(height: 30),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: List.generate(5, (index) {
-                return GestureDetector(
-                  onTap: () {
-                    HapticFeedback.heavyImpact();
-                    setState(() => estrellasSeleccionadas = index + 1);
-                  },
-                  child: Icon(
-                    index < estrellasSeleccionadas
-                        ? Icons.star_rounded
-                        : Icons.star_outline_rounded,
-                    color:
-                        index < estrellasSeleccionadas
-                            ? colorAmarilloTese
-                            : Colors.grey[300],
-                    size: 52,
-                  ),
-                );
-              }),
-            ),
-            const SizedBox(height: 30),
-            TextField(
-              controller: _comentarioCtrl,
-              maxLines: 3,
-              decoration: InputDecoration(
-                hintText: 'Cuéntanos qué tal estuvo la comida... (Opcional)',
-                hintStyle: GoogleFonts.poppins(
-                  color: colorTextoGris,
-                  fontSize: 13,
-                ),
-                filled: true,
-                fillColor: Colors.white,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(16),
-                  borderSide: BorderSide.none,
-                ),
-                contentPadding: const EdgeInsets.all(16),
-              ),
-            ),
-            const SizedBox(height: 40),
-            SizedBox(
-              width: double.infinity,
-              height: 54,
-              child: ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: colorVerdeTese,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                ),
-                onPressed:
-                    estrellasSeleccionadas == 0 || _enviando
-                        ? null
-                        : _guardarResena,
-                child:
-                    _enviando
-                        ? const CircularProgressIndicator(color: Colors.white)
-                        : Text(
-                          'Enviar Reseña',
+      body:
+          _cargandoPedido
+              ? const Center(
+                child: CircularProgressIndicator(color: colorVerdeTese),
+              )
+              : SingleChildScrollView(
+                padding: const EdgeInsets.all(24.0),
+                child: Column(
+                  children: [
+                    BounceInDown(
+                      child: Image.asset(
+                        'assets/disfrutaTuComida.png',
+                        height: 140,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      '¿Qué tal estuvo tu comida?',
+                      style: GoogleFonts.poppins(
+                        fontSize: 22,
+                        fontWeight: FontWeight.w900,
+                        color: colorVerdeTese,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Tu opinión cambia el ranking del platillo en el menú',
+                      textAlign: TextAlign.center,
+                      style: GoogleFonts.poppins(
+                        fontSize: 13,
+                        color: colorTextoGris,
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+
+                    // SELECTOR DE QUÉ PLATILLO DE SU ORDEN VA A CALIFICAR
+                    if (itemsDelPedido.isNotEmpty) ...[
+                      Align(
+                        alignment: Alignment.centerLeft,
+                        child: Text(
+                          'Selecciona el platillo a calificar:',
                           style: GoogleFonts.poppins(
-                            color: Colors.white,
-                            fontSize: 16,
+                            fontSize: 13,
                             fontWeight: FontWeight.bold,
+                            color: colorTextoOscuro,
                           ),
                         ),
-              ),
-            ),
-            const SizedBox(height: 12),
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: Text(
-                'En otro momento',
-                style: GoogleFonts.poppins(
-                  color: colorTextoGris,
-                  fontWeight: FontWeight.w600,
+                      ),
+                      const SizedBox(height: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 14),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                        child: DropdownButtonHideUnderline(
+                          child: DropdownButton<String>(
+                            isExpanded: true,
+                            value: itemSeleccionadoId,
+                            items:
+                                itemsDelPedido.map((item) {
+                                  return DropdownMenuItem<String>(
+                                    value: item['id'] as String,
+                                    child: Text(
+                                      item['nombre'] as String,
+                                      style: GoogleFonts.poppins(
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  );
+                                }).toList(),
+                            onChanged: (val) {
+                              final elegido = itemsDelPedido.firstWhere(
+                                (e) => e['id'] == val,
+                              );
+                              setState(() {
+                                itemSeleccionadoId = val;
+                                itemSeleccionadoNombre = elegido['nombre'];
+                              });
+                            },
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 20),
+                    ],
+
+                    // ESTRELLAS
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                      children: List.generate(5, (index) {
+                        return GestureDetector(
+                          onTap: () {
+                            HapticFeedback.heavyImpact();
+                            setState(() => estrellasSeleccionadas = index + 1);
+                          },
+                          child: Icon(
+                            index < estrellasSeleccionadas
+                                ? Icons.star_rounded
+                                : Icons.star_outline_rounded,
+                            color:
+                                index < estrellasSeleccionadas
+                                    ? colorAmarilloTese
+                                    : Colors.grey[300],
+                            size: 50,
+                          ),
+                        );
+                      }),
+                    ),
+                    const SizedBox(height: 24),
+
+                    // COMENTARIO CRÍTICO
+                    TextField(
+                      controller: _comentarioCtrl,
+                      maxLines: 3,
+                      decoration: InputDecoration(
+                        hintText:
+                            'Ej. Las papas estaban muy saladas / ¡La hamburguesa estaba 10/10!',
+                        hintStyle: GoogleFonts.poppins(
+                          color: colorTextoGris,
+                          fontSize: 13,
+                        ),
+                        filled: true,
+                        fillColor: Colors.white,
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(16),
+                          borderSide: BorderSide.none,
+                        ),
+                        contentPadding: const EdgeInsets.all(16),
+                      ),
+                    ),
+                    const SizedBox(height: 30),
+
+                    SizedBox(
+                      width: double.infinity,
+                      height: 52,
+                      child: ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: colorVerdeTese,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(15),
+                          ),
+                        ),
+                        onPressed:
+                            estrellasSeleccionadas == 0 || _enviando
+                                ? null
+                                : _guardarResena,
+                        child:
+                            _enviando
+                                ? const CircularProgressIndicator(
+                                  color: Colors.white,
+                                )
+                                : Text(
+                                  'Publicar Opinión',
+                                  style: GoogleFonts.poppins(
+                                    color: Colors.white,
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    TextButton(
+                      onPressed: () => Navigator.pop(context),
+                      child: Text(
+                        'En otro momento',
+                        style: GoogleFonts.poppins(
+                          color: colorTextoGris,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
-            ),
-          ],
-        ),
-      ),
     );
   }
 }

@@ -391,6 +391,7 @@ class MisPedidosScreen extends StatelessWidget {
                                           color: colorTextoGris,
                                         ),
                                       ),
+                                      // BOTÓN DE CALIFICAR LA COMIDA DE ESTE PEDIDO
                                       if ((estadoReal == 2 ||
                                               estadoReal == 3) &&
                                           !yaCalificado) ...[
@@ -934,24 +935,52 @@ class _CatalogoEstudianteScreenState extends State<CatalogoEstudianteScreen> {
                                             color: colorTextoGris,
                                           ),
                                         ),
-                                        const SizedBox(height: 4),
+                                        const SizedBox(height: 5),
+
+                                        // ==========================================
+                                        // ⭐ RANKING DINÁMICO EN TIEMPO REAL
+                                        // ==========================================
                                         Row(
                                           children: [
-                                            const Icon(
-                                              Icons.star_rounded,
-                                              size: 14,
-                                              color: colorAmarilloTese,
-                                            ),
-                                            const SizedBox(width: 2),
-                                            Text(
-                                              platillo.calificacion
-                                                  .toStringAsFixed(1),
-                                              style: GoogleFonts.poppins(
-                                                fontSize: 11.5,
-                                                fontWeight: FontWeight.w600,
-                                                color: colorTextoOscuro,
+                                            if (platillo.calificacion > 0) ...[
+                                              const Icon(
+                                                Icons.star_rounded,
+                                                size: 15,
+                                                color: colorAmarilloTese,
                                               ),
-                                            ),
+                                              const SizedBox(width: 2),
+                                              Text(
+                                                '${platillo.calificacion.toStringAsFixed(1)} ★',
+                                                style: GoogleFonts.poppins(
+                                                  fontSize: 12,
+                                                  fontWeight: FontWeight.bold,
+                                                  color: colorTextoOscuro,
+                                                ),
+                                              ),
+                                            ] else ...[
+                                              Container(
+                                                padding:
+                                                    const EdgeInsets.symmetric(
+                                                      horizontal: 6,
+                                                      vertical: 2,
+                                                    ),
+                                                decoration: BoxDecoration(
+                                                  color: colorExito.withValues(
+                                                    alpha: 0.12,
+                                                  ),
+                                                  borderRadius:
+                                                      BorderRadius.circular(6),
+                                                ),
+                                                child: Text(
+                                                  'Nuevo ✨',
+                                                  style: GoogleFonts.poppins(
+                                                    fontSize: 11,
+                                                    fontWeight: FontWeight.bold,
+                                                    color: colorExito,
+                                                  ),
+                                                ),
+                                              ),
+                                            ],
                                             const SizedBox(width: 8),
                                             const Icon(
                                               Icons.schedule,
@@ -968,6 +997,7 @@ class _CatalogoEstudianteScreenState extends State<CatalogoEstudianteScreen> {
                                             ),
                                           ],
                                         ),
+
                                         const SizedBox(height: 6),
                                         Container(
                                           padding: const EdgeInsets.symmetric(
