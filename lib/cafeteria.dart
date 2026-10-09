@@ -175,7 +175,6 @@ class _DashboardNavegacionLocalState extends State<DashboardNavegacionLocal> {
   void _cambiarEstadoPedido(String idDoc, int estadoActual) {
     HapticFeedback.heavyImpact();
     int nuevoEstado = estadoActual + 1;
-    // Actualizamos la base de datos real
     FirebaseFirestore.instance.collection('Pedidos').doc(idDoc).update({
       'estado': nuevoEstado,
     });
@@ -249,7 +248,7 @@ class _DashboardNavegacionLocalState extends State<DashboardNavegacionLocal> {
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Text(
-                      'Ticket #$numeroTicket · hace ${_minutosEspera(comanda['horaLlegada'])} min',
+                      'Ticket #$numeroTicket · hace ${_minutosEspera(comanda['horaLlegada'] as Timestamp?)} min',
                       style: GoogleFonts.poppins(
                         fontSize: 12,
                         fontWeight: FontWeight.w700,
@@ -316,7 +315,6 @@ class _DashboardNavegacionLocalState extends State<DashboardNavegacionLocal> {
                   ),
                 ),
                 const SizedBox(height: 20),
-
                 if (comanda['notas'].toString().isNotEmpty)
                   Container(
                     width: double.infinity,
@@ -361,7 +359,6 @@ class _DashboardNavegacionLocalState extends State<DashboardNavegacionLocal> {
                       ],
                     ),
                   ),
-
                 const SizedBox(height: 20),
                 Row(
                   children: [
@@ -426,7 +423,7 @@ class _DashboardNavegacionLocalState extends State<DashboardNavegacionLocal> {
             fontWeight: FontWeight.bold,
           ),
         ),
-        backgroundColor: colorVerdeTese,
+        backgroundColor: Colors.blueGrey[800],
         actions: [
           IconButton(
             icon: const Icon(Icons.logout, color: Colors.white),
@@ -477,7 +474,6 @@ class _DashboardNavegacionLocalState extends State<DashboardNavegacionLocal> {
 
   Widget _vistaPedidos() {
     return StreamBuilder<QuerySnapshot>(
-      // SOLO MOSTRAMOS PEDIDOS QUE NO SE HAN ENTREGADO (estado < 3) Y ORDENADOS POR HORA
       stream:
           FirebaseFirestore.instance
               .collection('Pedidos')
@@ -486,14 +482,15 @@ class _DashboardNavegacionLocalState extends State<DashboardNavegacionLocal> {
               .orderBy('horaLlegada')
               .snapshots(),
       builder: (context, snapshot) {
-        if (!snapshot.hasData)
+        if (!snapshot.hasData) {
           return const Center(
             child: CircularProgressIndicator(color: colorVerdeTese),
           );
+        }
 
         final pedidos = snapshot.data!.docs;
 
-        if (pedidos.isEmpty)
+        if (pedidos.isEmpty) {
           return Center(
             key: const ValueKey('sinPedidos'),
             child: FadeInUp(
@@ -525,6 +522,7 @@ class _DashboardNavegacionLocalState extends State<DashboardNavegacionLocal> {
               ),
             ),
           );
+        }
 
         return ListView.builder(
           key: const ValueKey('pedidos'),
@@ -610,7 +608,6 @@ class _DashboardNavegacionLocalState extends State<DashboardNavegacionLocal> {
     IconData iconoEstado,
     Color colorEstado,
   ) {
-    int estado = comanda['estado'];
     return Padding(
       padding: const EdgeInsets.all(16.0),
       child: Column(
@@ -623,7 +620,7 @@ class _DashboardNavegacionLocalState extends State<DashboardNavegacionLocal> {
               borderRadius: BorderRadius.circular(8),
             ),
             child: Text(
-              'Ticket #$numeroTicket · hace ${_minutosEspera(comanda['horaLlegada'])} min',
+              'Ticket #$numeroTicket · hace ${_minutosEspera(comanda['horaLlegada'] as Timestamp?)} min',
               style: GoogleFonts.poppins(
                 fontSize: 11,
                 fontWeight: FontWeight.w700,
@@ -650,9 +647,9 @@ class _DashboardNavegacionLocalState extends State<DashboardNavegacionLocal> {
                   size: 18,
                 ),
                 label: Text(
-                  estado == 0
+                  comanda['estado'] == 0
                       ? 'NUEVO'
-                      : (estado == 1 ? 'PREPARANDO' : 'LISTO'),
+                      : (comanda['estado'] == 1 ? 'PREPARANDO' : 'LISTO'),
                 ),
                 backgroundColor: colorEstado,
                 labelStyle: GoogleFonts.poppins(
@@ -719,10 +716,11 @@ class _DashboardNavegacionLocalState extends State<DashboardNavegacionLocal> {
       stream:
           FirebaseFirestore.instance.collection('Menu_Platillos').snapshots(),
       builder: (context, snapshot) {
-        if (!snapshot.hasData)
+        if (!snapshot.hasData) {
           return const Center(
             child: CircularProgressIndicator(color: colorVerdeTese),
           );
+        }
         final miMenu = snapshot.data!.docs;
 
         return Scaffold(
@@ -973,7 +971,7 @@ class _AgregarPlatilloScreenState extends State<AgregarPlatilloScreen> {
         'calificacion': 5.0,
         'popular': true,
         'ingredientes': _ingredientesPersonalizados,
-        'existencias': _existencias, // GUARDAMOS LAS EXISTENCIAS REALES
+        'existencias': _existencias,
       });
 
       if (mounted) {

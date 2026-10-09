@@ -1,4 +1,3 @@
-import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -8,7 +7,6 @@ import 'package:carousel_slider/carousel_slider.dart';
 import 'package:smooth_page_indicator/smooth_page_indicator.dart';
 import 'package:awesome_snackbar_content/awesome_snackbar_content.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'dart:ui';
 import 'colores.dart';
 import 'modelos.dart';
 import 'pantalla_perfil.dart';
@@ -58,7 +56,7 @@ class _NavegacionEstudianteState extends State<NavegacionEstudiante> {
         carrito: carritoGlobal,
         onAgregar: _actualizarCarrito,
       ),
-      const MisPedidosScreen(), // YA NO LE PASAMOS LA LISTA FALSA
+      const MisPedidosScreen(),
       const PerfilEstudianteScreen(),
     ];
 
@@ -118,11 +116,19 @@ class _NavegacionEstudianteState extends State<NavegacionEstudiante> {
                     ),
                   );
 
-                  if (resultado != null) {
-                    // Si pagó con éxito, cambiamos a la pestaña 1 (Mis Pedidos)
+                  if (resultado != null && context.mounted) {
                     setState(() {
                       _indiceActual = 1;
                     });
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder:
+                            (context) => SalaEsperaScreen(
+                              codigoPedido: resultado['codigo'] as String,
+                            ),
+                      ),
+                    );
                   }
                 },
                 icon: Badge(
@@ -274,20 +280,31 @@ class MisPedidosScreen extends StatelessWidget {
               ],
             ),
           ),
-
-          // ==========================================
-          // STREAM BUILDER PARA LEER EL HISTORIAL DE PEDIDOS REALES
-          // ==========================================
           Expanded(
             child: StreamBuilder<QuerySnapshot>(
-              // Leemos de la colección Pedidos (solo los de Axel por ahora) y ordenados del mas nuevo al mas viejo
               stream:
                   FirebaseFirestore.instance
                       .collection('Pedidos')
                       .where('alumno', isEqualTo: 'Axel Guerrero')
-                      .orderBy('horaLlegada', descending: true)
                       .snapshots(),
               builder: (context, snapshot) {
+                if (snapshot.hasError) {
+                  debugPrint(snapshot.error.toString());
+                  return Center(
+                    child: Padding(
+                      padding: const EdgeInsets.all(20.0),
+                      child: Text(
+                        'Construyendo base de datos...\nEspera unos minutos si es tu primer pedido.',
+                        textAlign: TextAlign.center,
+                        style: GoogleFonts.poppins(
+                          color: Colors.redAccent,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  );
+                }
+
                 if (snapshot.connectionState == ConnectionState.waiting) {
                   return const Center(
                     child: CircularProgressIndicator(color: colorVerdeTese),
@@ -314,18 +331,33 @@ class MisPedidosScreen extends StatelessWidget {
                   );
                 }
 
-                final historial = snapshot.data!.docs;
+                final historial = List<DocumentSnapshot>.from(
+                  snapshot.data!.docs,
+                );
+                historial.sort((a, b) {
+                  final aData = a.data() as Map<String, dynamic>;
+                  final bData = b.data() as Map<String, dynamic>;
+                  final Timestamp? tA = aData['horaLlegada'] as Timestamp?;
+                  final Timestamp? tB = bData['horaLlegada'] as Timestamp?;
+                  if (tA == null) return -1;
+                  if (tB == null) return 1;
+                  return tB.compareTo(tA);
+                });
 
                 return ListView.builder(
                   padding: const EdgeInsets.symmetric(horizontal: 16),
                   itemCount: historial.length,
                   itemBuilder: (context, index) {
                     final pedido = historial[index];
-                    int estadoReal = pedido['estado'] ?? 0;
+                    final data = pedido.data() as Map<String, dynamic>;
+
+                    int estadoReal = data['estado'] ?? 0;
+                    String idPedido = data['idPedido'] ?? '#TESE-0000';
 
                     Color colorEstado = Colors.grey[400]!;
                     String textoEstado = 'Recibido';
                     IconData iconoEstado = Icons.access_time;
+
                     if (estadoReal == 1) {
                       colorEstado = colorAmarilloTese;
                       textoEstado = 'Preparando';
@@ -349,7 +381,7 @@ class MisPedidosScreen extends StatelessWidget {
                             MaterialPageRoute(
                               builder:
                                   (context) =>
-                                      SalaEsperaScreen(codigoPedido: pedido.id),
+                                      SalaEsperaScreen(codigoPedido: idPedido),
                             ),
                           );
                         },
@@ -389,7 +421,7 @@ class MisPedidosScreen extends StatelessWidget {
                                                 MainAxisAlignment.spaceBetween,
                                             children: [
                                               Text(
-                                                pedido.id,
+                                                idPedido,
                                                 style: GoogleFonts.poppins(
                                                   fontWeight: FontWeight.w900,
                                                   fontSize: 18,
@@ -433,10 +465,8 @@ class MisPedidosScreen extends StatelessWidget {
                                             ],
                                           ),
                                           const SizedBox(height: 8),
-
-                                          // Validamos si Firebase nos mandó la fecha correctamente
                                           Text(
-                                            pedido['horaLlegada'] != null
+                                            data['horaLlegada'] != null
                                                 ? 'Hoy, hace un momento'
                                                 : 'Procesando...',
                                             style: GoogleFonts.poppins(
@@ -444,8 +474,6 @@ class MisPedidosScreen extends StatelessWidget {
                                               color: colorTextoGris,
                                             ),
                                           ),
-
-                                          // CONDICIONAL DEL BOTON CALIFICAR
                                           if (estadoReal == 2 ||
                                               estadoReal == 3) ...[
                                             const SizedBox(height: 16),
@@ -480,7 +508,7 @@ class MisPedidosScreen extends StatelessWidget {
                                                           (context) =>
                                                               PantallaResena(
                                                                 codigoPedido:
-                                                                    pedido.id,
+                                                                    idPedido,
                                                               ),
                                                     ),
                                                   );
@@ -606,12 +634,12 @@ class _CatalogoEstudianteScreenState extends State<CatalogoEstudianteScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       body: Container(
-        decoration: BoxDecoration(
+        decoration: const BoxDecoration(
           gradient: LinearGradient(
             colors: [colorVerdeTese, colorFondoCrema],
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            stops: const [0.0, 0.4],
+            stops: [0.0, 0.4],
           ),
         ),
         child: SafeArea(
@@ -911,7 +939,6 @@ class _CatalogoEstudianteScreenState extends State<CatalogoEstudianteScreen> {
                 ),
               ),
               const SizedBox(height: 10),
-
               Expanded(
                 child: StreamBuilder<QuerySnapshot>(
                   stream:
@@ -919,18 +946,20 @@ class _CatalogoEstudianteScreenState extends State<CatalogoEstudianteScreen> {
                           .collection('Menu_Platillos')
                           .snapshots(),
                   builder: (context, snapshot) {
-                    if (snapshot.connectionState == ConnectionState.waiting)
+                    if (snapshot.connectionState == ConnectionState.waiting) {
                       return const Center(
                         child: CircularProgressIndicator(color: colorVerdeTese),
                       );
-                    if (snapshot.hasError)
-                      return Center(
+                    }
+                    if (snapshot.hasError) {
+                      return const Center(
                         child: Text(
                           'Error al cargar el menú',
-                          style: const TextStyle(color: Colors.red),
+                          style: TextStyle(color: Colors.red),
                         ),
                       );
-                    if (!snapshot.hasData || snapshot.data!.docs.isEmpty)
+                    }
+                    if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
                       return Center(
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
@@ -951,6 +980,7 @@ class _CatalogoEstudianteScreenState extends State<CatalogoEstudianteScreen> {
                           ],
                         ),
                       );
+                    }
 
                     List<Platillo> menuDisponibles =
                         snapshot.data!.docs
@@ -960,7 +990,7 @@ class _CatalogoEstudianteScreenState extends State<CatalogoEstudianteScreen> {
                       menuDisponibles,
                     );
 
-                    if (platillosFiltrados.isEmpty)
+                    if (platillosFiltrados.isEmpty) {
                       return Center(
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
@@ -981,6 +1011,7 @@ class _CatalogoEstudianteScreenState extends State<CatalogoEstudianteScreen> {
                           ],
                         ),
                       );
+                    }
 
                     return ListView.builder(
                       padding: const EdgeInsets.fromLTRB(16, 0, 16, 90),
@@ -1097,7 +1128,7 @@ class _CatalogoEstudianteScreenState extends State<CatalogoEstudianteScreen> {
                                               ),
                                             ),
                                             const SizedBox(width: 8),
-                                            Icon(
+                                            const Icon(
                                               Icons.schedule,
                                               size: 12,
                                               color: colorTextoGris,

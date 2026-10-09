@@ -8,7 +8,6 @@ import 'package:audioplayers/audioplayers.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'colores.dart';
 import 'modelos.dart';
-import 'pantalla_menu.dart';
 
 final AudioPlayer reproductorGlobal = AudioPlayer();
 
@@ -144,7 +143,6 @@ class _CarritoScreenState extends State<CarritoScreen> {
                                         String codigoUnico =
                                             '#TESE-${Random().nextInt(90000) + 10000}';
 
-                                        // Unimos la lista y sus notas de extra/sin en un texto
                                         String detallesCocina = widget.carrito
                                             .map((p) {
                                               String personalizacion =
@@ -162,7 +160,6 @@ class _CarritoScreenState extends State<CarritoScreen> {
                                               '\n\nNOTAS: $notasAdicionales';
                                         }
 
-                                        // GUARDAMOS EN LA NUBE REAL
                                         await FirebaseFirestore.instance
                                             .collection('Pedidos')
                                             .doc(codigoUnico)
@@ -580,9 +577,6 @@ class _CarritoScreenState extends State<CarritoScreen> {
   }
 }
 
-// ==========================================
-// SALA DE ESPERA (CONECTADA EN TIEMPO REAL)
-// ==========================================
 class SalaEsperaScreen extends StatefulWidget {
   final String codigoPedido;
   const SalaEsperaScreen({super.key, required this.codigoPedido});
@@ -593,7 +587,7 @@ class SalaEsperaScreen extends StatefulWidget {
 
 class _SalaEsperaScreenState extends State<SalaEsperaScreen> {
   late final ConfettiController _confettiController;
-  int _ultimoEstadoLeido = -1; // Para que el confeti no explote mil veces
+  int _ultimoEstadoLeido = -1;
 
   @override
   void initState() {
@@ -611,7 +605,6 @@ class _SalaEsperaScreenState extends State<SalaEsperaScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // ESCUCHAMOS EL DOCUMENTO EXACTO DE ESTA COMPRA EN LA NUBE
     return StreamBuilder<DocumentSnapshot>(
       stream:
           FirebaseFirestore.instance
@@ -619,7 +612,6 @@ class _SalaEsperaScreenState extends State<SalaEsperaScreen> {
               .doc(widget.codigoPedido)
               .snapshots(),
       builder: (context, snapshot) {
-        // Si hay un error o está cargando, mostramos la pantalla genérica de carga
         if (!snapshot.hasData || !snapshot.data!.exists) {
           return const Scaffold(
             backgroundColor: colorVerdeTese,
@@ -629,10 +621,8 @@ class _SalaEsperaScreenState extends State<SalaEsperaScreen> {
           );
         }
 
-        // Leemos el estado real que la cafetería apretó en su tablet
         int estadoActual = snapshot.data!.get('estado') ?? 0;
 
-        // Disparamos el confeti solo la primera vez que llegue al estado 2 (Listo)
         if (estadoActual == 2 && _ultimoEstadoLeido != 2) {
           _confettiController.play();
           _ultimoEstadoLeido = 2;
@@ -712,8 +702,8 @@ class _SalaEsperaScreenState extends State<SalaEsperaScreen> {
 
   Widget _construirPantallaPorEstado(int estado) {
     if (estado == 0) {
-      return _PantallaEstadoFull(
-        key: const ValueKey(0),
+      return const _PantallaEstadoFull(
+        key: ValueKey(0),
         titulo: 'Pedido Recibido',
         subtitulo: 'Esperando confirmación de la cafetería...',
         cargando: true,
@@ -722,8 +712,8 @@ class _SalaEsperaScreenState extends State<SalaEsperaScreen> {
         colorTextoSub: colorTextoGris,
       );
     } else if (estado == 1) {
-      return _PantallaEstadoFull(
-        key: const ValueKey(1),
+      return const _PantallaEstadoFull(
+        key: ValueKey(1),
         titulo: 'En Preparación',
         subtitulo: '¡El Chef está cocinando tus hambreados!',
         cargando: true,
@@ -754,6 +744,7 @@ class _BarraProgresoPedido extends StatelessWidget {
     required this.estadoActual,
     required this.colorTexto,
   });
+
   @override
   Widget build(BuildContext context) {
     final etiquetas = ['Recibido', 'Preparando', 'Listo'];
