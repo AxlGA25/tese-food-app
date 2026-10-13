@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:animate_do/animate_do.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 import 'colores.dart';
 import 'pantalla_inicio.dart';
 import 'pantalla_gachapon.dart';
@@ -26,6 +27,192 @@ class _PerfilEstudianteScreenState extends State<PerfilEstudianteScreen> {
     'Vegetariano (Sin carnes) 🌱',
     'Alérgico al marisco / pescado 🐟',
   ];
+
+  final List<String> _carrerasTese = [
+    'Ing. en Sistemas Computacionales',
+    'Ing. Informática',
+    'Ing. Mecatrónica',
+    'Ing. Industrial',
+    'Ing. Electrónica',
+    'Ing. Mecánica',
+    'Ing. Química',
+    'Ing. Bioquímica',
+    'Ing. en Gestión Empresarial',
+    'Ing. Aeronáutica',
+    'Lic. en Contaduría Pública',
+    'Otra Área / Administrativo',
+  ];
+
+  // ✏️ EDITAR NOMBRE, MATRÍCULA Y CARRERA EN VIVO
+  void _editarPerfil(
+    String uid,
+    String nombreActual,
+    String matriculaActual,
+    String carreraActual,
+  ) {
+    final TextEditingController nombreCtrl = TextEditingController(
+      text: nombreActual,
+    );
+    final TextEditingController matriculaCtrl = TextEditingController(
+      text: matriculaActual == 'Sin Matrícula' ? '' : matriculaActual,
+    );
+    String carreraElegida =
+        _carrerasTese.contains(carreraActual)
+            ? carreraActual
+            : _carrerasTese[0];
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder:
+          (ctx) => StatefulBuilder(
+            builder: (contextModal, setStateModal) {
+              return Padding(
+                padding: EdgeInsets.only(
+                  bottom: MediaQuery.of(contextModal).viewInsets.bottom + 20,
+                  top: 20,
+                  left: 20,
+                  right: 20,
+                ),
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Personalizar Perfil Estudiantil',
+                        style: GoogleFonts.poppins(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: colorTextoOscuro,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Actualiza tus datos para tus pedidos en la cafetería.',
+                        style: GoogleFonts.poppins(
+                          fontSize: 12.5,
+                          color: colorTextoGris,
+                        ),
+                      ),
+                      const Divider(height: 20),
+                      TextField(
+                        controller: nombreCtrl,
+                        decoration: InputDecoration(
+                          labelText: 'Nombre Completo',
+                          prefixIcon: const Icon(
+                            Icons.person_outline,
+                            color: colorVerdeTese,
+                          ),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 14),
+                      TextField(
+                        controller: matriculaCtrl,
+                        keyboardType: TextInputType.number,
+                        decoration: InputDecoration(
+                          labelText: 'Matrícula del TESE',
+                          hintText: 'Ej. 20240001',
+                          prefixIcon: const Icon(
+                            Icons.badge_outlined,
+                            color: colorVerdeTese,
+                          ),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 14),
+                      DropdownButtonFormField<String>(
+                        isExpanded: true,
+                        value: carreraElegida,
+                        decoration: InputDecoration(
+                          labelText: 'Carrera',
+                          prefixIcon: const Icon(
+                            Icons.school_outlined,
+                            color: colorVerdeTese,
+                          ),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        items:
+                            _carrerasTese
+                                .map(
+                                  (c) => DropdownMenuItem(
+                                    value: c,
+                                    child: Text(
+                                      c,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                )
+                                .toList(),
+                        onChanged:
+                            (val) => setStateModal(() => carreraElegida = val!),
+                      ),
+                      const SizedBox(height: 22),
+                      SizedBox(
+                        width: double.infinity,
+                        height: 50,
+                        child: ElevatedButton(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: colorVerdeTese,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          onPressed: () {
+                            FirebaseFirestore.instance
+                                .collection('Usuarios')
+                                .doc(uid)
+                                .set({
+                                  'nombre_completo':
+                                      nombreCtrl.text.trim().isEmpty
+                                          ? nombreActual
+                                          : nombreCtrl.text.trim(),
+                                  'identificador':
+                                      matriculaCtrl.text.trim().isEmpty
+                                          ? 'Sin Matrícula'
+                                          : matriculaCtrl.text.trim(),
+                                  'carrera_area': carreraElegida,
+                                }, SetOptions(merge: true));
+
+                            Navigator.pop(ctx);
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text(
+                                  '¡Datos del perfil actualizados! 🎓✨',
+                                ),
+                                backgroundColor: colorExito,
+                              ),
+                            );
+                          },
+                          child: Text(
+                            'Guardar Datos',
+                            style: GoogleFonts.poppins(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 15,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            },
+          ),
+    );
+  }
 
   void _cambiarAlergia(String uid) {
     showModalBottomSheet(
@@ -157,7 +344,7 @@ class _PerfilEstudianteScreenState extends State<PerfilEstudianteScreen> {
               ),
             ),
             content: Text(
-              'Tendrás que volver a ingresar con tu correo institucional y contraseña.',
+              'Tendrás que volver a ingresar con tu cuenta para pedir comida.',
               style: GoogleFonts.poppins(color: colorTextoGris, fontSize: 13.5),
             ),
             actions: [
@@ -180,8 +367,9 @@ class _PerfilEstudianteScreenState extends State<PerfilEstudianteScreen> {
                 ),
                 onPressed: () async {
                   Navigator.pop(ctx);
-                  // 🚪 Desconexión real de Firebase
                   await FirebaseAuth.instance.signOut();
+                  await GoogleSignIn()
+                      .signOut(); // Cierra sesión de Google también
                   if (context.mounted) {
                     Navigator.pushAndRemoveUntil(
                       context,
@@ -225,7 +413,6 @@ class _PerfilEstudianteScreenState extends State<PerfilEstudianteScreen> {
         centerTitle: true,
       ),
       body: StreamBuilder<DocumentSnapshot>(
-        // 👤 1. Leemos los datos reales del usuario desde 'Usuarios'
         stream:
             FirebaseFirestore.instance
                 .collection('Usuarios')
@@ -234,8 +421,10 @@ class _PerfilEstudianteScreenState extends State<PerfilEstudianteScreen> {
         builder: (context, userSnap) {
           final userData = userSnap.data?.data() as Map<String, dynamic>? ?? {};
           final String nombreReal =
-              userData['nombre_completo'] ?? 'Estudiante TESE';
-          final String matriculaReal = userData['identificador'] ?? '20240001';
+              userData['nombre_completo'] ??
+              (_usuarioAuth?.displayName ?? 'Estudiante TESE');
+          final String matriculaReal =
+              userData['identificador'] ?? 'Sin Matrícula';
           final String carreraReal =
               userData['carrera_area'] ?? 'Ing. en Sistemas Computacionales';
           final String rolReal = userData['rol'] ?? 'Estudiante';
@@ -243,7 +432,6 @@ class _PerfilEstudianteScreenState extends State<PerfilEstudianteScreen> {
               userData['alergia'] ?? _alergiaSeleccionada;
 
           return StreamBuilder<DocumentSnapshot>(
-            // 🦆 2. Leemos la skin de pato equipada del alumno
             stream:
                 FirebaseFirestore.instance
                     .collection('Usuarios_Perfil')
@@ -266,10 +454,10 @@ class _PerfilEstudianteScreenState extends State<PerfilEstudianteScreen> {
               );
 
               return StreamBuilder<QuerySnapshot>(
-                // 📦 3. Leemos los pedidos para calcular puntos
                 stream:
                     FirebaseFirestore.instance
                         .collection('Pedidos')
+                        .where('idAlumno', isEqualTo: uid)
                         .snapshots(),
                 builder: (context, pedidosSnap) {
                   int totalPedidos = 0;
@@ -279,31 +467,25 @@ class _PerfilEstudianteScreenState extends State<PerfilEstudianteScreen> {
                   int puntosGanadosAcumulados = 0;
 
                   if (pedidosSnap.hasData) {
-                    for (var doc in pedidosSnap.data!.docs) {
+                    final docs = pedidosSnap.data!.docs;
+                    totalPedidos = docs.length;
+
+                    for (var doc in docs) {
                       final data = doc.data() as Map<String, dynamic>;
-                      final String alumnoDoc = data['alumno'] ?? '';
-                      final String idAlumnoDoc = data['idAlumno'] ?? '';
+                      final String local = data['local']?.toString() ?? '';
+                      final int estado = data['estado'] ?? 0;
+                      final int puntosOrden = data['puntosGanados'] ?? 10;
 
-                      // Filtramos por su cuenta real o pedidos anteriores
-                      if (idAlumnoDoc == uid ||
-                          alumnoDoc == nombreReal ||
-                          alumnoDoc == 'Axel Guerrero') {
-                        totalPedidos++;
-                        final String local = data['local']?.toString() ?? '';
-                        final int estado = data['estado'] ?? 0;
-                        final int puntosOrden = data['puntosGanados'] ?? 10;
+                      if (estado >= 3) {
+                        puntosGanadosAcumulados += puntosOrden;
+                      }
 
-                        if (estado >= 3) {
-                          puntosGanadosAcumulados += puntosOrden;
-                        }
-
-                        if (local.contains('Sistemas')) {
-                          pedidosSistemas++;
-                        } else if (local.contains('Biblioteca')) {
-                          pedidosBiblioteca++;
-                        } else {
-                          pedidosCentral++;
-                        }
+                      if (local.contains('Sistemas')) {
+                        pedidosSistemas++;
+                      } else if (local.contains('Biblioteca')) {
+                        pedidosBiblioteca++;
+                      } else {
+                        pedidosCentral++;
                       }
                     }
                   }
@@ -335,7 +517,6 @@ class _PerfilEstudianteScreenState extends State<PerfilEstudianteScreen> {
                     padding: const EdgeInsets.fromLTRB(20, 10, 20, 100),
                     child: Column(
                       children: [
-                        // ENCABEZADO CON AVATAR DE PATITO Y NOMBRE REAL
                         FadeInDown(
                           child: Center(
                             child: Column(
@@ -394,7 +575,7 @@ class _PerfilEstudianteScreenState extends State<PerfilEstudianteScreen> {
                                 ),
                                 const SizedBox(height: 12),
                                 Text(
-                                  nombreReal, // 👤 Nombre dinámico de Firebase
+                                  nombreReal,
                                   textAlign: TextAlign.center,
                                   style: GoogleFonts.poppins(
                                     fontSize: 22,
@@ -429,7 +610,6 @@ class _PerfilEstudianteScreenState extends State<PerfilEstudianteScreen> {
                         ),
                         const SizedBox(height: 20),
 
-                        // TARJETA DE PUNTOS Y BOTÓN GACHAPÓN
                         FadeInUp(
                           child: Container(
                             padding: const EdgeInsets.all(18),
@@ -581,7 +761,6 @@ class _PerfilEstudianteScreenState extends State<PerfilEstudianteScreen> {
                         ),
                         const SizedBox(height: 18),
 
-                        // HISTORIAL POR SUCURSAL
                         FadeInUp(
                           delay: const Duration(milliseconds: 100),
                           child: _contenedorTarjeta(
@@ -615,7 +794,7 @@ class _PerfilEstudianteScreenState extends State<PerfilEstudianteScreen> {
                         ),
                         const SizedBox(height: 18),
 
-                        // ALERGIAS Y PREFERENCIAS MÉDICAS
+                        // ALERGIAS
                         FadeInUp(
                           delay: const Duration(milliseconds: 200),
                           child: Container(
@@ -700,35 +879,92 @@ class _PerfilEstudianteScreenState extends State<PerfilEstudianteScreen> {
                         ),
                         const SizedBox(height: 18),
 
-                        // CREDENCIAL INSTITUCIONAL DINÁMICA
+                        // 🎓 CREDENCIAL CON BOTÓN EDITAR ✏️
                         FadeInUp(
                           delay: const Duration(milliseconds: 300),
-                          child: _contenedorTarjeta(
-                            titulo: 'Credencial Institucional TESE',
-                            hijos: [
-                              _FilaInfoPerfil(
-                                icono: Icons.badge_outlined,
-                                etiqueta: 'Matrícula',
-                                valor: matriculaReal,
-                              ),
-                              const Divider(height: 1),
-                              _FilaInfoPerfil(
-                                icono: Icons.school_outlined,
-                                etiqueta: 'Carrera',
-                                valor: carreraReal,
-                              ),
-                              const Divider(height: 1),
-                              _FilaInfoPerfil(
-                                icono: Icons.email_outlined,
-                                etiqueta: 'Correo',
-                                valor: correoAuth,
-                              ),
-                            ],
+                          child: Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.all(18),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(22),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: colorVerdeTese.withValues(alpha: 0.05),
+                                  blurRadius: 14,
+                                  offset: const Offset(0, 5),
+                                ),
+                              ],
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Text(
+                                      'Credencial Institucional TESE',
+                                      style: GoogleFonts.poppins(
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.bold,
+                                        color: colorVerdeTese,
+                                      ),
+                                    ),
+                                    InkWell(
+                                      onTap:
+                                          () => _editarPerfil(
+                                            uid,
+                                            nombreReal,
+                                            matriculaReal,
+                                            carreraReal,
+                                          ),
+                                      child: Row(
+                                        children: [
+                                          const Icon(
+                                            Icons.edit,
+                                            size: 14,
+                                            color: colorAmarilloTese,
+                                          ),
+                                          const SizedBox(width: 4),
+                                          Text(
+                                            'Editar',
+                                            style: GoogleFonts.poppins(
+                                              fontSize: 12.5,
+                                              fontWeight: FontWeight.bold,
+                                              color: colorAmarilloTese,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 10),
+                                _FilaInfoPerfil(
+                                  icono: Icons.badge_outlined,
+                                  etiqueta: 'Matrícula',
+                                  valor: matriculaReal,
+                                ),
+                                const Divider(height: 1),
+                                _FilaInfoPerfil(
+                                  icono: Icons.school_outlined,
+                                  etiqueta: 'Carrera',
+                                  valor: carreraReal,
+                                ),
+                                const Divider(height: 1),
+                                _FilaInfoPerfil(
+                                  icono: Icons.email_outlined,
+                                  etiqueta: 'Correo',
+                                  valor: correoAuth,
+                                ),
+                              ],
+                            ),
                           ),
                         ),
                         const SizedBox(height: 24),
 
-                        // BOTÓN CERRAR SESIÓN REAL EN FIREBASE
+                        // CERRAR SESIÓN
                         FadeInUp(
                           delay: const Duration(milliseconds: 350),
                           child: SizedBox(

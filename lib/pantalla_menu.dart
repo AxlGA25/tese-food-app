@@ -8,6 +8,7 @@ import 'package:curved_navigation_bar/curved_navigation_bar.dart';
 import 'package:awesome_snackbar_content/awesome_snackbar_content.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:audioplayers/audioplayers.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'colores.dart';
 import 'modelos.dart';
 import 'pantalla_perfil.dart';
@@ -53,19 +54,31 @@ class _NavegacionEstudianteState extends State<NavegacionEstudiante> {
     super.dispose();
   }
 
+  // ==========================================================
+  // 🦆 VIGILANTE AISLADO POR UID (SOLO TUS PROPIOS PEDIDOS)
+  // ==========================================================
   void _iniciarVigilanteDePedidos() {
+    final User? user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      return;
+    }
+
     _pedidosSub = FirebaseFirestore.instance
         .collection('Pedidos')
-        .where('alumno', isEqualTo: 'Axel Guerrero')
+        .where('idAlumno', isEqualTo: user.uid) // 🔒 Estricto por cuenta
         .snapshots()
         .listen((snapshot) {
           for (var change in snapshot.docChanges) {
-            if (change.type == DocumentChangeType.modified) {
-              final data = change.doc.data() as Map<String, dynamic>? ?? {};
-              int estado = data['estado'] ?? 0;
-              String idPedido = data['idPedido'] ?? change.doc.id;
-              String local = data['local'] ?? 'Cafetería Central';
+            final data = change.doc.data() as Map<String, dynamic>? ?? {};
+            int estado = data['estado'] ?? 0;
+            String idPedido = data['idPedido'] ?? change.doc.id;
+            String local = data['local'] ?? 'Cafetería Central';
 
+            if (estado < 2) {
+              ServicioNotificaciones.iniciarMonitoreoOrden(idPedido);
+            }
+
+            if (change.type == DocumentChangeType.modified) {
               if (estado == 1) {
                 ServicioNotificaciones.mostrarNotificacion(
                   id: 1,
@@ -82,6 +95,8 @@ class _NavegacionEstudianteState extends State<NavegacionEstudiante> {
                   esListo: false,
                 );
               } else if (estado == 2) {
+                ServicioNotificaciones.cancelarMonitoreo();
+
                 ServicioNotificaciones.mostrarNotificacion(
                   id: 2,
                   titulo: '🦆 ¡CUAC! Tu comida está lista',
@@ -96,6 +111,8 @@ class _NavegacionEstudianteState extends State<NavegacionEstudiante> {
                   codigoPedido: idPedido,
                   esListo: true,
                 );
+              } else if (estado >= 3) {
+                ServicioNotificaciones.cancelarMonitoreo();
               }
             }
           }
@@ -316,7 +333,7 @@ class _NavegacionEstudianteState extends State<NavegacionEstudiante> {
 }
 
 // ==========================================================
-// MIS PEDIDOS
+// 📦 MIS PEDIDOS: AISLADO AL 100% POR CUENTA DE ALUMNO
 // ==========================================================
 class MisPedidosScreen extends StatelessWidget {
   const MisPedidosScreen({super.key});
@@ -368,6 +385,9 @@ class MisPedidosScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final User? user = FirebaseAuth.instance.currentUser;
+    final String uid = user?.uid ?? 'anonimo';
+
     return SafeArea(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -408,10 +428,11 @@ class MisPedidosScreen extends StatelessWidget {
           ),
           Expanded(
             child: StreamBuilder<QuerySnapshot>(
+              // 🔒 FILTRO ESTRICTO: Solo trae pedidos creados por ESTA cuenta
               stream:
                   FirebaseFirestore.instance
                       .collection('Pedidos')
-                      .where('alumno', isEqualTo: 'Axel Guerrero')
+                      .where('idAlumno', isEqualTo: uid)
                       .snapshots(),
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
@@ -601,6 +622,7 @@ class MisPedidosScreen extends StatelessWidget {
                                     ],
                                   ),
                                   const SizedBox(height: 8),
+
                                   Row(
                                     children: [
                                       const Icon(
@@ -622,6 +644,7 @@ class MisPedidosScreen extends StatelessWidget {
                                     ],
                                   ),
                                   const SizedBox(height: 10),
+
                                   Container(
                                     width: double.infinity,
                                     padding: const EdgeInsets.all(10),
@@ -641,6 +664,7 @@ class MisPedidosScreen extends StatelessWidget {
                                     ),
                                   ),
                                   const SizedBox(height: 12),
+
                                   Row(
                                     mainAxisAlignment:
                                         MainAxisAlignment.spaceBetween,
@@ -746,7 +770,7 @@ class MisPedidosScreen extends StatelessWidget {
 }
 
 // ==========================================================
-// CATÁLOGO DE ESTUDIANTES: BLOQUEO DE PLATILLOS AGOTADOS
+// CATÁLOGO DE ESTUDIANTES
 // ==========================================================
 class CatalogoEstudianteScreen extends StatefulWidget {
   final List<Platillo> carrito;
@@ -1136,8 +1160,7 @@ class _CatalogoEstudianteScreenState extends State<CatalogoEstudianteScreen> {
                       itemBuilder: (context, index) {
                         final platillo = platillosFiltrados[index];
                         final acento = acentoDeCategoria(platillo.categoria);
-                        final bool agotado =
-                            platillo.existencias <= 0; // 🚫 DETECCIÓN DE STOCK
+                        final bool agotado = platillo.existencias <= 0;
 
                         return FadeInUp(
                           delay: Duration(milliseconds: 60 * index),
@@ -1398,7 +1421,6 @@ class _CatalogoEstudianteScreenState extends State<CatalogoEstudianteScreen> {
                                       ],
                                     ),
                                   ),
-                                  // BOTÓN DE AGREGAR (DESHABILITADO SI ESTÁ AGOTADO)
                                   IconButton(
                                     icon: Icon(
                                       agotado ? Icons.block : Icons.add_circle,

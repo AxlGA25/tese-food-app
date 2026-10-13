@@ -3,12 +3,10 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:animate_do/animate_do.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 import 'colores.dart';
 import 'pantalla_menu.dart';
 
-// ==========================================
-// 1. PANTALLA DE LOGIN REAL CON FIREBASE
-// ==========================================
 class LoginEstudianteScreen extends StatefulWidget {
   const LoginEstudianteScreen({super.key});
 
@@ -22,6 +20,21 @@ class _LoginEstudianteScreenState extends State<LoginEstudianteScreen> {
   bool _estaCargando = false;
   bool _ocultarPassword = true;
 
+  final List<String> _carrerasTese = [
+    'Ing. en Sistemas Computacionales',
+    'Ing. Informática',
+    'Ing. Mecatrónica',
+    'Ing. Industrial',
+    'Ing. Electrónica',
+    'Ing. Mecánica',
+    'Ing. Química',
+    'Ing. Bioquímica',
+    'Ing. en Gestión Empresarial',
+    'Ing. Aeronáutica',
+    'Lic. en Contaduría Pública',
+    'Otra Área / Administrativo',
+  ];
+
   @override
   void dispose() {
     _correoCtrl.dispose();
@@ -29,7 +42,275 @@ class _LoginEstudianteScreenState extends State<LoginEstudianteScreen> {
     super.dispose();
   }
 
-  void _iniciarSesion() async {
+  // 🔒 VENTANA OBLIGATORIA: Si entra con Google DEBE poner matrícula y carrera
+  void _mostrarModalObligatorioGoogle(User user) {
+    final TextEditingController matriculaCtrl = TextEditingController();
+    String carreraElegida = _carrerasTese[0];
+    bool guardandoDatos = false;
+
+    showDialog(
+      context: context,
+      barrierDismissible: false, // 🚫 Prohibido cerrar tocando afuera
+      builder:
+          (ctx) => StatefulBuilder(
+            builder: (contextDialog, setStateDialog) {
+              return PopScope(
+                canPop: false, // 🚫 Prohibido usar el botón atrás de Android
+                child: AlertDialog(
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(24),
+                  ),
+                  title: Row(
+                    children: [
+                      const Icon(Icons.school, color: colorVerdeTese, size: 26),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'Datos Requeridos TESE',
+                          style: GoogleFonts.poppins(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 17,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  content: SingleChildScrollView(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Para ingresar como estudiante, es obligatorio registrar tu matrícula y carrera institucional.',
+                          style: GoogleFonts.poppins(
+                            fontSize: 12.5,
+                            color: colorTextoGris,
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        TextField(
+                          controller: matriculaCtrl,
+                          keyboardType: TextInputType.number,
+                          decoration: InputDecoration(
+                            labelText: 'Matrícula Oficial',
+                            hintText: 'Ej. 20240001',
+                            prefixIcon: const Icon(
+                              Icons.badge_outlined,
+                              color: colorVerdeTese,
+                            ),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(14),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 14),
+                        DropdownButtonFormField<String>(
+                          isExpanded: true,
+                          value: carreraElegida,
+                          decoration: InputDecoration(
+                            labelText: 'Carrera',
+                            prefixIcon: const Icon(
+                              Icons.school_outlined,
+                              color: colorVerdeTese,
+                            ),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(14),
+                            ),
+                          ),
+                          items:
+                              _carrerasTese
+                                  .map(
+                                    (c) => DropdownMenuItem(
+                                      value: c,
+                                      child: Text(
+                                        c,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: const TextStyle(fontSize: 13),
+                                      ),
+                                    ),
+                                  )
+                                  .toList(),
+                          onChanged:
+                              (val) =>
+                                  setStateDialog(() => carreraElegida = val!),
+                        ),
+                      ],
+                    ),
+                  ),
+                  actions: [
+                    TextButton(
+                      onPressed:
+                          guardandoDatos
+                              ? null
+                              : () async {
+                                // Si cancela, cerramos su sesión de Google y lo regresamos
+                                await FirebaseAuth.instance.signOut();
+                                await GoogleSignIn().signOut();
+                                if (ctx.mounted) {
+                                  Navigator.pop(ctx);
+                                }
+                              },
+                      child: Text(
+                        'Cancelar',
+                        style: GoogleFonts.poppins(
+                          color: Colors.redAccent,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                    ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: colorVerdeTese,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      onPressed:
+                          guardandoDatos
+                              ? null
+                              : () async {
+                                final mat = matriculaCtrl.text.trim();
+                                if (mat.isEmpty || mat.length < 5) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                      content: Text(
+                                        'Por favor ingresa una matrícula válida.',
+                                      ),
+                                    ),
+                                  );
+                                  return;
+                                }
+
+                                setStateDialog(() => guardandoDatos = true);
+
+                                // Guardamos el perfil completo y obligatorio
+                                await FirebaseFirestore.instance
+                                    .collection('Usuarios')
+                                    .doc(user.uid)
+                                    .set({
+                                      'uid': user.uid,
+                                      'nombre_completo':
+                                          user.displayName ?? 'Estudiante TESE',
+                                      'rol': 'Estudiante',
+                                      'identificador': mat,
+                                      'carrera_area': carreraElegida,
+                                      'correo': user.email ?? '',
+                                      'telefono': '',
+                                      'fecha_registro':
+                                          FieldValue.serverTimestamp(),
+                                      'alergia':
+                                          'Sin restricciones alimentarias 😋',
+                                      'puntos': 0,
+                                    });
+
+                                await FirebaseFirestore.instance
+                                    .collection('Usuarios_Perfil')
+                                    .doc(user.uid)
+                                    .set({
+                                      'patoEquipadoId': 'estudiante',
+                                      'coleccionPatos': {'estudiante': 1},
+                                      'puntosGastadosEnGachapon': 0,
+                                    });
+
+                                if (ctx.mounted) {
+                                  Navigator.pop(ctx); // Cierra modal
+                                }
+                                if (mounted) {
+                                  Navigator.pushReplacement(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder:
+                                          (context) =>
+                                              const NavegacionEstudiante(),
+                                    ),
+                                  );
+                                }
+                              },
+                      child:
+                          guardandoDatos
+                              ? const SizedBox(
+                                height: 18,
+                                width: 18,
+                                child: CircularProgressIndicator(
+                                  color: Colors.white,
+                                  strokeWidth: 2,
+                                ),
+                              )
+                              : Text(
+                                'Confirmar y Entrar',
+                                style: GoogleFonts.poppins(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
+    );
+  }
+
+  // 🌐 LOGIN CON GOOGLE
+  Future<void> _iniciarSesionConGoogle() async {
+    setState(() => _estaCargando = true);
+    try {
+      final GoogleSignIn googleSignIn = GoogleSignIn();
+      final GoogleSignInAccount? googleUser = await googleSignIn.signIn();
+
+      if (googleUser == null) {
+        setState(() => _estaCargando = false);
+        return;
+      }
+
+      final GoogleSignInAuthentication googleAuth =
+          await googleUser.authentication;
+      final AuthCredential credential = GoogleAuthProvider.credential(
+        accessToken: googleAuth.accessToken,
+        idToken: googleAuth.idToken,
+      );
+
+      final UserCredential userCredential = await FirebaseAuth.instance
+          .signInWithCredential(credential);
+      final User? user = userCredential.user;
+
+      if (user != null) {
+        final userDoc =
+            await FirebaseFirestore.instance
+                .collection('Usuarios')
+                .doc(user.uid)
+                .get();
+
+        // Si es usuario nuevo o nunca puso matrícula, ABRIMOS EL MODAL OBLIGATORIO
+        if (!userDoc.exists ||
+            (userDoc.data()?['identificador'] == 'Sin Matrícula' ||
+                userDoc.data()?['identificador'] == 'Google Auth')) {
+          if (mounted) {
+            _mostrarModalObligatorioGoogle(user);
+          }
+        } else {
+          // Ya tiene perfil completo -> Entra directo
+          if (mounted) {
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(
+                builder: (context) => const NavegacionEstudiante(),
+              ),
+            );
+          }
+        }
+      }
+    } catch (e) {
+      _mostrarAlerta('Error al iniciar sesión con Google.');
+    } finally {
+      if (mounted) {
+        setState(() => _estaCargando = false);
+      }
+    }
+  }
+
+  void _iniciarSesionCorreo() async {
     final correo = _correoCtrl.text.trim().toLowerCase();
     final password = _passwordCtrl.text.trim();
 
@@ -38,7 +319,6 @@ class _LoginEstudianteScreenState extends State<LoginEstudianteScreen> {
       return;
     }
 
-    // 🔒 Candado de Dominio Institucional TESE
     if (!correo.endsWith('@tese.edu.mx') &&
         !correo.endsWith('@ecatepec.tecnm.mx')) {
       _mostrarAlerta(
@@ -72,7 +352,7 @@ class _LoginEstudianteScreenState extends State<LoginEstudianteScreen> {
       }
       _mostrarAlerta(mensaje);
     } catch (_) {
-      _mostrarAlerta('Ocurrió un error inesperado. Inténtalo de nuevo.');
+      _mostrarAlerta('Ocurrió un error inesperado.');
     } finally {
       if (mounted) {
         setState(() => _estaCargando = false);
@@ -125,7 +405,7 @@ class _LoginEstudianteScreenState extends State<LoginEstudianteScreen> {
               ),
               const SizedBox(height: 4),
               Text(
-                'Ingresa con tu cuenta institucional TESE',
+                'Ingresa para pedir sin hacer filas',
                 style: GoogleFonts.poppins(
                   fontSize: 13.5,
                   color: colorTextoGris,
@@ -173,7 +453,7 @@ class _LoginEstudianteScreenState extends State<LoginEstudianteScreen> {
                         ),
                       ),
                     ),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 14),
                     TextField(
                       controller: _passwordCtrl,
                       obscureText: _ocultarPassword,
@@ -203,7 +483,7 @@ class _LoginEstudianteScreenState extends State<LoginEstudianteScreen> {
                         ),
                       ),
                     ),
-                    const SizedBox(height: 24),
+                    const SizedBox(height: 20),
                     SizedBox(
                       width: double.infinity,
                       height: 52,
@@ -215,20 +495,77 @@ class _LoginEstudianteScreenState extends State<LoginEstudianteScreen> {
                           ),
                           elevation: 3,
                         ),
-                        onPressed: _estaCargando ? null : _iniciarSesion,
+                        onPressed: _estaCargando ? null : _iniciarSesionCorreo,
                         child:
                             _estaCargando
                                 ? const CircularProgressIndicator(
                                   color: Colors.white,
                                 )
                                 : Text(
-                                  'Ingresar a Cafetería',
+                                  'Ingresar con Correo TESE',
                                   style: GoogleFonts.poppins(
                                     color: Colors.white,
-                                    fontSize: 16,
+                                    fontSize: 15,
                                     fontWeight: FontWeight.bold,
                                   ),
                                 ),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+
+                    Row(
+                      children: [
+                        const Expanded(child: Divider()),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 10),
+                          child: Text(
+                            'o ingresa con',
+                            style: GoogleFonts.poppins(
+                              color: colorTextoGris,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ),
+                        const Expanded(child: Divider()),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+
+                    // 🌐 BOTÓN DE GOOGLE
+                    SizedBox(
+                      width: double.infinity,
+                      height: 50,
+                      child: OutlinedButton.icon(
+                        style: OutlinedButton.styleFrom(
+                          side: BorderSide(
+                            color: Colors.grey.shade300,
+                            width: 1.4,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(15),
+                          ),
+                          backgroundColor: Colors.white,
+                        ),
+                        icon: Image.network(
+                          'https://upload.wikimedia.org/wikipedia/commons/thumb/c/c1/Google_%22G%22_logo.svg/768px-Google_%22G%22_logo.svg.png',
+                          height: 22,
+                          errorBuilder:
+                              (_, __, ___) => const Icon(
+                                Icons.g_mobiledata,
+                                color: Colors.blue,
+                                size: 28,
+                              ),
+                        ),
+                        label: Text(
+                          'Continuar con Google',
+                          style: GoogleFonts.poppins(
+                            color: colorTextoOscuro,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 14,
+                          ),
+                        ),
+                        onPressed:
+                            _estaCargando ? null : _iniciarSesionConGoogle,
                       ),
                     ),
                   ],
@@ -261,9 +598,9 @@ class _LoginEstudianteScreenState extends State<LoginEstudianteScreen> {
   }
 }
 
-// ==========================================================
-// 2. REGISTRO CON CANDADO DE OUTLOOK Y VERIFICACIÓN
-// ==========================================================
+// ==========================================
+// 3. REGISTRO INSTITUCIONAL
+// ==========================================
 class RegistroEstudianteScreen extends StatefulWidget {
   const RegistroEstudianteScreen({super.key});
 
@@ -326,7 +663,6 @@ class _RegistroEstudianteScreenState extends State<RegistroEstudianteScreen> {
       return;
     }
 
-    // 🔒 CANDADO ESTRICTO DE CORREO INSTITUCIONAL DEL TESE
     if (!correo.endsWith('@tese.edu.mx') &&
         !correo.endsWith('@ecatepec.tecnm.mx')) {
       _mostrarAlerta(
@@ -348,17 +684,14 @@ class _RegistroEstudianteScreenState extends State<RegistroEstudianteScreen> {
     setState(() => _estaCargando = true);
 
     try {
-      // 1. Crear el usuario en Firebase Authentication
       final UserCredential credencial = await FirebaseAuth.instance
           .createUserWithEmailAndPassword(email: correo, password: pass);
 
       final User? user = credencial.user;
 
       if (user != null) {
-        // 2. Enviar correo de verificación a su Outlook de Microsoft
         await user.sendEmailVerification();
 
-        // 3. Guardar el perfil completo en Cloud Firestore
         await FirebaseFirestore.instance
             .collection('Usuarios')
             .doc(user.uid)
@@ -376,7 +709,6 @@ class _RegistroEstudianteScreenState extends State<RegistroEstudianteScreen> {
               'puntos': 0,
             });
 
-        // Inicializamos su perfil de Gachapón
         await FirebaseFirestore.instance
             .collection('Usuarios_Perfil')
             .doc(user.uid)
@@ -434,7 +766,7 @@ class _RegistroEstudianteScreenState extends State<RegistroEstudianteScreen> {
               ],
             ),
             content: Text(
-              'Tu cuenta fue creada correctamente.\n\nTe enviamos un enlace de confirmación a tu correo institucional de Microsoft Outlook. Ya puedes iniciar sesión en la cafetería.',
+              'Tu cuenta fue creada correctamente.\n\nTe enviamos un enlace de confirmación a tu correo institucional de Microsoft Outlook. Ya puedes iniciar sesión.',
               style: GoogleFonts.poppins(
                 fontSize: 13.5,
                 color: colorTextoOscuro,
@@ -449,8 +781,8 @@ class _RegistroEstudianteScreenState extends State<RegistroEstudianteScreen> {
                   ),
                 ),
                 onPressed: () {
-                  Navigator.pop(ctx); // Cierra diálogo
-                  Navigator.pop(context); // Regresa a pantalla de login
+                  Navigator.pop(ctx);
+                  Navigator.pop(context);
                 },
                 child: Text(
                   'Ir a Iniciar Sesión',
@@ -536,7 +868,6 @@ class _RegistroEstudianteScreenState extends State<RegistroEstudianteScreen> {
               ),
               child: Column(
                 children: [
-                  // 1. ROL
                   DropdownButtonFormField<String>(
                     isExpanded: true,
                     decoration: _decoracionCampo(
@@ -554,7 +885,6 @@ class _RegistroEstudianteScreenState extends State<RegistroEstudianteScreen> {
                   ),
                   const SizedBox(height: 14),
 
-                  // 2. NOMBRE COMPLETO
                   TextField(
                     controller: _nombreCtrl,
                     decoration: _decoracionCampo(
@@ -564,7 +894,6 @@ class _RegistroEstudianteScreenState extends State<RegistroEstudianteScreen> {
                   ),
                   const SizedBox(height: 14),
 
-                  // 3. MATRÍCULA
                   TextField(
                     controller: _matriculaCtrl,
                     keyboardType: TextInputType.number,
@@ -572,7 +901,6 @@ class _RegistroEstudianteScreenState extends State<RegistroEstudianteScreen> {
                   ),
                   const SizedBox(height: 14),
 
-                  // 4. CARRERA OFICIAL
                   DropdownButtonFormField<String>(
                     isExpanded: true,
                     decoration: _decoracionCampo(
@@ -593,7 +921,6 @@ class _RegistroEstudianteScreenState extends State<RegistroEstudianteScreen> {
                   ),
                   const SizedBox(height: 14),
 
-                  // 5. CORREO INSTITUCIONAL OBLIGATORIO
                   TextField(
                     controller: _correoCtrl,
                     keyboardType: TextInputType.emailAddress,
@@ -614,7 +941,6 @@ class _RegistroEstudianteScreenState extends State<RegistroEstudianteScreen> {
                   ),
                   const SizedBox(height: 14),
 
-                  // 6. TELÉFONO
                   TextField(
                     controller: _telefonoCtrl,
                     keyboardType: TextInputType.phone,
@@ -625,7 +951,6 @@ class _RegistroEstudianteScreenState extends State<RegistroEstudianteScreen> {
                   ),
                   const SizedBox(height: 14),
 
-                  // 7. CONTRASEÑA
                   TextField(
                     controller: _passCtrl,
                     obscureText: _ocultarPass,
@@ -655,7 +980,6 @@ class _RegistroEstudianteScreenState extends State<RegistroEstudianteScreen> {
                   ),
                   const SizedBox(height: 14),
 
-                  // 8. CONFIRMAR CONTRASEÑA
                   TextField(
                     controller: _confirmPassCtrl,
                     obscureText: _ocultarPass,
@@ -669,7 +993,6 @@ class _RegistroEstudianteScreenState extends State<RegistroEstudianteScreen> {
             ),
             const SizedBox(height: 24),
 
-            // BOTÓN REGISTRARME
             SizedBox(
               width: double.infinity,
               height: 52,
