@@ -6,6 +6,7 @@ import 'package:animate_do/animate_do.dart';
 import 'package:confetti/confetti.dart';
 import 'package:audioplayers/audioplayers.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'colores.dart';
 import 'modelos.dart';
 
@@ -25,9 +26,40 @@ class CarritoScreen extends StatefulWidget {
 }
 
 class _CarritoScreenState extends State<CarritoScreen> {
+  final User? _usuarioAuth = FirebaseAuth.instance.currentUser;
+  String _nombreAlumno = 'Estudiante TESE';
+  String _alergiaAlumno = 'Sin restricciones alimentarias 😋';
+
   String metodoPago = 'Efectivo';
   final TextEditingController _notasCtrl = TextEditingController();
   bool _estaCargando = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _cargarDatosAlumno();
+  }
+
+  // 👤 Carga el nombre y alergia real del alumno desde Firebase
+  void _cargarDatosAlumno() async {
+    if (_usuarioAuth != null) {
+      try {
+        final doc =
+            await FirebaseFirestore.instance
+                .collection('Usuarios')
+                .doc(_usuarioAuth.uid)
+                .get();
+        if (doc.exists && mounted) {
+          final data = doc.data() as Map<String, dynamic>;
+          setState(() {
+            _nombreAlumno = data['nombre_completo'] ?? 'Estudiante TESE';
+            _alergiaAlumno =
+                data['alergia'] ?? 'Sin restricciones alimentarias 😋';
+          });
+        }
+      } catch (_) {}
+    }
+  }
 
   @override
   void dispose() {
@@ -41,6 +73,10 @@ class _CarritoScreenState extends State<CarritoScreen> {
         widget.carrito.isNotEmpty
             ? widget.carrito.first.local
             : 'Cafetería Central';
+    final int puntosTotales = widget.carrito.fold<int>(
+      0,
+      (sum, p) => sum + p.puntos,
+    );
 
     showModalBottomSheet(
       context: context,
@@ -110,13 +146,32 @@ class _CarritoScreenState extends State<CarritoScreen> {
                         ),
                       ),
                     ),
+                    const SizedBox(height: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 4,
+                      ),
+                      decoration: BoxDecoration(
+                        color: colorAmarilloTese.withValues(alpha: 0.2),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        '🪙 Ganarás: +$puntosTotales pts al recoger',
+                        style: GoogleFonts.poppins(
+                          fontSize: 12.5,
+                          fontWeight: FontWeight.bold,
+                          color: colorVerdeOscuro,
+                        ),
+                      ),
+                    ),
                     const SizedBox(height: 10),
                     Text(
-                      'Total de la orden: \$${total.toStringAsFixed(2)}\nPagarás con $metodoPago al recoger en ventanilla.',
+                      'Total de la orden: \$${total.toStringAsFixed(2)}\nPagarás con $metodoPago en ventanilla.',
                       textAlign: TextAlign.center,
                       style: GoogleFonts.poppins(
                         color: colorTextoGris,
-                        fontSize: 13.5,
+                        fontSize: 13,
                       ),
                     ),
                     const SizedBox(height: 24),
@@ -177,6 +232,19 @@ class _CarritoScreenState extends State<CarritoScreen> {
 
                                         String notasAdicionales =
                                             _notasCtrl.text.trim();
+
+                                        // 🥗 Adjunta alerta médica si tiene alguna restricción
+                                        if (_alergiaAlumno !=
+                                            'Sin restricciones alimentarias 😋') {
+                                          if (notasAdicionales.isNotEmpty) {
+                                            notasAdicionales +=
+                                                ' | ALERGIA: $_alergiaAlumno';
+                                          } else {
+                                            notasAdicionales =
+                                                'ALERGIA: $_alergiaAlumno';
+                                          }
+                                        }
+
                                         if (notasAdicionales.isNotEmpty) {
                                           detallesCocina +=
                                               '\n\nNOTAS: $notasAdicionales';
@@ -193,13 +261,16 @@ class _CarritoScreenState extends State<CarritoScreen> {
                                                 )
                                                 .toList();
 
-                                        // 📍 Guardamos el local exacto donde se hizo la compra
+                                        // 1. Guardar orden con el Alumno y UID real
                                         await FirebaseFirestore.instance
                                             .collection('Pedidos')
                                             .doc(codigoUnico)
                                             .set({
                                               'idPedido': codigoUnico,
-                                              'alumno': 'Axel Guerrero',
+                                              'alumno': _nombreAlumno,
+                                              'idAlumno':
+                                                  _usuarioAuth?.uid ??
+                                                  'anonimo',
                                               'local': localDestino,
                                               'detalle': detallesCocina,
                                               'metodoPago': metodoPago,
@@ -208,9 +279,22 @@ class _CarritoScreenState extends State<CarritoScreen> {
                                               'estado': 0,
                                               'calificado': false,
                                               'items': itemsParaResena,
+                                              'puntosGanados': puntosTotales,
+                                              'puntosAcreditados': false,
                                               'horaLlegada':
                                                   FieldValue.serverTimestamp(),
                                             });
+
+                                        // 2. Descontar existencias automáticamente
+                                        for (var item in widget.carrito) {
+                                          FirebaseFirestore.instance
+                                              .collection('Menu_Platillos')
+                                              .doc(item.id)
+                                              .update({
+                                                'existencias':
+                                                    FieldValue.increment(-1),
+                                              });
+                                        }
 
                                         try {
                                           reproductorGlobal.play(
@@ -376,13 +460,26 @@ class _CarritoScreenState extends State<CarritoScreen> {
                               subtitle: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  Text(
-                                    '📍 ${item.local}',
-                                    style: GoogleFonts.poppins(
-                                      fontSize: 12,
-                                      color: colorVerdeTese,
-                                      fontWeight: FontWeight.w600,
-                                    ),
+                                  Row(
+                                    children: [
+                                      Text(
+                                        '📍 ${item.local}',
+                                        style: GoogleFonts.poppins(
+                                          fontSize: 12,
+                                          color: colorVerdeTese,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Text(
+                                        '🪙 +${item.puntos} pts',
+                                        style: GoogleFonts.poppins(
+                                          fontSize: 11.5,
+                                          color: colorAmarilloTese,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    ],
                                   ),
                                   if (item.personalizacion.isNotEmpty)
                                     Text(
@@ -621,9 +718,6 @@ class _CarritoScreenState extends State<CarritoScreen> {
   }
 }
 
-// ==========================================================
-// 🦆 PANTALLA ÉXITO CON LUGAR DE ENTREGA CLARO
-// ==========================================================
 class PantallaPedidoExitoso extends StatelessWidget {
   final String codigoPedido;
   final double total;
@@ -677,7 +771,6 @@ class PantallaPedidoExitoso extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 18),
-              // TARJETA DE RECOLECCIÓN
               FadeInUp(
                 delay: const Duration(milliseconds: 300),
                 child: Container(
@@ -807,9 +900,6 @@ class PantallaPedidoExitoso extends StatelessWidget {
   }
 }
 
-// ==========================================================
-// 🔍 SALA DE ESPERA ULTRA-DETALLADA ESTILO UBER/DIDI
-// ==========================================================
 class SalaEsperaScreen extends StatefulWidget {
   final String codigoPedido;
   const SalaEsperaScreen({super.key, required this.codigoPedido});
@@ -923,7 +1013,6 @@ class _SalaEsperaScreenState extends State<SalaEsperaScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // TARJETA DE ESTADO CON MASCOTA
                     Container(
                       width: double.infinity,
                       padding: const EdgeInsets.all(20),
@@ -977,8 +1066,6 @@ class _SalaEsperaScreenState extends State<SalaEsperaScreen> {
                       ),
                     ),
                     const SizedBox(height: 18),
-
-                    // 📍 TARJETA DE DÓNDE RECOGER (SÚPER CLARA)
                     Container(
                       width: double.infinity,
                       padding: const EdgeInsets.all(18),
@@ -1073,8 +1160,6 @@ class _SalaEsperaScreenState extends State<SalaEsperaScreen> {
                       ),
                     ),
                     const SizedBox(height: 18),
-
-                    // 🧾 DESGLOSE COMPLETO DE LA ORDEN
                     Container(
                       width: double.infinity,
                       padding: const EdgeInsets.all(20),
@@ -1182,8 +1267,6 @@ class _SalaEsperaScreenState extends State<SalaEsperaScreen> {
                   ],
                 ),
               ),
-
-              // CONFETI EXPLOSIVO
               Align(
                 alignment: Alignment.topCenter,
                 child: ConfettiWidget(
@@ -1270,7 +1353,7 @@ class _BarraProgresoPedido extends StatelessWidget {
 }
 
 // ==========================================================
-// ⭐️ PANTALLA RESEÑA POR COMIDA
+// ⭐️ PANTALLA RESEÑA FIRMADA CON TU NOMBRE REAL
 // ==========================================================
 class PantallaResena extends StatefulWidget {
   final String codigoPedido;
@@ -1281,6 +1364,9 @@ class PantallaResena extends StatefulWidget {
 }
 
 class _PantallaResenaState extends State<PantallaResena> {
+  final User? _usuarioAuth = FirebaseAuth.instance.currentUser;
+  String _nombreAutor = 'Estudiante TESE';
+
   int estrellasSeleccionadas = 0;
   final TextEditingController _comentarioCtrl = TextEditingController();
   bool _enviando = false;
@@ -1293,11 +1379,25 @@ class _PantallaResenaState extends State<PantallaResena> {
   @override
   void initState() {
     super.initState();
-    _cargarItemsDelPedido();
+    _cargarDatos();
   }
 
-  void _cargarItemsDelPedido() async {
+  void _cargarDatos() async {
     try {
+      // 1. Cargar nombre real del autor
+      if (_usuarioAuth != null) {
+        final userDoc =
+            await FirebaseFirestore.instance
+                .collection('Usuarios')
+                .doc(_usuarioAuth.uid)
+                .get();
+        if (userDoc.exists) {
+          _nombreAutor =
+              (userDoc.data() as Map)['nombre_completo'] ?? 'Estudiante TESE';
+        }
+      }
+
+      // 2. Cargar items del pedido
       final doc =
           await FirebaseFirestore.instance
               .collection('Pedidos')
@@ -1343,7 +1443,8 @@ class _PantallaResenaState extends State<PantallaResena> {
         'platilloNombre': itemSeleccionadoNombre ?? 'Comida',
         'estrellas': estrellasSeleccionadas,
         'comentario': _comentarioCtrl.text.trim(),
-        'alumno': 'Axel Guerrero',
+        'alumno': _nombreAutor, // 👤 Firmado con su nombre real
+        'idAlumno': _usuarioAuth?.uid ?? 'anonimo',
         'fecha': FieldValue.serverTimestamp(),
       });
 

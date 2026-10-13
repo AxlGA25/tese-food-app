@@ -187,13 +187,35 @@ class _DashboardNavegacionLocalState extends State<DashboardNavegacionLocal> {
 
   void _cambiarEstadoPedido(String idDoc, int estadoActual) {
     HapticFeedback.heavyImpact();
-    FirebaseFirestore.instance.collection('Pedidos').doc(idDoc).update({
-      'estado': estadoActual + 1,
-    });
+    int nuevoEstado = estadoActual + 1;
+    Map<String, dynamic> updateData = {'estado': nuevoEstado};
+
+    if (nuevoEstado == 3) {
+      updateData['puntosAcreditados'] = true;
+    }
+
+    FirebaseFirestore.instance
+        .collection('Pedidos')
+        .doc(idDoc)
+        .update(updateData);
+
+    if (nuevoEstado == 3 && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            '¡Pedido entregado con éxito! Puntos liberados al alumno 🪙🎉',
+          ),
+          backgroundColor: colorExito,
+        ),
+      );
+    }
   }
 
   void _ajustarExistencias(String idDoc, int existenciasActuales, int cambio) {
-    int nuevaCantidad = (existenciasActuales + cambio).clamp(0, 999).toInt();
+    int nuevaCantidad = existenciasActuales + cambio;
+    if (nuevaCantidad < 0) {
+      nuevaCantidad = 0;
+    }
     FirebaseFirestore.instance.collection('Menu_Platillos').doc(idDoc).update({
       'existencias': nuevaCantidad,
     });
@@ -256,6 +278,269 @@ class _DashboardNavegacionLocalState extends State<DashboardNavegacionLocal> {
     );
   }
 
+  void _mostrarDialogoEditarPlatillo(DocumentSnapshot doc) {
+    final data = doc.data() as Map<String, dynamic>? ?? {};
+    final TextEditingController precioCtrl = TextEditingController(
+      text: '${data['precio'] ?? 0}',
+    );
+    final TextEditingController existenciasCtrl = TextEditingController(
+      text: '${data['existencias'] ?? 0}',
+    );
+    final TextEditingController puntosCtrl = TextEditingController(
+      text: '${data['puntos'] ?? 10}',
+    );
+    final TextEditingController nuevoIngredienteCtrl = TextEditingController();
+    final List<String> ingredientes = List<String>.from(
+      data['ingredientes'] ?? [],
+    );
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(26)),
+      ),
+      builder:
+          (ctx) => StatefulBuilder(
+            builder: (contextModal, setStateModal) {
+              return Padding(
+                padding: EdgeInsets.only(
+                  bottom: MediaQuery.of(contextModal).viewInsets.bottom + 20,
+                  top: 20,
+                  left: 20,
+                  right: 20,
+                ),
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Expanded(
+                            child: Text(
+                              'Editar: ${data['nombre'] ?? 'Platillo'}',
+                              style: GoogleFonts.poppins(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                                color: colorTextoOscuro,
+                              ),
+                            ),
+                          ),
+                          IconButton(
+                            icon: const Icon(
+                              Icons.delete_forever,
+                              color: Colors.redAccent,
+                            ),
+                            tooltip: 'Eliminar Platillo',
+                            onPressed: () {
+                              FirebaseFirestore.instance
+                                  .collection('Menu_Platillos')
+                                  .doc(doc.id)
+                                  .delete();
+                              Navigator.pop(ctx);
+                            },
+                          ),
+                        ],
+                      ),
+                      const Divider(),
+                      const SizedBox(height: 10),
+
+                      Row(
+                        children: [
+                          Expanded(
+                            child: TextField(
+                              controller: precioCtrl,
+                              keyboardType: TextInputType.number,
+                              decoration: InputDecoration(
+                                labelText: 'Precio (\$)',
+                                prefixIcon: const Icon(
+                                  Icons.attach_money,
+                                  color: colorVerdeTese,
+                                ),
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: TextField(
+                              controller: existenciasCtrl,
+                              keyboardType: TextInputType.number,
+                              decoration: InputDecoration(
+                                labelText: 'Stock / Existencias',
+                                prefixIcon: const Icon(
+                                  Icons.inventory,
+                                  color: colorVerdeTese,
+                                ),
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 14),
+
+                      TextField(
+                        controller: puntosCtrl,
+                        keyboardType: TextInputType.number,
+                        decoration: InputDecoration(
+                          labelText: 'Puntos que otorga al alumno 🪙',
+                          prefixIcon: const Icon(
+                            Icons.stars_rounded,
+                            color: colorAmarilloTese,
+                          ),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 18),
+
+                      Text(
+                        'Ingredientes (Toca la X para quitar si se agotó):',
+                        style: GoogleFonts.poppins(
+                          fontSize: 13,
+                          fontWeight: FontWeight.bold,
+                          color: colorTextoOscuro,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children:
+                            ingredientes.map((ing) {
+                              return Chip(
+                                label: Text(
+                                  ing,
+                                  style: GoogleFonts.poppins(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.bold,
+                                    color: colorVerdeTese,
+                                  ),
+                                ),
+                                backgroundColor: colorVerdeTese.withValues(
+                                  alpha: 0.1,
+                                ),
+                                deleteIcon: const Icon(
+                                  Icons.cancel,
+                                  size: 16,
+                                  color: Colors.redAccent,
+                                ),
+                                onDeleted: () {
+                                  setStateModal(() {
+                                    ingredientes.remove(ing);
+                                  });
+                                },
+                              );
+                            }).toList(),
+                      ),
+                      const SizedBox(height: 10),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: TextField(
+                              controller: nuevoIngredienteCtrl,
+                              decoration: InputDecoration(
+                                hintText: 'Agregar ingrediente...',
+                                contentPadding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                  vertical: 8,
+                                ),
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          IconButton.filled(
+                            style: IconButton.styleFrom(
+                              backgroundColor: colorVerdeTese,
+                            ),
+                            icon: const Icon(Icons.add, color: Colors.white),
+                            onPressed: () {
+                              if (nuevoIngredienteCtrl.text.trim().isNotEmpty) {
+                                setStateModal(() {
+                                  ingredientes.add(
+                                    nuevoIngredienteCtrl.text.trim(),
+                                  );
+                                  nuevoIngredienteCtrl.clear();
+                                });
+                              }
+                            },
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 24),
+
+                      SizedBox(
+                        width: double.infinity,
+                        height: 50,
+                        child: ElevatedButton(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: colorVerdeTese,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(14),
+                            ),
+                          ),
+                          onPressed: () {
+                            final double nuevoPrecio =
+                                double.tryParse(precioCtrl.text) ??
+                                (data['precio'] ?? 0).toDouble();
+                            final int nuevasExistencias =
+                                int.tryParse(existenciasCtrl.text) ??
+                                (data['existencias'] ?? 0);
+                            final int nuevosPuntos =
+                                int.tryParse(puntosCtrl.text) ??
+                                (data['puntos'] ?? 10);
+
+                            FirebaseFirestore.instance
+                                .collection('Menu_Platillos')
+                                .doc(doc.id)
+                                .update({
+                                  'precio': nuevoPrecio,
+                                  'existencias': nuevasExistencias,
+                                  'puntos': nuevosPuntos,
+                                  'ingredientes': ingredientes,
+                                });
+
+                            Navigator.pop(ctx);
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text(
+                                  '¡Platillo actualizado en tiempo real! 🍔✨',
+                                ),
+                                backgroundColor: colorExito,
+                              ),
+                            );
+                          },
+                          child: Text(
+                            'Guardar Modificaciones',
+                            style: GoogleFonts.poppins(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 15,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            },
+          ),
+    );
+  }
+
   void _mostrarDetallePedido(
     DocumentSnapshot comanda,
     int numeroTicket,
@@ -270,6 +555,7 @@ class _DashboardNavegacionLocalState extends State<DashboardNavegacionLocal> {
     String detalle = data['detalle'] ?? '';
     String notas = data['notas']?.toString() ?? '';
     String metodoPago = data['metodoPago'] ?? 'Efectivo';
+    int puntosGanados = data['puntosGanados'] ?? 10;
     Timestamp? horaLlegada = data['horaLlegada'] as Timestamp?;
 
     showModalBottomSheet(
@@ -365,12 +651,22 @@ class _DashboardNavegacionLocalState extends State<DashboardNavegacionLocal> {
                         ),
                       ),
                     ),
-                    Text(
-                      'hace ${_minutosEspera(horaLlegada)}m',
-                      style: GoogleFonts.poppins(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.redAccent,
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 3,
+                      ),
+                      decoration: BoxDecoration(
+                        color: colorAmarilloTese.withValues(alpha: 0.2),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        '🪙 +$puntosGanados pts',
+                        style: GoogleFonts.poppins(
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                          color: colorVerdeOscuro,
+                        ),
                       ),
                     ),
                   ],
@@ -425,7 +721,7 @@ class _DashboardNavegacionLocalState extends State<DashboardNavegacionLocal> {
                         const SizedBox(width: 8),
                         Expanded(
                           child: Text(
-                            'Nota especial: $notas',
+                            'Nota especial / Alergia: $notas',
                             style: GoogleFonts.poppins(
                               fontSize: 13.5,
                               fontWeight: FontWeight.bold,
@@ -452,6 +748,15 @@ class _DashboardNavegacionLocalState extends State<DashboardNavegacionLocal> {
                       'Método: $metodoPago',
                       style: GoogleFonts.poppins(
                         fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: colorTextoGris,
+                      ),
+                    ),
+                    const Spacer(),
+                    Text(
+                      'espera: ${_minutosEspera(horaLlegada)}m',
+                      style: GoogleFonts.poppins(
+                        fontSize: 13,
                         fontWeight: FontWeight.w600,
                         color: colorTextoGris,
                       ),
@@ -703,6 +1008,7 @@ class _DashboardNavegacionLocalState extends State<DashboardNavegacionLocal> {
                           final int minutos = _minutosEspera(
                             data['horaLlegada'] as Timestamp?,
                           );
+                          final int puntos = data['puntosGanados'] ?? 10;
 
                           Color colorEstado;
                           String textoBoton;
@@ -721,7 +1027,7 @@ class _DashboardNavegacionLocalState extends State<DashboardNavegacionLocal> {
                             iconoAccion = Icons.check_circle_outline;
                           } else {
                             colorEstado = colorExito;
-                            textoBoton = 'Entregar a Alumno';
+                            textoBoton = 'Entregar a Alumno (Liberar Puntos)';
                             labelEstado = 'POR ENTREGAR';
                             iconoAccion = Icons.task_alt;
                           }
@@ -838,13 +1144,39 @@ class _DashboardNavegacionLocalState extends State<DashboardNavegacionLocal> {
                                               color: colorTextoOscuro,
                                             ),
                                           ),
-                                          Text(
-                                            data['alumno'] ?? 'Alumno',
-                                            style: GoogleFonts.poppins(
-                                              fontSize: 14,
-                                              fontWeight: FontWeight.w600,
-                                              color: colorVerdeTese,
-                                            ),
+                                          Row(
+                                            children: [
+                                              Text(
+                                                data['alumno'] ?? 'Alumno',
+                                                style: GoogleFonts.poppins(
+                                                  fontSize: 14,
+                                                  fontWeight: FontWeight.w600,
+                                                  color: colorVerdeTese,
+                                                ),
+                                              ),
+                                              const SizedBox(width: 8),
+                                              Container(
+                                                padding:
+                                                    const EdgeInsets.symmetric(
+                                                      horizontal: 6,
+                                                      vertical: 2,
+                                                    ),
+                                                decoration: BoxDecoration(
+                                                  color: colorAmarilloTese
+                                                      .withValues(alpha: 0.2),
+                                                  borderRadius:
+                                                      BorderRadius.circular(6),
+                                                ),
+                                                child: Text(
+                                                  '+$puntos pts',
+                                                  style: GoogleFonts.poppins(
+                                                    fontSize: 11,
+                                                    fontWeight: FontWeight.bold,
+                                                    color: colorVerdeOscuro,
+                                                  ),
+                                                ),
+                                              ),
+                                            ],
                                           ),
                                         ],
                                       ),
@@ -910,7 +1242,7 @@ class _DashboardNavegacionLocalState extends State<DashboardNavegacionLocal> {
                                             style: GoogleFonts.poppins(
                                               color: Colors.white,
                                               fontWeight: FontWeight.bold,
-                                              fontSize: 14.5,
+                                              fontSize: 14,
                                             ),
                                           ),
                                           onPressed:
@@ -979,6 +1311,7 @@ class _DashboardNavegacionLocalState extends State<DashboardNavegacionLocal> {
               final String nombre = data['nombre'] ?? 'Sin nombre';
               final dynamic precio = data['precio'] ?? 0;
               final double calif = (data['calificacion'] ?? 0.0).toDouble();
+              final int puntos = data['puntos'] ?? 10;
               final List fotos = data['fotos'] ?? [];
 
               return FadeInUp(
@@ -998,7 +1331,6 @@ class _DashboardNavegacionLocalState extends State<DashboardNavegacionLocal> {
                   ),
                   child: Row(
                     children: [
-                      // 📸 FOTO REAL DEL PLATILLO O ÍCONO
                       Container(
                         width: 48,
                         height: 48,
@@ -1036,59 +1368,99 @@ class _DashboardNavegacionLocalState extends State<DashboardNavegacionLocal> {
                       ),
                       const SizedBox(width: 12),
                       Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              nombre,
-                              style: GoogleFonts.poppins(
-                                fontWeight: FontWeight.bold,
-                                fontSize: 15,
-                                color:
-                                    agotado ? colorTextoGris : colorTextoOscuro,
-                                decoration:
-                                    agotado ? TextDecoration.lineThrough : null,
-                              ),
-                            ),
-                            Row(
-                              children: [
-                                Text(
-                                  '\$$precio',
-                                  style: GoogleFonts.poppins(
-                                    color: colorExito,
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 14,
+                        child: InkWell(
+                          onTap: () => _mostrarDialogoEditarPlatillo(platillo),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  Flexible(
+                                    child: Text(
+                                      nombre,
+                                      style: GoogleFonts.poppins(
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 15,
+                                        color:
+                                            agotado
+                                                ? colorTextoGris
+                                                : colorTextoOscuro,
+                                        decoration:
+                                            agotado
+                                                ? TextDecoration.lineThrough
+                                                : null,
+                                      ),
+                                    ),
                                   ),
-                                ),
-                                const SizedBox(width: 10),
-                                if (calif > 0) ...[
+                                  const SizedBox(width: 6),
                                   const Icon(
-                                    Icons.star_rounded,
-                                    size: 14,
-                                    color: colorAmarilloTese,
-                                  ),
-                                  const SizedBox(width: 2),
-                                  Text(
-                                    '${calif.toStringAsFixed(1)} ★',
-                                    style: GoogleFonts.poppins(
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.w600,
-                                      color: colorTextoOscuro,
-                                    ),
-                                  ),
-                                ] else ...[
-                                  Text(
-                                    'Nuevo ✨',
-                                    style: GoogleFonts.poppins(
-                                      fontSize: 11,
-                                      fontWeight: FontWeight.bold,
-                                      color: colorExito,
-                                    ),
+                                    Icons.edit_outlined,
+                                    size: 15,
+                                    color: colorTextoGris,
                                   ),
                                 ],
-                              ],
-                            ),
-                          ],
+                              ),
+                              Row(
+                                children: [
+                                  Text(
+                                    '\$$precio',
+                                    style: GoogleFonts.poppins(
+                                      color: colorExito,
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 14,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 6),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 5,
+                                      vertical: 1,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: colorAmarilloTese.withValues(
+                                        alpha: 0.2,
+                                      ),
+                                      borderRadius: BorderRadius.circular(6),
+                                    ),
+                                    child: Text(
+                                      '+$puntos pts',
+                                      style: GoogleFonts.poppins(
+                                        fontSize: 10.5,
+                                        fontWeight: FontWeight.bold,
+                                        color: colorVerdeOscuro,
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  if (calif > 0) ...[
+                                    const Icon(
+                                      Icons.star_rounded,
+                                      size: 14,
+                                      color: colorAmarilloTese,
+                                    ),
+                                    const SizedBox(width: 2),
+                                    Text(
+                                      '${calif.toStringAsFixed(1)} ★',
+                                      style: GoogleFonts.poppins(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w600,
+                                        color: colorTextoOscuro,
+                                      ),
+                                    ),
+                                  ] else ...[
+                                    Text(
+                                      'Nuevo ✨',
+                                      style: GoogleFonts.poppins(
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.bold,
+                                        color: colorExito,
+                                      ),
+                                    ),
+                                  ],
+                                ],
+                              ),
+                            ],
+                          ),
                         ),
                       ),
                       Row(
@@ -1320,9 +1692,6 @@ class _DashboardNavegacionLocalState extends State<DashboardNavegacionLocal> {
   }
 }
 
-// ==========================================================
-// 📸 AGREGAR PLATILLO CON HASTA 3 FOTOS AUTÓNOMAS
-// ==========================================================
 class AgregarPlatilloScreen extends StatefulWidget {
   const AgregarPlatilloScreen({super.key});
 
@@ -1333,18 +1702,23 @@ class AgregarPlatilloScreen extends StatefulWidget {
 class _AgregarPlatilloScreenState extends State<AgregarPlatilloScreen> {
   final TextEditingController _nombreCtrl = TextEditingController();
   final TextEditingController _precioCtrl = TextEditingController();
+  final TextEditingController _existenciasCtrl = TextEditingController(
+    text: '10',
+  );
+  final TextEditingController _puntosCtrl = TextEditingController(text: '15');
   final TextEditingController _ingredienteCtrl = TextEditingController();
   final List<String> _ingredientesPersonalizados = [];
-  final List<String> _fotosBase64 = []; // 📸 Lista de 1 a 3 fotos
+  final List<String> _fotosBase64 = [];
   final ImagePicker _picker = ImagePicker();
 
-  int _existencias = 10;
   bool _estaCargando = false;
 
   @override
   void dispose() {
     _nombreCtrl.dispose();
     _precioCtrl.dispose();
+    _existenciasCtrl.dispose();
+    _puntosCtrl.dispose();
     _ingredienteCtrl.dispose();
     super.dispose();
   }
@@ -1360,7 +1734,6 @@ class _AgregarPlatilloScreenState extends State<AgregarPlatilloScreen> {
     }
 
     try {
-      // 💡 REDUCTOR AUTÓNOMO: Máximo 600x600 y calidad al 50% (Pesa ~25 KB)
       final XFile? imagen = await _picker.pickImage(
         source: source,
         maxWidth: 600,
@@ -1431,6 +1804,9 @@ class _AgregarPlatilloScreenState extends State<AgregarPlatilloScreen> {
     setState(() => _estaCargando = true);
 
     try {
+      final int stockFinal = int.tryParse(_existenciasCtrl.text) ?? 10;
+      final int puntosFinales = int.tryParse(_puntosCtrl.text) ?? 15;
+
       await FirebaseFirestore.instance.collection('Menu_Platillos').add({
         'nombre': _nombreCtrl.text,
         'precio': double.parse(_precioCtrl.text),
@@ -1442,15 +1818,16 @@ class _AgregarPlatilloScreenState extends State<AgregarPlatilloScreen> {
         'numCalificaciones': 0,
         'popular': true,
         'ingredientes': _ingredientesPersonalizados,
-        'existencias': _existencias,
-        'fotos': _fotosBase64, // 📸 Guardamos la lista de 1 a 3 fotos
+        'existencias': stockFinal,
+        'fotos': _fotosBase64,
+        'puntos': puntosFinales,
       });
 
       if (mounted) {
         Navigator.pop(context);
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('¡Platillo subido a la nube con fotos! ☁️🍔'),
+            content: Text('¡Platillo publicado con sus puntos! ☁️🍔🪙'),
             backgroundColor: colorExito,
           ),
         );
@@ -1509,9 +1886,7 @@ class _AgregarPlatilloScreenState extends State<AgregarPlatilloScreen> {
         padding: const EdgeInsets.all(22.0),
         child: Column(
           children: [
-            // ==========================================
-            // 📸 SECCIÓN DE FOTOS (1 A 3 FOTOS)
-            // ==========================================
+            // FOTOS DEL PLATILLO
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
@@ -1563,14 +1938,13 @@ class _AgregarPlatilloScreenState extends State<AgregarPlatilloScreen> {
                     GestureDetector(
                       onTap: _mostrarOpcionesFoto,
                       child: Container(
-                        height: 120,
+                        height: 110,
                         width: double.infinity,
                         decoration: BoxDecoration(
                           color: colorVerdeTese.withValues(alpha: 0.04),
                           borderRadius: BorderRadius.circular(16),
                           border: Border.all(
                             color: colorVerdeTese.withValues(alpha: 0.25),
-                            style: BorderStyle.solid,
                           ),
                         ),
                         child: Column(
@@ -1578,14 +1952,14 @@ class _AgregarPlatilloScreenState extends State<AgregarPlatilloScreen> {
                           children: [
                             Icon(
                               Icons.camera_alt_outlined,
-                              size: 40,
+                              size: 36,
                               color: colorVerdeTese.withValues(alpha: 0.7),
                             ),
-                            const SizedBox(height: 8),
+                            const SizedBox(height: 6),
                             Text(
                               'Toca para tomar foto de la comida',
                               style: GoogleFonts.poppins(
-                                fontSize: 13,
+                                fontSize: 12.5,
                                 color: colorTextoGris,
                                 fontWeight: FontWeight.w600,
                               ),
@@ -1596,7 +1970,7 @@ class _AgregarPlatilloScreenState extends State<AgregarPlatilloScreen> {
                     )
                   else
                     SizedBox(
-                      height: 105,
+                      height: 100,
                       child: ListView.separated(
                         scrollDirection: Axis.horizontal,
                         itemCount: _fotosBase64.length,
@@ -1606,8 +1980,8 @@ class _AgregarPlatilloScreenState extends State<AgregarPlatilloScreen> {
                             clipBehavior: Clip.none,
                             children: [
                               Container(
-                                width: 100,
-                                height: 100,
+                                width: 95,
+                                height: 95,
                                 decoration: BoxDecoration(
                                   borderRadius: BorderRadius.circular(14),
                                   border: Border.all(
@@ -1656,7 +2030,7 @@ class _AgregarPlatilloScreenState extends State<AgregarPlatilloScreen> {
             ),
             const SizedBox(height: 20),
 
-            // FORMULARIO NOMBRE Y PRECIO
+            // FORMULARIO NOMBRE, PRECIO, EXISTENCIAS Y PUNTOS
             Container(
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
@@ -1679,13 +2053,50 @@ class _AgregarPlatilloScreenState extends State<AgregarPlatilloScreen> {
                       Icons.restaurant,
                     ),
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 14),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          controller: _precioCtrl,
+                          keyboardType: TextInputType.number,
+                          decoration: _decoracionCampo(
+                            'Precio (\$)',
+                            Icons.attach_money,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: TextField(
+                          controller: _existenciasCtrl,
+                          keyboardType: TextInputType.number,
+                          decoration: _decoracionCampo(
+                            'Existencias',
+                            Icons.inventory,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 14),
+                  // ✨ CAMPO DIRECTO PARA PUNTOS (PONES 300 O LO QUE QUIERAS SIN OVERFLOW)
                   TextField(
-                    controller: _precioCtrl,
+                    controller: _puntosCtrl,
                     keyboardType: TextInputType.number,
-                    decoration: _decoracionCampo(
-                      'Precio (\$)',
-                      Icons.attach_money,
+                    decoration: InputDecoration(
+                      labelText: 'Puntos que otorga al alumno 🪙',
+                      hintText: 'Ej. 15, 50, 300...',
+                      prefixIcon: const Icon(
+                        Icons.stars_rounded,
+                        color: colorAmarilloTese,
+                      ),
+                      filled: true,
+                      fillColor: colorFondoCrema,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(15),
+                        borderSide: BorderSide.none,
+                      ),
                     ),
                   ),
                 ],
@@ -1719,7 +2130,7 @@ class _AgregarPlatilloScreenState extends State<AgregarPlatilloScreen> {
                       color: colorTextoOscuro,
                     ),
                   ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 10),
                   Row(
                     children: [
                       Expanded(
@@ -1789,44 +2200,6 @@ class _AgregarPlatilloScreenState extends State<AgregarPlatilloScreen> {
                           }).toList(),
                     ),
                   ],
-                  const Divider(height: 28),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        'Existencias iniciales',
-                        style: GoogleFonts.poppins(
-                          fontSize: 14,
-                          fontWeight: FontWeight.bold,
-                          color: colorTextoOscuro,
-                        ),
-                      ),
-                      Row(
-                        children: [
-                          _botonStock(Icons.remove, () {
-                            if (_existencias > 0) {
-                              setState(() => _existencias--);
-                            }
-                          }),
-                          SizedBox(
-                            width: 44,
-                            child: Text(
-                              '$_existencias',
-                              textAlign: TextAlign.center,
-                              style: GoogleFonts.poppins(
-                                fontSize: 17,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ),
-                          _botonStock(
-                            Icons.add,
-                            () => setState(() => _existencias++),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
                 ],
               ),
             ),

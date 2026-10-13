@@ -43,7 +43,6 @@ class _NavegacionEstudianteState extends State<NavegacionEstudiante> {
   @override
   void initState() {
     super.initState();
-    // 🔔 Pide permiso nativo de notificaciones al arrancar la app
     ServicioNotificaciones.inicializar();
     _iniciarVigilanteDePedidos();
   }
@@ -54,9 +53,6 @@ class _NavegacionEstudianteState extends State<NavegacionEstudiante> {
     super.dispose();
   }
 
-  // ==========================================================
-  // 🦆 VIGILANTE EN VIVO: ALERTA SISTEMA + BANNER + "CUAC"
-  // ==========================================================
   void _iniciarVigilanteDePedidos() {
     _pedidosSub = FirebaseFirestore.instance
         .collection('Pedidos')
@@ -71,7 +67,6 @@ class _NavegacionEstudianteState extends State<NavegacionEstudiante> {
               String local = data['local'] ?? 'Cafetería Central';
 
               if (estado == 1) {
-                // Notificación nativa en la bandeja del celular
                 ServicioNotificaciones.mostrarNotificacion(
                   id: 1,
                   titulo: '🍳 ¡Tu pedido está en preparación!',
@@ -87,7 +82,6 @@ class _NavegacionEstudianteState extends State<NavegacionEstudiante> {
                   esListo: false,
                 );
               } else if (estado == 2) {
-                // Notificación nativa en la bandeja del celular estilo Instagram
                 ServicioNotificaciones.mostrarNotificacion(
                   id: 2,
                   titulo: '🦆 ¡CUAC! Tu comida está lista',
@@ -224,7 +218,6 @@ class _NavegacionEstudianteState extends State<NavegacionEstudiante> {
     return Scaffold(
       backgroundColor: colorFondoCrema,
       extendBody: true,
-      // ✨ ANIMACIÓN FLUIDA: Transición suave entre pestañas sin cortes en seco
       body: AnimatedSwitcher(
         duration: const Duration(milliseconds: 280),
         switchInCurve: Curves.easeOutCubic,
@@ -753,7 +746,7 @@ class MisPedidosScreen extends StatelessWidget {
 }
 
 // ==========================================================
-// CATÁLOGO DE ESTUDIANTES
+// CATÁLOGO DE ESTUDIANTES: BLOQUEO DE PLATILLOS AGOTADOS
 // ==========================================================
 class CatalogoEstudianteScreen extends StatefulWidget {
   final List<Platillo> carrito;
@@ -1143,6 +1136,9 @@ class _CatalogoEstudianteScreenState extends State<CatalogoEstudianteScreen> {
                       itemBuilder: (context, index) {
                         final platillo = platillosFiltrados[index];
                         final acento = acentoDeCategoria(platillo.categoria);
+                        final bool agotado =
+                            platillo.existencias <= 0; // 🚫 DETECCIÓN DE STOCK
+
                         return FadeInUp(
                           delay: Duration(milliseconds: 60 * index),
                           child: GestureDetector(
@@ -1172,7 +1168,14 @@ class _CatalogoEstudianteScreenState extends State<CatalogoEstudianteScreen> {
                                         width: 58,
                                         height: 58,
                                         decoration: BoxDecoration(
-                                          color: acento.withValues(alpha: 0.16),
+                                          color:
+                                              agotado
+                                                  ? Colors.grey.withValues(
+                                                    alpha: 0.15,
+                                                  )
+                                                  : acento.withValues(
+                                                    alpha: 0.16,
+                                                  ),
                                           borderRadius: BorderRadius.circular(
                                             16,
                                           ),
@@ -1209,7 +1212,7 @@ class _CatalogoEstudianteScreenState extends State<CatalogoEstudianteScreen> {
                                                   ),
                                         ),
                                       ),
-                                      if (platillo.popular)
+                                      if (platillo.popular && !agotado)
                                         Positioned(
                                           top: -6,
                                           left: -6,
@@ -1244,13 +1247,51 @@ class _CatalogoEstudianteScreenState extends State<CatalogoEstudianteScreen> {
                                       crossAxisAlignment:
                                           CrossAxisAlignment.start,
                                       children: [
-                                        Text(
-                                          platillo.nombre,
-                                          style: GoogleFonts.poppins(
-                                            fontWeight: FontWeight.w600,
-                                            fontSize: 15.5,
-                                            color: colorTextoOscuro,
-                                          ),
+                                        Row(
+                                          children: [
+                                            Flexible(
+                                              child: Text(
+                                                platillo.nombre,
+                                                style: GoogleFonts.poppins(
+                                                  fontWeight: FontWeight.w600,
+                                                  fontSize: 15.5,
+                                                  color:
+                                                      agotado
+                                                          ? colorTextoGris
+                                                          : colorTextoOscuro,
+                                                  decoration:
+                                                      agotado
+                                                          ? TextDecoration
+                                                              .lineThrough
+                                                          : null,
+                                                ),
+                                              ),
+                                            ),
+                                            if (agotado) ...[
+                                              const SizedBox(width: 6),
+                                              Container(
+                                                padding:
+                                                    const EdgeInsets.symmetric(
+                                                      horizontal: 6,
+                                                      vertical: 2,
+                                                    ),
+                                                decoration: BoxDecoration(
+                                                  color: Colors.redAccent
+                                                      .withValues(alpha: 0.15),
+                                                  borderRadius:
+                                                      BorderRadius.circular(6),
+                                                ),
+                                                child: Text(
+                                                  'Agotado',
+                                                  style: GoogleFonts.poppins(
+                                                    fontSize: 10,
+                                                    fontWeight: FontWeight.bold,
+                                                    color: Colors.redAccent,
+                                                  ),
+                                                ),
+                                              ),
+                                            ],
+                                          ],
                                         ),
                                         const SizedBox(height: 3),
                                         Text(
@@ -1319,41 +1360,73 @@ class _CatalogoEstudianteScreenState extends State<CatalogoEstudianteScreen> {
                                           ],
                                         ),
                                         const SizedBox(height: 6),
-                                        Container(
-                                          padding: const EdgeInsets.symmetric(
-                                            horizontal: 10,
-                                            vertical: 3,
-                                          ),
-                                          decoration: BoxDecoration(
-                                            color: acento.withValues(
-                                              alpha: 0.16,
+                                        Row(
+                                          children: [
+                                            Container(
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                    horizontal: 10,
+                                                    vertical: 3,
+                                                  ),
+                                              decoration: BoxDecoration(
+                                                color: acento.withValues(
+                                                  alpha: 0.16,
+                                                ),
+                                                borderRadius:
+                                                    BorderRadius.circular(30),
+                                              ),
+                                              child: Text(
+                                                '\$${platillo.precio.toInt()}',
+                                                style: GoogleFonts.poppins(
+                                                  fontWeight: FontWeight.w700,
+                                                  color: colorTextoOscuro,
+                                                  fontSize: 13,
+                                                ),
+                                              ),
                                             ),
-                                            borderRadius: BorderRadius.circular(
-                                              30,
+                                            const SizedBox(width: 8),
+                                            Text(
+                                              '🪙 +${platillo.puntos} pts',
+                                              style: GoogleFonts.poppins(
+                                                fontSize: 11,
+                                                fontWeight: FontWeight.bold,
+                                                color: colorAmarilloTese,
+                                              ),
                                             ),
-                                          ),
-                                          child: Text(
-                                            '\$${platillo.precio.toInt()}',
-                                            style: GoogleFonts.poppins(
-                                              fontWeight: FontWeight.w700,
-                                              color: colorTextoOscuro,
-                                              fontSize: 13,
-                                            ),
-                                          ),
+                                          ],
                                         ),
                                       ],
                                     ),
                                   ),
+                                  // BOTÓN DE AGREGAR (DESHABILITADO SI ESTÁ AGOTADO)
                                   IconButton(
-                                    icon: const Icon(
-                                      Icons.add_circle,
-                                      color: colorAmarilloTese,
+                                    icon: Icon(
+                                      agotado ? Icons.block : Icons.add_circle,
+                                      color:
+                                          agotado
+                                              ? Colors.grey[400]
+                                              : colorAmarilloTese,
                                       size: 36,
                                     ),
-                                    onPressed: () {
-                                      widget.onAgregar(platillo);
-                                      _mostrarAlertaExito(platillo.nombre);
-                                    },
+                                    onPressed:
+                                        agotado
+                                            ? () {
+                                              ScaffoldMessenger.of(
+                                                context,
+                                              ).showSnackBar(
+                                                const SnackBar(
+                                                  content: Text(
+                                                    'Este platillo se encuentra agotado por el momento. 🚫',
+                                                  ),
+                                                ),
+                                              );
+                                            }
+                                            : () {
+                                              widget.onAgregar(platillo);
+                                              _mostrarAlertaExito(
+                                                platillo.nombre,
+                                              );
+                                            },
                                   ),
                                 ],
                               ),

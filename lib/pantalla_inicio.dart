@@ -2,13 +2,15 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:animate_do/animate_do.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'colores.dart';
 import 'pantalla_login.dart';
+import 'pantalla_menu.dart';
 import 'cafeteria.dart';
 
-// Fondo compartido entre Splash y Decisión: degradado pastel claro con
-// dos "ondas" pintadas a mano en las esquinas, como en la imagen de
-// referencia (en vez de blobs difuminados).
+// ==========================================
+// FONDO ONDAS PREMIUM
+// ==========================================
 class FondoOndasPremium extends StatelessWidget {
   final Widget child;
   const FondoOndasPremium({super.key, required this.child});
@@ -89,8 +91,6 @@ class FondoOndasPremium extends StatelessWidget {
   }
 }
 
-// Dibuja la "ondita" de la esquina: una forma orgánica con una línea
-// dorada delgada trazando su borde, como en la imagen de referencia.
 class _PintorOnda extends CustomPainter {
   final Color color;
   const _PintorOnda(this.color);
@@ -129,6 +129,7 @@ class _PintorOnda extends CustomPainter {
           ..style = PaintingStyle.stroke
           ..strokeWidth = 3
           ..strokeCap = StrokeCap.round;
+
     final bordeSuperior =
         Path()
           ..moveTo(0, size.height * 0.08)
@@ -146,6 +147,9 @@ class _PintorOnda extends CustomPainter {
       oldDelegate.color != color;
 }
 
+// ==========================================
+// SPLASH SCREEN CON SESIÓN PERSISTENTE
+// ==========================================
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
 
@@ -157,18 +161,43 @@ class _SplashScreenState extends State<SplashScreen> {
   @override
   void initState() {
     super.initState();
-    Future.delayed(const Duration(milliseconds: 3500), () {
-      if (!mounted) return;
-      Navigator.pushReplacement(
-        context,
-        PageRouteBuilder(
-          transitionDuration: const Duration(milliseconds: 1000),
-          pageBuilder: (_, __, ___) => const DecisionScreen(),
-          transitionsBuilder: (_, animation, __, child) {
-            return FadeTransition(opacity: animation, child: child);
-          },
-        ),
-      );
+    _verificarSesionYRedirigir();
+  }
+
+  void _verificarSesionYRedirigir() {
+    Future.delayed(const Duration(milliseconds: 2800), () {
+      if (!mounted) {
+        return;
+      }
+
+      // 🔐 REVISIÓN DE SESIÓN EN FIREBASE AUTH
+      final User? usuarioActual = FirebaseAuth.instance.currentUser;
+
+      if (usuarioActual != null) {
+        // ✅ Ya tiene sesión iniciada: entra directo al menú estudiantil
+        Navigator.pushReplacement(
+          context,
+          PageRouteBuilder(
+            transitionDuration: const Duration(milliseconds: 800),
+            pageBuilder: (_, __, ___) => const NavegacionEstudiante(),
+            transitionsBuilder: (_, animation, __, child) {
+              return FadeTransition(opacity: animation, child: child);
+            },
+          ),
+        );
+      } else {
+        // 🚪 No tiene sesión: va a la pantalla de decisión
+        Navigator.pushReplacement(
+          context,
+          PageRouteBuilder(
+            transitionDuration: const Duration(milliseconds: 800),
+            pageBuilder: (_, __, ___) => const DecisionScreen(),
+            transitionsBuilder: (_, animation, __, child) {
+              return FadeTransition(opacity: animation, child: child);
+            },
+          ),
+        );
+      }
     });
   }
 
@@ -221,7 +250,7 @@ class _SplashScreenState extends State<SplashScreen> {
             FadeInUp(
               delay: const Duration(milliseconds: 1200),
               child: Text(
-                'Preparando tu pedido...',
+                'Sin filas, más receso...',
                 style: GoogleFonts.poppins(
                   fontSize: 16,
                   color: colorVerdeSuave,
@@ -244,6 +273,9 @@ class _SplashScreenState extends State<SplashScreen> {
   }
 }
 
+// ==========================================
+// PANTALLA DE DECISIÓN (SI NO HAY SESIÓN)
+// ==========================================
 class DecisionScreen extends StatelessWidget {
   const DecisionScreen({super.key});
 
@@ -275,7 +307,7 @@ class DecisionScreen extends StatelessWidget {
               ),
               const SizedBox(height: 4),
               Text(
-                'Sin filas, más receso.',
+                'Pide antes, come a tiempo.',
                 style: GoogleFonts.poppins(
                   fontSize: 16,
                   color: colorVerdeSuave,
@@ -284,13 +316,13 @@ class DecisionScreen extends StatelessWidget {
               ),
               const SizedBox(height: 46),
               FadeInUp(
-                delay: const Duration(milliseconds: 400),
+                delay: const Duration(milliseconds: 300),
                 child: ElevatedButton.icon(
                   icon: const Icon(Icons.school, color: Colors.white),
                   label: Text(
-                    'Soy Estudiante',
+                    'Soy Estudiante TESE',
                     style: GoogleFonts.poppins(
-                      fontSize: 18,
+                      fontSize: 17,
                       color: Colors.white,
                       fontWeight: FontWeight.bold,
                     ),
@@ -299,7 +331,7 @@ class DecisionScreen extends StatelessWidget {
                     backgroundColor: colorVerdeSuave,
                     elevation: 4,
                     shadowColor: colorVerdeSuave.withValues(alpha: 0.4),
-                    minimumSize: const Size(double.infinity, 60),
+                    minimumSize: const Size(double.infinity, 58),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(30),
                     ),
@@ -315,19 +347,19 @@ class DecisionScreen extends StatelessWidget {
               ),
               const SizedBox(height: 16),
               FadeInUp(
-                delay: const Duration(milliseconds: 600),
+                delay: const Duration(milliseconds: 500),
                 child: OutlinedButton.icon(
                   icon: const Icon(Icons.storefront, color: colorVerdeSuave),
                   label: Text(
                     'Soy Cafetería / Local',
                     style: GoogleFonts.poppins(
-                      fontSize: 18,
+                      fontSize: 17,
                       color: colorVerdeSuave,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
                   style: OutlinedButton.styleFrom(
-                    minimumSize: const Size(double.infinity, 60),
+                    minimumSize: const Size(double.infinity, 58),
                     side: const BorderSide(color: colorVerdeSuave, width: 1.6),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(30),

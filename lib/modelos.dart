@@ -15,7 +15,9 @@ class Platillo {
   final bool popular;
   final List<String> ingredientes;
   final List<String> personalizacion;
-  final List<String> fotos; // 📸 Lista de 1 a 3 fotos en Base64
+  final List<String> fotos;
+  final int existencias; // 📦 Stock real
+  final int puntos; // 🪙 Puntos que regala
 
   Platillo({
     required this.id,
@@ -32,9 +34,15 @@ class Platillo {
     this.ingredientes = const [],
     this.personalizacion = const [],
     this.fotos = const [],
+    this.existencias = 0,
+    this.puntos = 10,
   });
 
-  Platillo copyWith({List<String>? personalizacion, List<String>? fotos}) {
+  Platillo copyWith({
+    List<String>? personalizacion,
+    List<String>? fotos,
+    int? existencias,
+  }) {
     return Platillo(
       id: id,
       nombre: nombre,
@@ -50,12 +58,11 @@ class Platillo {
       ingredientes: ingredientes,
       personalizacion: personalizacion ?? this.personalizacion,
       fotos: fotos ?? this.fotos,
+      existencias: existencias ?? this.existencias,
+      puntos: puntos,
     );
   }
 
-  // ========================================================
-  // ✨ TRADUCTOR FIREBASE -> FLUTTER
-  // ========================================================
   factory Platillo.fromFirestore(DocumentSnapshot doc) {
     Map data = doc.data() as Map<String, dynamic>? ?? {};
 
@@ -74,8 +81,9 @@ class Platillo {
           data['ingredientes'] != null
               ? List<String>.from(data['ingredientes'])
               : [],
-      // Leemos la lista de fotos (si no tiene, deja lista vacía)
       fotos: data['fotos'] != null ? List<String>.from(data['fotos']) : [],
+      existencias: (data['existencias'] ?? 0) as int,
+      puntos: (data['puntos'] ?? 10) as int,
       icono: _iconoPorCategoria(data['categoria']),
     );
   }
