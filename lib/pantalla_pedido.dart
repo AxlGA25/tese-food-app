@@ -37,6 +37,11 @@ class _CarritoScreenState extends State<CarritoScreen> {
 
   void _mostrarConfirmacion(double total) {
     HapticFeedback.heavyImpact();
+    final String localDestino =
+        widget.carrito.isNotEmpty
+            ? widget.carrito.first.local
+            : 'Cafetería Central';
+
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
@@ -71,31 +76,50 @@ class _CarritoScreenState extends State<CarritoScreen> {
                         ),
                       ),
                     ),
-                    const SizedBox(height: 20),
+                    const SizedBox(height: 18),
                     const Icon(
-                      Icons.receipt_long,
-                      size: 55,
+                      Icons.storefront,
+                      size: 50,
                       color: colorVerdeTese,
                     ),
-                    const SizedBox(height: 14),
+                    const SizedBox(height: 12),
                     Text(
-                      '¿Confirmar tu pedido?',
+                      'Confirmar Compra',
                       style: GoogleFonts.poppins(
                         fontSize: 22,
                         fontWeight: FontWeight.bold,
                         color: colorTextoOscuro,
                       ),
                     ),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: 6),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 6,
+                      ),
+                      decoration: BoxDecoration(
+                        color: colorVerdeTese.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Text(
+                        '📍 Recogerás en: $localDestino',
+                        style: GoogleFonts.poppins(
+                          fontSize: 13,
+                          fontWeight: FontWeight.bold,
+                          color: colorVerdeTese,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 10),
                     Text(
-                      'Se enviará tu orden a cocina por un total de \$${total.toStringAsFixed(2)}.\nRecuerda que pagarás con $metodoPago al recoger.',
+                      'Total de la orden: \$${total.toStringAsFixed(2)}\nPagarás con $metodoPago al recoger en ventanilla.',
                       textAlign: TextAlign.center,
                       style: GoogleFonts.poppins(
                         color: colorTextoGris,
                         fontSize: 13.5,
                       ),
                     ),
-                    const SizedBox(height: 26),
+                    const SizedBox(height: 24),
                     Row(
                       children: [
                         Expanded(
@@ -158,7 +182,6 @@ class _CarritoScreenState extends State<CarritoScreen> {
                                               '\n\nNOTAS: $notasAdicionales';
                                         }
 
-                                        // Guardamos la lista de platillos con sus IDs para calificarlos individualmente
                                         List<Map<String, dynamic>>
                                         itemsParaResena =
                                             widget.carrito
@@ -170,12 +193,14 @@ class _CarritoScreenState extends State<CarritoScreen> {
                                                 )
                                                 .toList();
 
+                                        // 📍 Guardamos el local exacto donde se hizo la compra
                                         await FirebaseFirestore.instance
                                             .collection('Pedidos')
                                             .doc(codigoUnico)
                                             .set({
                                               'idPedido': codigoUnico,
                                               'alumno': 'Axel Guerrero',
+                                              'local': localDestino,
                                               'detalle': detallesCocina,
                                               'metodoPago': metodoPago,
                                               'notas': notasAdicionales,
@@ -207,6 +232,7 @@ class _CarritoScreenState extends State<CarritoScreen> {
                                                         codigoPedido:
                                                             codigoUnico,
                                                         total: total,
+                                                        local: localDestino,
                                                       ),
                                             ),
                                           );
@@ -347,17 +373,28 @@ class _CarritoScreenState extends State<CarritoScreen> {
                                   color: colorTextoOscuro,
                                 ),
                               ),
-                              subtitle:
-                                  item.personalizacion.isNotEmpty
-                                      ? Text(
-                                        item.personalizacion.join(' • '),
-                                        style: GoogleFonts.poppins(
-                                          fontSize: 12,
-                                          color: Colors.redAccent,
-                                          fontWeight: FontWeight.w600,
-                                        ),
-                                      )
-                                      : null,
+                              subtitle: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    '📍 ${item.local}',
+                                    style: GoogleFonts.poppins(
+                                      fontSize: 12,
+                                      color: colorVerdeTese,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                  if (item.personalizacion.isNotEmpty)
+                                    Text(
+                                      item.personalizacion.join(' • '),
+                                      style: GoogleFonts.poppins(
+                                        fontSize: 12,
+                                        color: Colors.redAccent,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                ],
+                              ),
                               trailing: Text(
                                 '\$${item.precio.toStringAsFixed(2)}',
                                 style: GoogleFonts.poppins(
@@ -584,13 +621,18 @@ class _CarritoScreenState extends State<CarritoScreen> {
   }
 }
 
+// ==========================================================
+// 🦆 PANTALLA ÉXITO CON LUGAR DE ENTREGA CLARO
+// ==========================================================
 class PantallaPedidoExitoso extends StatelessWidget {
   final String codigoPedido;
   final double total;
+  final String local;
   const PantallaPedidoExitoso({
     super.key,
     required this.codigoPedido,
     required this.total,
+    required this.local,
   });
 
   @override
@@ -607,14 +649,14 @@ class PantallaPedidoExitoso extends StatelessWidget {
               BounceInDown(
                 child: Image.asset(
                   'assets/patito_listo.png',
-                  height: 180,
+                  height: 170,
                   fit: BoxFit.contain,
                 ),
               ),
-              const SizedBox(height: 24),
+              const SizedBox(height: 20),
               FadeInUp(
                 child: Text(
-                  '¡Pedido Confirmado!',
+                  '¡Pedido Enviado!',
                   style: GoogleFonts.poppins(
                     fontSize: 26,
                     fontWeight: FontWeight.w900,
@@ -622,11 +664,11 @@ class PantallaPedidoExitoso extends StatelessWidget {
                   ),
                 ),
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: 6),
               FadeInUp(
                 delay: const Duration(milliseconds: 150),
                 child: Text(
-                  'Tu orden ya está en la fila de la cocina.',
+                  'Tu orden se está procesando en la cocina.',
                   textAlign: TextAlign.center,
                   style: GoogleFonts.poppins(
                     fontSize: 14,
@@ -634,39 +676,63 @@ class PantallaPedidoExitoso extends StatelessWidget {
                   ),
                 ),
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: 18),
+              // TARJETA DE RECOLECCIÓN
               FadeInUp(
                 delay: const Duration(milliseconds: 300),
                 child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 20,
-                    vertical: 12,
-                  ),
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(18),
                   decoration: BoxDecoration(
                     color: Colors.white,
-                    borderRadius: BorderRadius.circular(18),
+                    borderRadius: BorderRadius.circular(20),
                     border: Border.all(
-                      color: colorExito.withValues(alpha: 0.3),
+                      color: colorVerdeTese.withValues(alpha: 0.2),
                     ),
                   ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  child: Column(
                     children: [
-                      Text(
-                        codigoPedido,
-                        style: GoogleFonts.poppins(
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                          color: colorExito,
-                        ),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            codigoPedido,
+                            style: GoogleFonts.poppins(
+                              fontSize: 20,
+                              fontWeight: FontWeight.bold,
+                              color: colorVerdeTese,
+                            ),
+                          ),
+                          Text(
+                            '\$${total.toStringAsFixed(2)}',
+                            style: GoogleFonts.poppins(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                              color: colorTextoOscuro,
+                            ),
+                          ),
+                        ],
                       ),
-                      Text(
-                        '\$${total.toStringAsFixed(2)}',
-                        style: GoogleFonts.poppins(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: colorTextoOscuro,
-                        ),
+                      const Divider(height: 20),
+                      Row(
+                        children: [
+                          const Icon(
+                            Icons.location_on,
+                            color: Colors.redAccent,
+                            size: 20,
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              'Recoger en: $local',
+                              style: GoogleFonts.poppins(
+                                fontSize: 14,
+                                fontWeight: FontWeight.bold,
+                                color: colorTextoOscuro,
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                     ],
                   ),
@@ -679,7 +745,7 @@ class PantallaPedidoExitoso extends StatelessWidget {
                   width: double.infinity,
                   height: 54,
                   child: ElevatedButton.icon(
-                    icon: const Icon(Icons.timer_outlined, color: Colors.white),
+                    icon: const Icon(Icons.navigation, color: Colors.white),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: colorVerdeTese,
                       shape: RoundedRectangleBorder(
@@ -697,7 +763,7 @@ class PantallaPedidoExitoso extends StatelessWidget {
                       );
                     },
                     label: Text(
-                      'Ver Estado en Vivo',
+                      'Rastrear y Ver Detalles',
                       style: GoogleFonts.poppins(
                         color: Colors.white,
                         fontSize: 16,
@@ -741,6 +807,9 @@ class PantallaPedidoExitoso extends StatelessWidget {
   }
 }
 
+// ==========================================================
+// 🔍 SALA DE ESPERA ULTRA-DETALLADA ESTILO UBER/DIDI
+// ==========================================================
 class SalaEsperaScreen extends StatefulWidget {
   final String codigoPedido;
   const SalaEsperaScreen({super.key, required this.codigoPedido});
@@ -778,69 +847,343 @@ class _SalaEsperaScreenState extends State<SalaEsperaScreen> {
       builder: (context, snapshot) {
         if (!snapshot.hasData || !snapshot.data!.exists) {
           return const Scaffold(
-            backgroundColor: colorVerdeTese,
+            backgroundColor: colorFondoCrema,
             body: Center(
-              child: CircularProgressIndicator(color: colorAmarilloTese),
+              child: CircularProgressIndicator(color: colorVerdeTese),
             ),
           );
         }
 
-        int estadoActual = snapshot.data!.get('estado') ?? 0;
+        final data = snapshot.data!.data() as Map<String, dynamic>? ?? {};
+        int estadoActual = data['estado'] ?? 0;
+        String local = data['local'] ?? 'Cafetería Central';
+        String detalle = data['detalle'] ?? '';
+        String metodoPago = data['metodoPago'] ?? 'Efectivo';
+        double total = (data['total'] ?? 0).toDouble();
 
         if (estadoActual == 2 && _ultimoEstadoLeido != 2) {
           _confettiController.play();
           _ultimoEstadoLeido = 2;
         }
 
-        Color colorFondo = estadoActual == 2 ? colorExito : Colors.white;
-        Color colorTextoTop = estadoActual == 2 ? Colors.white : colorVerdeTese;
+        Color colorEstado;
+        String tituloEstado;
+        String subtituloEstado;
+        String patitoAsset;
+
+        if (estadoActual == 0) {
+          colorEstado = Colors.grey[700]!;
+          tituloEstado = 'Confirmando en cocina';
+          subtituloEstado = 'El kiosko está validando tu orden para comenzar.';
+          patitoAsset = 'assets/patito_recibido.png';
+        } else if (estadoActual == 1) {
+          colorEstado = colorAmarilloTese;
+          tituloEstado = '¡Cocinando tus alimentos!';
+          subtituloEstado = 'El chef ya está preparando tu comida al momento.';
+          patitoAsset = 'assets/patito_chef.png';
+        } else if (estadoActual == 2) {
+          colorEstado = colorExito;
+          tituloEstado = '¡Listo para recoger!';
+          subtituloEstado =
+              'Acude a la ventanilla del kiosko y muestra tu ticket.';
+          patitoAsset = 'assets/patito_listo.png';
+        } else {
+          colorEstado = colorTextoGris;
+          tituloEstado = 'Pedido Entregado';
+          subtituloEstado = '¡Buen provecho! Gracias por tu compra.';
+          patitoAsset = 'assets/disfrutaTuComida.png';
+        }
 
         return Scaffold(
-          backgroundColor: colorFondo,
-          extendBodyBehindAppBar: true,
+          backgroundColor: colorFondoCrema,
           appBar: AppBar(
             title: Text(
-              'Orden: ${widget.codigoPedido}',
+              'Seguimiento de Orden',
               style: GoogleFonts.poppins(
-                color: colorTextoTop,
+                color: colorVerdeTese,
                 fontWeight: FontWeight.bold,
-                fontSize: 20,
+                fontSize: 18,
               ),
             ),
-            backgroundColor: Colors.transparent,
+            backgroundColor: Colors.white,
             elevation: 0,
-            centerTitle: true,
-            iconTheme: IconThemeData(color: colorTextoTop),
             leading: IconButton(
-              icon: const Icon(Icons.arrow_back),
+              icon: const Icon(
+                Icons.arrow_back_ios_new,
+                color: colorVerdeTese,
+                size: 20,
+              ),
               onPressed: () => Navigator.pop(context),
             ),
           ),
           body: Stack(
             children: [
-              AnimatedContainer(
-                duration: const Duration(milliseconds: 800),
-                color: colorFondo,
-                width: double.infinity,
-                height: double.infinity,
-                child: SafeArea(
-                  child: Column(
-                    children: [
-                      const SizedBox(height: 70),
-                      _BarraProgresoPedido(
-                        estadoActual: estadoActual,
-                        colorTexto: colorTextoTop,
-                      ),
-                      Expanded(
-                        child: AnimatedSwitcher(
-                          duration: const Duration(milliseconds: 600),
-                          child: _construirPantallaPorEstado(estadoActual),
+              SingleChildScrollView(
+                padding: const EdgeInsets.all(20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // TARJETA DE ESTADO CON MASCOTA
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(20),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(24),
+                        border: Border.all(
+                          color: colorEstado.withValues(alpha: 0.35),
+                          width: 1.5,
                         ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: colorVerdeTese.withValues(alpha: 0.05),
+                            blurRadius: 12,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
                       ),
-                    ],
-                  ),
+                      child: Column(
+                        children: [
+                          Image.asset(
+                            patitoAsset,
+                            height: 130,
+                            fit: BoxFit.contain,
+                          ),
+                          const SizedBox(height: 14),
+                          Text(
+                            tituloEstado,
+                            textAlign: TextAlign.center,
+                            style: GoogleFonts.poppins(
+                              fontSize: 22,
+                              fontWeight: FontWeight.w900,
+                              color: colorTextoOscuro,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            subtituloEstado,
+                            textAlign: TextAlign.center,
+                            style: GoogleFonts.poppins(
+                              fontSize: 13,
+                              color: colorTextoGris,
+                            ),
+                          ),
+                          const SizedBox(height: 18),
+                          _BarraProgresoPedido(
+                            estadoActual: estadoActual,
+                            colorTexto: colorVerdeTese,
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 18),
+
+                    // 📍 TARJETA DE DÓNDE RECOGER (SÚPER CLARA)
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(18),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(
+                          color: colorVerdeTese.withValues(alpha: 0.2),
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: colorVerdeTese.withValues(alpha: 0.05),
+                            blurRadius: 10,
+                            offset: const Offset(0, 3),
+                          ),
+                        ],
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.all(8),
+                                decoration: BoxDecoration(
+                                  color: Colors.redAccent.withValues(
+                                    alpha: 0.1,
+                                  ),
+                                  shape: BoxShape.circle,
+                                ),
+                                child: const Icon(
+                                  Icons.location_on,
+                                  color: Colors.redAccent,
+                                  size: 24,
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'Punto de Entrega:',
+                                      style: GoogleFonts.poppins(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.bold,
+                                        color: colorTextoGris,
+                                      ),
+                                    ),
+                                    Text(
+                                      local,
+                                      style: GoogleFonts.poppins(
+                                        fontSize: 17,
+                                        fontWeight: FontWeight.w900,
+                                        color: colorTextoOscuro,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 10),
+                          Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.all(10),
+                            decoration: BoxDecoration(
+                              color: colorFondoCrema,
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Row(
+                              children: [
+                                const Icon(
+                                  Icons.info_outline,
+                                  size: 16,
+                                  color: colorTextoGris,
+                                ),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Text(
+                                    'Muestra tu ticket en la ventanilla al recoger.',
+                                    style: GoogleFonts.poppins(
+                                      fontSize: 12,
+                                      color: colorTextoOscuro,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 18),
+
+                    // 🧾 DESGLOSE COMPLETO DE LA ORDEN
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(20),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(20),
+                        boxShadow: [
+                          BoxShadow(
+                            color: colorVerdeTese.withValues(alpha: 0.05),
+                            blurRadius: 10,
+                            offset: const Offset(0, 3),
+                          ),
+                        ],
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                'Ticket de Compra',
+                                style: GoogleFonts.poppins(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.bold,
+                                  color: colorTextoOscuro,
+                                ),
+                              ),
+                              Text(
+                                widget.codigoPedido,
+                                style: GoogleFonts.poppins(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w900,
+                                  color: colorVerdeTese,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const Divider(height: 24),
+                          Text(
+                            'Artículos pedidos:',
+                            style: GoogleFonts.poppins(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                              color: colorTextoGris,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            detalle,
+                            style: GoogleFonts.poppins(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                              color: colorTextoOscuro,
+                              height: 1.4,
+                            ),
+                          ),
+                          const Divider(height: 24),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                'Método de pago:',
+                                style: GoogleFonts.poppins(
+                                  fontSize: 13.5,
+                                  color: colorTextoGris,
+                                ),
+                              ),
+                              Text(
+                                metodoPago,
+                                style: GoogleFonts.poppins(
+                                  fontSize: 13.5,
+                                  fontWeight: FontWeight.bold,
+                                  color: colorTextoOscuro,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 8),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                'Total a liquidar:',
+                                style: GoogleFonts.poppins(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.bold,
+                                  color: colorTextoOscuro,
+                                ),
+                              ),
+                              Text(
+                                '\$${total.toStringAsFixed(2)}',
+                                style: GoogleFonts.poppins(
+                                  fontSize: 22,
+                                  fontWeight: FontWeight.w900,
+                                  color: colorVerdeTese,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                  ],
                 ),
               ),
+
+              // CONFETI EXPLOSIVO
               Align(
                 alignment: Alignment.topCenter,
                 child: ConfettiWidget(
@@ -863,42 +1206,6 @@ class _SalaEsperaScreenState extends State<SalaEsperaScreen> {
       },
     );
   }
-
-  Widget _construirPantallaPorEstado(int estado) {
-    if (estado == 0) {
-      return const _PantallaEstadoFull(
-        key: ValueKey(0),
-        titulo: 'Pedido Recibido',
-        subtitulo: 'Esperando confirmación de la cafetería...',
-        cargando: true,
-        imagenAsset: 'assets/patito_recibido.png',
-        colorTextoTitulo: colorVerdeTese,
-        colorTextoSub: colorTextoGris,
-      );
-    } else if (estado == 1) {
-      return const _PantallaEstadoFull(
-        key: ValueKey(1),
-        titulo: 'En Preparación',
-        subtitulo: '¡El Chef está cocinando tus hambreados!',
-        cargando: true,
-        imagenAsset: 'assets/patito_chef.png',
-        colorTextoTitulo: colorVerdeTese,
-        colorTextoSub: colorTextoGris,
-      );
-    } else {
-      return _PantallaEstadoFull(
-        key: const ValueKey(2),
-        titulo: '¡Ya está listo!',
-        subtitulo: 'Muestra tu código para recoger tu comida.',
-        cargando: false,
-        mostrarBoton: true,
-        accionBoton: () => Navigator.pop(context),
-        imagenAsset: 'assets/patito_listo.png',
-        colorTextoTitulo: Colors.white,
-        colorTextoSub: Colors.white70,
-      );
-    }
-  }
 }
 
 class _BarraProgresoPedido extends StatelessWidget {
@@ -911,9 +1218,9 @@ class _BarraProgresoPedido extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final etiquetas = ['Recibido', 'Preparando', 'Listo'];
+    final etiquetas = ['Recibido', 'Preparando', '¡Listo!'];
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 32),
+      padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Row(
         children: List.generate(etiquetas.length * 2 - 1, (i) {
           if (i.isOdd) {
@@ -923,24 +1230,26 @@ class _BarraProgresoPedido extends StatelessWidget {
               child: Container(
                 height: 3,
                 margin: const EdgeInsets.symmetric(horizontal: 4),
-                color:
-                    activo
-                        ? colorTexto.withValues(alpha: 0.9)
-                        : colorTexto.withValues(alpha: 0.25),
+                color: activo ? colorExito : Colors.grey[300],
               ),
             );
           }
           final indicePaso = i ~/ 2;
           final activo = estadoActual >= indicePaso;
+          Color colorCirculo =
+              activo
+                  ? (indicePaso == 2 ? colorExito : colorVerdeTese)
+                  : Colors.grey[300]!;
+
           return Column(
             children: [
               Container(
-                width: 14,
-                height: 14,
+                width: 16,
+                height: 16,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: activo ? colorTexto : Colors.transparent,
-                  border: Border.all(color: colorTexto, width: 2),
+                  color: activo ? colorCirculo : Colors.transparent,
+                  border: Border.all(color: colorCirculo, width: 2),
                 ),
               ),
               const SizedBox(height: 6),
@@ -948,7 +1257,7 @@ class _BarraProgresoPedido extends StatelessWidget {
                 etiquetas[indicePaso],
                 style: GoogleFonts.poppins(
                   fontSize: 11,
-                  color: colorTexto,
+                  color: activo ? colorTextoOscuro : colorTextoGris,
                   fontWeight: activo ? FontWeight.w700 : FontWeight.w400,
                 ),
               ),
@@ -960,84 +1269,8 @@ class _BarraProgresoPedido extends StatelessWidget {
   }
 }
 
-class _PantallaEstadoFull extends StatelessWidget {
-  final String titulo, subtitulo, imagenAsset;
-  final bool cargando, mostrarBoton;
-  final VoidCallback? accionBoton;
-  final Color colorTextoTitulo, colorTextoSub;
-  const _PantallaEstadoFull({
-    super.key,
-    required this.titulo,
-    required this.subtitulo,
-    required this.cargando,
-    this.mostrarBoton = false,
-    this.accionBoton,
-    required this.imagenAsset,
-    required this.colorTextoTitulo,
-    required this.colorTextoSub,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 24.0),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Image.asset(imagenAsset, height: 210, fit: BoxFit.contain),
-            const SizedBox(height: 28),
-            Text(
-              titulo,
-              textAlign: TextAlign.center,
-              style: GoogleFonts.poppins(
-                fontSize: 28,
-                fontWeight: FontWeight.w900,
-                color: colorTextoTitulo,
-              ),
-            ),
-            const SizedBox(height: 10),
-            Text(
-              subtitulo,
-              textAlign: TextAlign.center,
-              style: GoogleFonts.poppins(fontSize: 15, color: colorTextoSub),
-            ),
-            const SizedBox(height: 32),
-            if (cargando)
-              const CircularProgressIndicator(
-                color: colorAmarilloTese,
-                strokeWidth: 2.6,
-              ),
-            if (mostrarBoton)
-              ZoomIn(
-                child: ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.white,
-                    minimumSize: const Size(double.infinity, 52),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(15),
-                    ),
-                  ),
-                  onPressed: accionBoton,
-                  child: const Text(
-                    'Volver al Menú',
-                    style: TextStyle(
-                      color: colorExito,
-                      fontSize: 17,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-              ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
 // ==========================================================
-// ⭐️ PANTALLA RESEÑA: CALIFICA POR COMIDA + RECALCULA PROMEDIO
+// ⭐️ PANTALLA RESEÑA POR COMIDA
 // ==========================================================
 class PantallaResena extends StatefulWidget {
   final String codigoPedido;
@@ -1104,7 +1337,6 @@ class _PantallaResenaState extends State<PantallaResena> {
     HapticFeedback.heavyImpact();
 
     try {
-      // 1. Guardar la reseña en la colección 'Resenas'
       await FirebaseFirestore.instance.collection('Resenas').add({
         'codigoPedido': widget.codigoPedido,
         'platilloId': itemSeleccionadoId,
@@ -1115,7 +1347,6 @@ class _PantallaResenaState extends State<PantallaResena> {
         'fecha': FieldValue.serverTimestamp(),
       });
 
-      // 2. Recalcular el promedio matemático del platillo en Firestore
       final platilloRef = FirebaseFirestore.instance
           .collection('Menu_Platillos')
           .doc(itemSeleccionadoId);
@@ -1126,11 +1357,9 @@ class _PantallaResenaState extends State<PantallaResena> {
         double califActual = (pData['calificacion'] ?? 0.0).toDouble();
         int totalVotos = (pData['numCalificaciones'] ?? 0) as int;
 
-        // Fórmula de promedio ponderado: ((actual * votos) + nuevasEstrellas) / (votos + 1)
         double nuevoPromedio =
             ((califActual * totalVotos) + estrellasSeleccionadas) /
             (totalVotos + 1);
-        // Redondeamos a un decimal
         nuevoPromedio = double.parse(nuevoPromedio.toStringAsFixed(1));
 
         await platilloRef.update({
@@ -1139,7 +1368,6 @@ class _PantallaResenaState extends State<PantallaResena> {
         });
       }
 
-      // 3. Marcar el pedido como calificado
       await FirebaseFirestore.instance
           .collection('Pedidos')
           .doc(widget.codigoPedido)
@@ -1150,7 +1378,7 @@ class _PantallaResenaState extends State<PantallaResena> {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text(
-              '¡Reseña enviada! El ranking del platillo ha cambiado. ⭐',
+              '¡Reseña enviada! Gracias por ayudar a mejorar la comida. ⭐',
             ),
             backgroundColor: colorExito,
           ),
@@ -1223,8 +1451,6 @@ class _PantallaResenaState extends State<PantallaResena> {
                       ),
                     ),
                     const SizedBox(height: 20),
-
-                    // SELECTOR DE QUÉ PLATILLO DE SU ORDEN VA A CALIFICAR
                     if (itemsDelPedido.isNotEmpty) ...[
                       Align(
                         alignment: Alignment.centerLeft,
@@ -1275,8 +1501,6 @@ class _PantallaResenaState extends State<PantallaResena> {
                       ),
                       const SizedBox(height: 20),
                     ],
-
-                    // ESTRELLAS
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                       children: List.generate(5, (index) {
@@ -1299,14 +1523,11 @@ class _PantallaResenaState extends State<PantallaResena> {
                       }),
                     ),
                     const SizedBox(height: 24),
-
-                    // COMENTARIO CRÍTICO
                     TextField(
                       controller: _comentarioCtrl,
                       maxLines: 3,
                       decoration: InputDecoration(
-                        hintText:
-                            'Ej. Las papas estaban muy saladas / ¡La hamburguesa estaba 10/10!',
+                        hintText: 'Cuéntanos qué tal estuvo la preparación...',
                         hintStyle: GoogleFonts.poppins(
                           color: colorTextoGris,
                           fontSize: 13,
@@ -1321,7 +1542,6 @@ class _PantallaResenaState extends State<PantallaResena> {
                       ),
                     ),
                     const SizedBox(height: 30),
-
                     SizedBox(
                       width: double.infinity,
                       height: 52,

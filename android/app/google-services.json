@@ -1,13 +1,13 @@
 {
   "project_info": {
-    "project_number": "32526417520",
-    "project_id": "tese-hambreados",
-    "storage_bucket": "tese-hambreados.firebasestorage.app"
+    "project_number": "198513094903",
+    "project_id": "tese-hambreados-5a1b9",
+    "storage_bucket": "tese-hambreados-5a1b9.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:32526417520:android:b8574b61df89e3b7357eb5",
+        "mobilesdk_app_id": "1:198513094903:android:9b70082581d374704363f2",
         "android_client_info": {
           "package_name": "com.example.tese_food_app"
         }
@@ -15,7 +15,7 @@
       "oauth_client": [],
       "api_key": [
         {
-          "current_key": "AIzaSyB_XeZfy_G-spgGQmu7y5QiGE62rxJ1Ea8"
+          "current_key": "AIzaSyAtlddq5hvfKOyx_FNSUVJXp-Z6C5muWDk"
         }
       ],
       "services": {

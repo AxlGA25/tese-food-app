@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -6,11 +7,13 @@ import 'package:animate_do/animate_do.dart';
 import 'package:curved_navigation_bar/curved_navigation_bar.dart';
 import 'package:awesome_snackbar_content/awesome_snackbar_content.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:audioplayers/audioplayers.dart';
 import 'colores.dart';
 import 'modelos.dart';
 import 'pantalla_perfil.dart';
 import 'pantalla_pedido.dart';
 import 'pantalla_detalle_platillo.dart';
+import 'servicio_notificaciones.dart';
 
 const Map<String, Color> colorPorCategoria = {
   'Todos': colorVerdeTese,
@@ -35,6 +38,165 @@ class NavegacionEstudiante extends StatefulWidget {
 class _NavegacionEstudianteState extends State<NavegacionEstudiante> {
   int _indiceActual = 0;
   List<Platillo> carritoGlobal = [];
+  StreamSubscription<QuerySnapshot>? _pedidosSub;
+
+  @override
+  void initState() {
+    super.initState();
+    // 🔔 Pide permiso nativo de notificaciones al arrancar la app
+    ServicioNotificaciones.inicializar();
+    _iniciarVigilanteDePedidos();
+  }
+
+  @override
+  void dispose() {
+    _pedidosSub?.cancel();
+    super.dispose();
+  }
+
+  // ==========================================================
+  // 🦆 VIGILANTE EN VIVO: ALERTA SISTEMA + BANNER + "CUAC"
+  // ==========================================================
+  void _iniciarVigilanteDePedidos() {
+    _pedidosSub = FirebaseFirestore.instance
+        .collection('Pedidos')
+        .where('alumno', isEqualTo: 'Axel Guerrero')
+        .snapshots()
+        .listen((snapshot) {
+          for (var change in snapshot.docChanges) {
+            if (change.type == DocumentChangeType.modified) {
+              final data = change.doc.data() as Map<String, dynamic>? ?? {};
+              int estado = data['estado'] ?? 0;
+              String idPedido = data['idPedido'] ?? change.doc.id;
+              String local = data['local'] ?? 'Cafetería Central';
+
+              if (estado == 1) {
+                // Notificación nativa en la bandeja del celular
+                ServicioNotificaciones.mostrarNotificacion(
+                  id: 1,
+                  titulo: '🍳 ¡Tu pedido está en preparación!',
+                  cuerpo:
+                      'Kiosko Sistemas ya comenzó a cocinar tu orden $idPedido.',
+                );
+
+                _lanzarAlertaCuac(
+                  titulo: '🍳 ¡Están cocinando tu orden!',
+                  mensaje:
+                      'Tu pedido $idPedido ya se está preparando en $local.',
+                  codigoPedido: idPedido,
+                  esListo: false,
+                );
+              } else if (estado == 2) {
+                // Notificación nativa en la bandeja del celular estilo Instagram
+                ServicioNotificaciones.mostrarNotificacion(
+                  id: 2,
+                  titulo: '🦆 ¡CUAC! Tu comida está lista',
+                  cuerpo:
+                      'Pasa a recoger tu orden $idPedido a la ventanilla de $local.',
+                );
+
+                _lanzarAlertaCuac(
+                  titulo: '🦆 ¡CUAC! ¡Tu comida está lista!',
+                  mensaje:
+                      'Pasa a recoger tu orden $idPedido a la ventanilla de $local.',
+                  codigoPedido: idPedido,
+                  esListo: true,
+                );
+              }
+            }
+          }
+        });
+  }
+
+  void _lanzarAlertaCuac({
+    required String titulo,
+    required String mensaje,
+    required String codigoPedido,
+    required bool esListo,
+  }) {
+    HapticFeedback.heavyImpact();
+
+    try {
+      reproductorGlobal.play(AssetSource('cuac.mp3'), volume: 1.0);
+    } catch (_) {
+      try {
+        reproductorGlobal.play(AssetSource('exito.mp3'), volume: 1.0);
+      } catch (_) {}
+    }
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        behavior: SnackBarBehavior.floating,
+        margin: EdgeInsets.only(
+          bottom: MediaQuery.of(context).size.height - 160,
+          left: 16,
+          right: 16,
+        ),
+        backgroundColor: esListo ? colorExito : colorVerdeTese,
+        elevation: 8,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        duration: const Duration(seconds: 5),
+        content: InkWell(
+          onTap: () {
+            ScaffoldMessenger.of(context).hideCurrentSnackBar();
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder:
+                    (context) => SalaEsperaScreen(codigoPedido: codigoPedido),
+              ),
+            );
+          },
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.25),
+                  shape: BoxShape.circle,
+                ),
+                child: Text(
+                  esListo ? '🦆' : '🍳',
+                  style: const TextStyle(fontSize: 22),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      titulo,
+                      style: GoogleFonts.poppins(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 13.5,
+                      ),
+                    ),
+                    Text(
+                      mensaje,
+                      style: GoogleFonts.poppins(
+                        color: Colors.white.withValues(alpha: 0.95),
+                        fontSize: 11.5,
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ),
+              ),
+              const Icon(
+                Icons.arrow_forward_ios,
+                color: Colors.white,
+                size: 14,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 
   void _actualizarCarrito(Platillo p) {
     setState(() {
@@ -62,7 +224,28 @@ class _NavegacionEstudianteState extends State<NavegacionEstudiante> {
     return Scaffold(
       backgroundColor: colorFondoCrema,
       extendBody: true,
-      body: pantallas[_indiceActual],
+      // ✨ ANIMACIÓN FLUIDA: Transición suave entre pestañas sin cortes en seco
+      body: AnimatedSwitcher(
+        duration: const Duration(milliseconds: 280),
+        switchInCurve: Curves.easeOutCubic,
+        switchOutCurve: Curves.easeInCubic,
+        transitionBuilder: (child, animation) {
+          return FadeTransition(
+            opacity: animation,
+            child: SlideTransition(
+              position: Tween<Offset>(
+                begin: const Offset(0.04, 0),
+                end: Offset.zero,
+              ).animate(animation),
+              child: child,
+            ),
+          );
+        },
+        child: KeyedSubtree(
+          key: ValueKey<int>(_indiceActual),
+          child: pantallas[_indiceActual],
+        ),
+      ),
       bottomNavigationBar: CurvedNavigationBar(
         index: _indiceActual,
         height: 58,
@@ -139,6 +322,9 @@ class _NavegacionEstudianteState extends State<NavegacionEstudiante> {
   }
 }
 
+// ==========================================================
+// MIS PEDIDOS
+// ==========================================================
 class MisPedidosScreen extends StatelessWidget {
   const MisPedidosScreen({super.key});
 
@@ -195,13 +381,36 @@ class MisPedidosScreen extends StatelessWidget {
         children: [
           Padding(
             padding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
-            child: Text(
-              'Mis Pedidos',
-              style: GoogleFonts.poppins(
-                fontSize: 26,
-                fontWeight: FontWeight.bold,
-                color: colorVerdeTese,
-              ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'Mis Pedidos',
+                  style: GoogleFonts.poppins(
+                    fontSize: 26,
+                    fontWeight: FontWeight.bold,
+                    color: colorVerdeTese,
+                  ),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 4,
+                  ),
+                  decoration: BoxDecoration(
+                    color: colorVerdeTese.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Text(
+                    'En tiempo real',
+                    style: GoogleFonts.poppins(
+                      fontSize: 11,
+                      fontWeight: FontWeight.bold,
+                      color: colorVerdeTese,
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
           Expanded(
@@ -230,6 +439,13 @@ class MisPedidosScreen extends StatelessWidget {
                           style: GoogleFonts.poppins(
                             fontSize: 18,
                             fontWeight: FontWeight.w600,
+                            color: colorTextoGris,
+                          ),
+                        ),
+                        Text(
+                          'Tus órdenes aparecerán aquí en cuanto pidas.',
+                          style: GoogleFonts.poppins(
+                            fontSize: 13,
                             color: colorTextoGris,
                           ),
                         ),
@@ -264,6 +480,10 @@ class MisPedidosScreen extends StatelessWidget {
 
                     int estadoReal = data['estado'] ?? 0;
                     String idPedido = data['idPedido'] ?? '#TESE-0000';
+                    String local = data['local'] ?? 'Cafetería Central';
+                    String detalle = data['detalle'] ?? '';
+                    String metodoPago = data['metodoPago'] ?? 'Efectivo';
+                    double total = (data['total'] ?? 0).toDouble();
                     bool yaCalificado = data['calificado'] ?? false;
 
                     Color colorEstado = Colors.grey[400]!;
@@ -284,164 +504,239 @@ class MisPedidosScreen extends StatelessWidget {
                       iconoEstado = Icons.task_alt;
                     }
 
-                    return Container(
-                      margin: const EdgeInsets.only(bottom: 14),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(20),
-                        boxShadow: [
-                          BoxShadow(
-                            color: colorVerdeTese.withValues(alpha: 0.05),
-                            blurRadius: 10,
-                            offset: const Offset(0, 4),
+                    return FadeInUp(
+                      child: Container(
+                        margin: const EdgeInsets.only(bottom: 16),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(22),
+                          boxShadow: [
+                            BoxShadow(
+                              color: colorVerdeTese.withValues(alpha: 0.06),
+                              blurRadius: 12,
+                              offset: const Offset(0, 5),
+                            ),
+                          ],
+                          border: Border.all(
+                            color: colorEstado.withValues(alpha: 0.45),
+                            width: 1.5,
                           ),
-                        ],
-                        border: Border.all(
-                          color: colorEstado.withValues(alpha: 0.5),
-                          width: 1.5,
                         ),
-                      ),
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(20),
-                        child: IntrinsicHeight(
-                          child: Row(
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
-                            children: [
-                              Container(width: 8, color: colorEstado),
-                              Expanded(
-                                child: Padding(
-                                  padding: const EdgeInsets.all(16),
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Row(
-                                        mainAxisAlignment:
-                                            MainAxisAlignment.spaceBetween,
-                                        children: [
-                                          Text(
-                                            idPedido,
-                                            style: GoogleFonts.poppins(
-                                              fontWeight: FontWeight.w900,
-                                              fontSize: 18,
-                                              color: colorVerdeTese,
-                                            ),
-                                          ),
-                                          Row(
-                                            children: [
-                                              Container(
-                                                padding:
-                                                    const EdgeInsets.symmetric(
-                                                      horizontal: 9,
-                                                      vertical: 4,
-                                                    ),
-                                                decoration: BoxDecoration(
-                                                  color: colorEstado.withValues(
-                                                    alpha: 0.15,
-                                                  ),
-                                                  borderRadius:
-                                                      BorderRadius.circular(10),
-                                                ),
-                                                child: Row(
-                                                  children: [
-                                                    Icon(
-                                                      iconoEstado,
-                                                      size: 14,
-                                                      color: colorEstado,
-                                                    ),
-                                                    const SizedBox(width: 4),
-                                                    Text(
-                                                      textoEstado,
-                                                      style:
-                                                          GoogleFonts.poppins(
-                                                            fontSize: 12,
-                                                            fontWeight:
-                                                                FontWeight.bold,
-                                                            color: colorEstado,
-                                                          ),
-                                                    ),
-                                                  ],
-                                                ),
-                                              ),
-                                              if (estadoReal >= 3) ...[
-                                                const SizedBox(width: 4),
-                                                IconButton(
-                                                  icon: const Icon(
-                                                    Icons.delete_outline,
-                                                    color: Colors.redAccent,
-                                                    size: 20,
-                                                  ),
-                                                  onPressed:
-                                                      () => _eliminarPedido(
-                                                        context,
-                                                        pedido.id,
-                                                      ),
-                                                ),
-                                              ],
-                                            ],
-                                          ),
-                                        ],
+                        child: Material(
+                          color: Colors.transparent,
+                          child: InkWell(
+                            borderRadius: BorderRadius.circular(22),
+                            onTap: () {
+                              HapticFeedback.selectionClick();
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder:
+                                      (context) => SalaEsperaScreen(
+                                        codigoPedido: idPedido,
                                       ),
-                                      const SizedBox(height: 8),
+                                ),
+                              );
+                            },
+                            child: Padding(
+                              padding: const EdgeInsets.all(16),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    mainAxisAlignment:
+                                        MainAxisAlignment.spaceBetween,
+                                    children: [
                                       Text(
-                                        data['horaLlegada'] != null
-                                            ? 'Hoy'
-                                            : 'Procesando...',
+                                        idPedido,
                                         style: GoogleFonts.poppins(
-                                          fontSize: 13,
-                                          color: colorTextoGris,
+                                          fontWeight: FontWeight.w900,
+                                          fontSize: 18,
+                                          color: colorVerdeTese,
                                         ),
                                       ),
-                                      if ((estadoReal == 2 ||
-                                              estadoReal == 3) &&
-                                          !yaCalificado) ...[
-                                        const SizedBox(height: 12),
-                                        SizedBox(
-                                          width: double.infinity,
-                                          child: OutlinedButton.icon(
-                                            style: OutlinedButton.styleFrom(
-                                              foregroundColor:
-                                                  colorAmarilloTese,
-                                              side: const BorderSide(
-                                                color: colorAmarilloTese,
-                                              ),
-                                              shape: RoundedRectangleBorder(
-                                                borderRadius:
-                                                    BorderRadius.circular(12),
-                                              ),
+                                      Row(
+                                        children: [
+                                          Container(
+                                            padding: const EdgeInsets.symmetric(
+                                              horizontal: 10,
+                                              vertical: 4,
                                             ),
-                                            icon: const Icon(
-                                              Icons.star,
-                                              size: 18,
-                                            ),
-                                            label: Text(
-                                              'Calificar comida',
-                                              style: GoogleFonts.poppins(
-                                                fontWeight: FontWeight.bold,
-                                                fontSize: 13,
+                                            decoration: BoxDecoration(
+                                              color: colorEstado.withValues(
+                                                alpha: 0.15,
                                               ),
+                                              borderRadius:
+                                                  BorderRadius.circular(10),
                                             ),
-                                            onPressed: () {
-                                              Navigator.push(
-                                                context,
-                                                MaterialPageRoute(
-                                                  builder:
-                                                      (context) =>
-                                                          PantallaResena(
-                                                            codigoPedido:
-                                                                idPedido,
-                                                          ),
+                                            child: Row(
+                                              children: [
+                                                Icon(
+                                                  iconoEstado,
+                                                  size: 14,
+                                                  color: colorEstado,
                                                 ),
-                                              );
-                                            },
+                                                const SizedBox(width: 4),
+                                                Text(
+                                                  textoEstado,
+                                                  style: GoogleFonts.poppins(
+                                                    fontSize: 12,
+                                                    fontWeight: FontWeight.bold,
+                                                    color: colorEstado,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                          if (estadoReal >= 3) ...[
+                                            const SizedBox(width: 4),
+                                            IconButton(
+                                              icon: const Icon(
+                                                Icons.delete_outline,
+                                                color: Colors.redAccent,
+                                                size: 20,
+                                              ),
+                                              onPressed:
+                                                  () => _eliminarPedido(
+                                                    context,
+                                                    pedido.id,
+                                                  ),
+                                            ),
+                                          ],
+                                        ],
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 8),
+                                  Row(
+                                    children: [
+                                      const Icon(
+                                        Icons.location_on,
+                                        color: Colors.redAccent,
+                                        size: 16,
+                                      ),
+                                      const SizedBox(width: 4),
+                                      Expanded(
+                                        child: Text(
+                                          'Recoger en: $local',
+                                          style: GoogleFonts.poppins(
+                                            fontSize: 13.5,
+                                            fontWeight: FontWeight.bold,
+                                            color: colorTextoOscuro,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 10),
+                                  Container(
+                                    width: double.infinity,
+                                    padding: const EdgeInsets.all(10),
+                                    decoration: BoxDecoration(
+                                      color: colorFondoCrema,
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    child: Text(
+                                      detalle,
+                                      maxLines: 2,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: GoogleFonts.poppins(
+                                        fontSize: 12.5,
+                                        color: colorTextoOscuro,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(height: 12),
+                                  Row(
+                                    mainAxisAlignment:
+                                        MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      Text(
+                                        'Pago con $metodoPago',
+                                        style: GoogleFonts.poppins(
+                                          fontSize: 12.5,
+                                          color: colorTextoGris,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                      Text(
+                                        '\$${total.toStringAsFixed(2)}',
+                                        style: GoogleFonts.poppins(
+                                          fontSize: 18,
+                                          fontWeight: FontWeight.w900,
+                                          color: colorVerdeTese,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  if ((estadoReal == 2 || estadoReal == 3) &&
+                                      !yaCalificado) ...[
+                                    const SizedBox(height: 10),
+                                    SizedBox(
+                                      width: double.infinity,
+                                      child: OutlinedButton.icon(
+                                        style: OutlinedButton.styleFrom(
+                                          foregroundColor: colorAmarilloTese,
+                                          side: const BorderSide(
+                                            color: colorAmarilloTese,
+                                          ),
+                                          shape: RoundedRectangleBorder(
+                                            borderRadius: BorderRadius.circular(
+                                              12,
+                                            ),
+                                          ),
+                                        ),
+                                        icon: const Icon(Icons.star, size: 16),
+                                        label: Text(
+                                          'Calificar comida',
+                                          style: GoogleFonts.poppins(
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 12.5,
+                                          ),
+                                        ),
+                                        onPressed: () {
+                                          Navigator.push(
+                                            context,
+                                            MaterialPageRoute(
+                                              builder:
+                                                  (context) => PantallaResena(
+                                                    codigoPedido: idPedido,
+                                                  ),
+                                            ),
+                                          );
+                                        },
+                                      ),
+                                    ),
+                                  ],
+                                  const Divider(height: 20),
+                                  Center(
+                                    child: Row(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.center,
+                                      children: [
+                                        Icon(
+                                          Icons.touch_app,
+                                          size: 14,
+                                          color: colorVerdeTese.withValues(
+                                            alpha: 0.8,
+                                          ),
+                                        ),
+                                        const SizedBox(width: 4),
+                                        Text(
+                                          'Toca para ver el seguimiento en vivo y ticket',
+                                          style: GoogleFonts.poppins(
+                                            fontSize: 11.5,
+                                            fontWeight: FontWeight.bold,
+                                            color: colorVerdeTese,
                                           ),
                                         ),
                                       ],
-                                    ],
+                                    ),
                                   ),
-                                ),
+                                ],
                               ),
-                            ],
+                            ),
                           ),
                         ),
                       ),
@@ -457,6 +752,9 @@ class MisPedidosScreen extends StatelessWidget {
   }
 }
 
+// ==========================================================
+// CATÁLOGO DE ESTUDIANTES
+// ==========================================================
 class CatalogoEstudianteScreen extends StatefulWidget {
   final List<Platillo> carrito;
   final Function(Platillo) onAgregar;
@@ -867,9 +1165,6 @@ class _CatalogoEstudianteScreenState extends State<CatalogoEstudianteScreen> {
                               ),
                               child: Row(
                                 children: [
-                                  // ==========================================
-                                  // 📸 FOTO REAL DEL PLATILLO O ÍCONO RESPALDO
-                                  // ==========================================
                                   Stack(
                                     clipBehavior: Clip.none,
                                     children: [
@@ -966,8 +1261,6 @@ class _CatalogoEstudianteScreenState extends State<CatalogoEstudianteScreen> {
                                           ),
                                         ),
                                         const SizedBox(height: 5),
-
-                                        // ⭐ RANKING DINÁMICO
                                         Row(
                                           children: [
                                             if (platillo.calificacion > 0) ...[
@@ -1025,7 +1318,6 @@ class _CatalogoEstudianteScreenState extends State<CatalogoEstudianteScreen> {
                                             ),
                                           ],
                                         ),
-
                                         const SizedBox(height: 6),
                                         Container(
                                           padding: const EdgeInsets.symmetric(
