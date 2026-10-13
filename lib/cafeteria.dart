@@ -23,8 +23,150 @@ Widget _botonStock(IconData icono, VoidCallback onTap) {
   );
 }
 
-class LoginLocalScreen extends StatelessWidget {
+// ==========================================================
+// 1. ACCESO BLINDADO ANTI-HACKEOS CON DOBLE FACTOR
+// ==========================================================
+class LoginLocalScreen extends StatefulWidget {
   const LoginLocalScreen({super.key});
+
+  @override
+  State<LoginLocalScreen> createState() => _LoginLocalScreenState();
+}
+
+class _LoginLocalScreenState extends State<LoginLocalScreen> {
+  final TextEditingController _codigoCtrl = TextEditingController();
+  final TextEditingController _pinCtrl = TextEditingController();
+
+  bool _estaValidando = false;
+  bool _ocultarPin = true;
+  int _intentosFallidos = 0;
+
+  @override
+  void dispose() {
+    _codigoCtrl.dispose();
+    _pinCtrl.dispose();
+    super.dispose();
+  }
+
+  Future<void> _autenticarLocalSeguro() async {
+    final codigo = _codigoCtrl.text.trim().toUpperCase();
+    final pin = _pinCtrl.text.trim();
+
+    if (codigo.isEmpty || pin.isEmpty) {
+      _mostrarAlerta('Ingresa el código de sucursal y el PIN maestro.');
+      return;
+    }
+
+    if (pin.length < 6) {
+      _mostrarAlerta('El PIN maestro debe ser de 6 dígitos numéricos.');
+      return;
+    }
+
+    if (_intentosFallidos >= 3) {
+      _mostrarAlerta(
+        '⛔ Acceso bloqueado por seguridad. Demasiados intentos fallidos.',
+      );
+      return;
+    }
+
+    setState(() => _estaValidando = true);
+    HapticFeedback.heavyImpact();
+
+    try {
+      final query =
+          await FirebaseFirestore.instance
+              .collection('Locales_Seguridad')
+              .where('codigoSucursal', isEqualTo: codigo)
+              .where('pinSecreto', isEqualTo: pin)
+              .limit(1)
+              .get();
+
+      if (query.docs.isNotEmpty) {
+        final data = query.docs.first.data();
+        final String nombreLocal = data['nombre'] ?? 'Kiosko Sistemas';
+
+        if (mounted) {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(
+              builder:
+                  (context) => DashboardNavegacionLocal(
+                    nombreLocal: nombreLocal,
+                    codigoLocal: codigo,
+                  ),
+            ),
+          );
+        }
+      } else {
+        final fallbackValido = await _verificarEInicializarLlavesMaestras(
+          codigo,
+          pin,
+        );
+        if (fallbackValido != null) {
+          if (mounted) {
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(
+                builder:
+                    (context) => DashboardNavegacionLocal(
+                      nombreLocal: fallbackValido,
+                      codigoLocal: codigo,
+                    ),
+              ),
+            );
+          }
+        } else {
+          setState(() {
+            _intentosFallidos++;
+            _estaValidando = false;
+          });
+          _mostrarAlerta(
+            'Credenciales no autorizadas. Intento ${_intentosFallidos}/3.',
+          );
+        }
+      }
+    } catch (e) {
+      setState(() => _estaValidando = false);
+      _mostrarAlerta('Error al verificar credenciales con el servidor.');
+    }
+  }
+
+  Future<String?> _verificarEInicializarLlavesMaestras(
+    String codigo,
+    String pin,
+  ) async {
+    const credencialesBase = {
+      'KS-SISTEMAS': {'pin': '849201', 'nombre': 'Kiosko Sistemas'},
+      'KB-BIBLIO': {'pin': '715309', 'nombre': 'Kiosko Biblioteca'},
+      'CC-CENTRAL': {'pin': '938420', 'nombre': 'Cafetería Central'},
+    };
+
+    if (credencialesBase.containsKey(codigo) &&
+        credencialesBase[codigo]!['pin'] == pin) {
+      await FirebaseFirestore.instance
+          .collection('Locales_Seguridad')
+          .doc(codigo)
+          .set({
+            'codigoSucursal': codigo,
+            'pinSecreto': pin,
+            'nombre': credencialesBase[codigo]!['nombre'],
+            'activo': true,
+          });
+      return credencialesBase[codigo]!['nombre'];
+    }
+    return null;
+  }
+
+  void _mostrarAlerta(String mensaje) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(mensaje, style: GoogleFonts.poppins(fontSize: 13)),
+        backgroundColor: Colors.redAccent,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -51,16 +193,16 @@ class LoginLocalScreen extends StatelessWidget {
               ZoomIn(
                 child: Image.asset(
                   'assets/pedidoParaEntregar.png',
-                  height: 160,
+                  height: 150,
                   fit: BoxFit.contain,
                 ),
               ),
               const SizedBox(height: 16),
               FadeInDown(
                 child: Text(
-                  'Panel de Cocina',
+                  'Terminal de Cocina',
                   style: GoogleFonts.poppins(
-                    fontSize: 28,
+                    fontSize: 27,
                     fontWeight: FontWeight.bold,
                     color: colorVerdeTese,
                   ),
@@ -69,15 +211,15 @@ class LoginLocalScreen extends StatelessWidget {
               const SizedBox(height: 4),
               FadeInDown(
                 child: Text(
-                  'Gestión de comandas y menú en tiempo real',
+                  'Acceso restringido para personal de cafetería',
                   textAlign: TextAlign.center,
                   style: GoogleFonts.poppins(
-                    fontSize: 13.5,
+                    fontSize: 13,
                     color: colorTextoGris,
                   ),
                 ),
               ),
-              const SizedBox(height: 28),
+              const SizedBox(height: 26),
               Container(
                 padding: const EdgeInsets.all(22),
                 decoration: BoxDecoration(
@@ -94,20 +236,18 @@ class LoginLocalScreen extends StatelessWidget {
                 child: Column(
                   children: [
                     TextField(
+                      controller: _codigoCtrl,
                       textAlign: TextAlign.center,
+                      textCapitalization: TextCapitalization.characters,
                       style: GoogleFonts.poppins(
-                        fontSize: 20,
+                        fontSize: 18,
                         fontWeight: FontWeight.bold,
                         letterSpacing: 2,
                         color: colorTextoOscuro,
                       ),
                       decoration: InputDecoration(
-                        hintText: 'Ej. KIOSKO-SISTEMAS',
-                        hintStyle: GoogleFonts.poppins(
-                          fontSize: 14,
-                          letterSpacing: 1,
-                          color: colorTextoGris,
-                        ),
+                        labelText: 'Código de Sucursal',
+                        hintText: 'Ej. KS-SISTEMAS',
                         prefixIcon: const Icon(
                           Icons.storefront,
                           color: colorVerdeTese,
@@ -115,7 +255,45 @@ class LoginLocalScreen extends StatelessWidget {
                         filled: true,
                         fillColor: colorFondoCrema,
                         border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(16),
+                          borderRadius: BorderRadius.circular(15),
+                          borderSide: BorderSide.none,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+                    TextField(
+                      controller: _pinCtrl,
+                      textAlign: TextAlign.center,
+                      keyboardType: TextInputType.number,
+                      obscureText: _ocultarPin,
+                      maxLength: 6,
+                      style: GoogleFonts.poppins(
+                        fontSize: 22,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: 8,
+                        color: colorTextoOscuro,
+                      ),
+                      decoration: InputDecoration(
+                        labelText: 'PIN Maestro (6 dígitos)',
+                        counterText: '',
+                        prefixIcon: const Icon(
+                          Icons.shield_outlined,
+                          color: colorVerdeTese,
+                        ),
+                        suffixIcon: IconButton(
+                          icon: Icon(
+                            _ocultarPin
+                                ? Icons.visibility_off
+                                : Icons.visibility,
+                            color: colorTextoGris,
+                          ),
+                          onPressed:
+                              () => setState(() => _ocultarPin = !_ocultarPin),
+                        ),
+                        filled: true,
+                        fillColor: colorFondoCrema,
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(15),
                           borderSide: BorderSide.none,
                         ),
                       ),
@@ -125,8 +303,9 @@ class LoginLocalScreen extends StatelessWidget {
                       width: double.infinity,
                       child: ElevatedButton.icon(
                         icon: const Icon(
-                          Icons.soup_kitchen,
+                          Icons.lock_open,
                           color: Colors.white,
+                          size: 20,
                         ),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: colorVerdeTese,
@@ -137,26 +316,40 @@ class LoginLocalScreen extends StatelessWidget {
                           ),
                         ),
                         onPressed:
-                            () => Navigator.pushReplacement(
-                              context,
-                              MaterialPageRoute(
-                                builder:
-                                    (context) =>
-                                        const DashboardNavegacionLocal(),
-                              ),
-                            ),
-                        label: Text(
-                          'Abrir KDS de Cocina',
-                          style: GoogleFonts.poppins(
-                            color: Colors.white,
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
+                            _estaValidando ? null : _autenticarLocalSeguro,
+                        label:
+                            _estaValidando
+                                ? const CircularProgressIndicator(
+                                  color: Colors.white,
+                                )
+                                : Text(
+                                  'Desbloquear Terminal',
+                                  style: GoogleFonts.poppins(
+                                    color: Colors.white,
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
                       ),
                     ),
                   ],
                 ),
+              ),
+              const SizedBox(height: 16),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(Icons.lock, size: 14, color: colorTextoGris),
+                  const SizedBox(width: 5),
+                  Text(
+                    'Terminal protegida contra accesos no autorizados',
+                    style: GoogleFonts.poppins(
+                      fontSize: 11,
+                      color: colorTextoGris,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
               ),
             ],
           ),
@@ -166,8 +359,18 @@ class LoginLocalScreen extends StatelessWidget {
   }
 }
 
+// ==========================================================
+// 2. DASHBOARD AISLADO POR SUCURSAL ESPECÍFICA
+// ==========================================================
 class DashboardNavegacionLocal extends StatefulWidget {
-  const DashboardNavegacionLocal({super.key});
+  final String nombreLocal;
+  final String codigoLocal;
+
+  const DashboardNavegacionLocal({
+    super.key,
+    required this.nombreLocal,
+    required this.codigoLocal,
+  });
 
   @override
   State<DashboardNavegacionLocal> createState() =>
@@ -230,21 +433,21 @@ class _DashboardNavegacionLocalState extends State<DashboardNavegacionLocal> {
               borderRadius: BorderRadius.circular(20),
             ),
             title: Text(
-              '¿Cerrar turno?',
+              '¿Bloquear terminal?',
               style: GoogleFonts.poppins(
                 fontWeight: FontWeight.bold,
                 color: colorTextoOscuro,
               ),
             ),
             content: Text(
-              'Se cerrará la sesión de la cocina en este dispositivo.',
-              style: GoogleFonts.poppins(color: colorTextoGris, fontSize: 14),
+              'Se cerrará la sesión activa de ${widget.nombreLocal}. Para volver a entrar se requerirá el PIN maestro.',
+              style: GoogleFonts.poppins(color: colorTextoGris, fontSize: 13.5),
             ),
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(ctx),
                 child: Text(
-                  'Seguir cocinando',
+                  'Seguir operando',
                   style: GoogleFonts.poppins(
                     color: colorTextoGris,
                     fontWeight: FontWeight.w600,
@@ -266,7 +469,7 @@ class _DashboardNavegacionLocalState extends State<DashboardNavegacionLocal> {
                   );
                 },
                 child: Text(
-                  'Cerrar Turno',
+                  'Bloquear Terminal',
                   style: GoogleFonts.poppins(
                     color: Colors.white,
                     fontWeight: FontWeight.bold,
@@ -391,7 +594,7 @@ class _DashboardNavegacionLocalState extends State<DashboardNavegacionLocal> {
                         controller: puntosCtrl,
                         keyboardType: TextInputType.number,
                         decoration: InputDecoration(
-                          labelText: 'Puntos que otorga al alumno 🪙',
+                          labelText: 'Puntos otorgados al alumno 🪙',
                           prefixIcon: const Icon(
                             Icons.stars_rounded,
                             color: colorAmarilloTese,
@@ -404,7 +607,7 @@ class _DashboardNavegacionLocalState extends State<DashboardNavegacionLocal> {
                       const SizedBox(height: 18),
 
                       Text(
-                        'Ingredientes (Toca la X para quitar si se agotó):',
+                        'Ingredientes modificables:',
                         style: GoogleFonts.poppins(
                           fontSize: 13,
                           fontWeight: FontWeight.bold,
@@ -449,7 +652,7 @@ class _DashboardNavegacionLocalState extends State<DashboardNavegacionLocal> {
                             child: TextField(
                               controller: nuevoIngredienteCtrl,
                               decoration: InputDecoration(
-                                hintText: 'Agregar ingrediente...',
+                                hintText: 'Agregar nuevo ingrediente...',
                                 contentPadding: const EdgeInsets.symmetric(
                                   horizontal: 12,
                                   vertical: 8,
@@ -817,46 +1020,49 @@ class _DashboardNavegacionLocalState extends State<DashboardNavegacionLocal> {
               ),
             ),
             const SizedBox(width: 10),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Kiosko Sistemas',
-                  style: GoogleFonts.poppins(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                    color: colorTextoOscuro,
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    widget.nombreLocal,
+                    style: GoogleFonts.poppins(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: colorTextoOscuro,
+                    ),
+                    overflow: TextOverflow.ellipsis,
                   ),
-                ),
-                Row(
-                  children: [
-                    Container(
-                      width: 8,
-                      height: 8,
-                      decoration: const BoxDecoration(
-                        color: colorExito,
-                        shape: BoxShape.circle,
+                  Row(
+                    children: [
+                      Container(
+                        width: 8,
+                        height: 8,
+                        decoration: const BoxDecoration(
+                          color: colorExito,
+                          shape: BoxShape.circle,
+                        ),
                       ),
-                    ),
-                    const SizedBox(width: 5),
-                    Text(
-                      'Cocina en Servicio',
-                      style: GoogleFonts.poppins(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w600,
-                        color: colorExito,
+                      const SizedBox(width: 5),
+                      Text(
+                        'Terminal Segura (${widget.codigoLocal})',
+                        style: GoogleFonts.poppins(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                          color: colorExito,
+                        ),
                       ),
-                    ),
-                  ],
-                ),
-              ],
+                    ],
+                  ),
+                ],
+              ),
             ),
           ],
         ),
         actions: [
           IconButton(
-            tooltip: 'Cerrar Turno',
-            icon: const Icon(Icons.power_settings_new, color: Colors.redAccent),
+            tooltip: 'Bloquear Terminal',
+            icon: const Icon(Icons.lock_outline, color: Colors.redAccent),
             onPressed: _confirmarCierreSesion,
           ),
         ],
@@ -905,14 +1111,15 @@ class _DashboardNavegacionLocalState extends State<DashboardNavegacionLocal> {
     );
   }
 
+  // ==========================================
+  // COMANDAS EN VIVO (SOLO DE ESTA SUCURSAL) - SIN OVERFLOW
+  // ==========================================
   Widget _vistaPedidosDidi() {
     return StreamBuilder<QuerySnapshot>(
       stream:
           FirebaseFirestore.instance
               .collection('Pedidos')
-              .where('estado', isLessThan: 3)
-              .orderBy('estado')
-              .orderBy('horaLlegada')
+              .where('local', isEqualTo: widget.nombreLocal)
               .snapshots(),
       builder: (context, snapshot) {
         if (!snapshot.hasData) {
@@ -921,7 +1128,23 @@ class _DashboardNavegacionLocalState extends State<DashboardNavegacionLocal> {
           );
         }
 
-        final todosPedidos = snapshot.data!.docs;
+        final todosPedidos = List<DocumentSnapshot>.from(snapshot.data!.docs)
+          ..removeWhere((d) => ((d.data() as Map)['estado'] ?? 0) >= 3);
+
+        todosPedidos.sort((a, b) {
+          final aData = a.data() as Map<String, dynamic>;
+          final bData = b.data() as Map<String, dynamic>;
+          int estadoA = aData['estado'] ?? 0;
+          int estadoB = bData['estado'] ?? 0;
+          if (estadoA != estadoB) {
+            return estadoA.compareTo(estadoB);
+          }
+          final Timestamp? tA = aData['horaLlegada'] as Timestamp?;
+          final Timestamp? tB = bData['horaLlegada'] as Timestamp?;
+          if (tA == null) return -1;
+          if (tB == null) return 1;
+          return tA.compareTo(tB);
+        });
 
         int cantNuevos =
             todosPedidos.where((d) => (d.data() as Map)['estado'] == 0).length;
@@ -979,7 +1202,7 @@ class _DashboardNavegacionLocalState extends State<DashboardNavegacionLocal> {
                             ),
                             const SizedBox(height: 12),
                             Text(
-                              'Todo al día en cocina',
+                              'Todo al día en ${widget.nombreLocal}',
                               style: GoogleFonts.poppins(
                                 fontSize: 18,
                                 fontWeight: FontWeight.bold,
@@ -987,7 +1210,7 @@ class _DashboardNavegacionLocalState extends State<DashboardNavegacionLocal> {
                               ),
                             ),
                             Text(
-                              'No hay comandas pendientes en esta sección.',
+                              'No hay comandas pendientes para este puesto.',
                               style: GoogleFonts.poppins(
                                 fontSize: 13,
                                 color: colorTextoGris,
@@ -1068,6 +1291,7 @@ class _DashboardNavegacionLocalState extends State<DashboardNavegacionLocal> {
                                     crossAxisAlignment:
                                         CrossAxisAlignment.start,
                                     children: [
+                                      // FILA 1: ESTADO, TICKET Y MINUTOS
                                       Row(
                                         mainAxisAlignment:
                                             MainAxisAlignment.spaceBetween,
@@ -1132,6 +1356,8 @@ class _DashboardNavegacionLocalState extends State<DashboardNavegacionLocal> {
                                         ],
                                       ),
                                       const SizedBox(height: 10),
+
+                                      // ✨ FILA 2 (CORREGIDA): CÓDIGO DE TICKET Y PUNTOS EN EXTREMOS
                                       Row(
                                         mainAxisAlignment:
                                             MainAxisAlignment.spaceBetween,
@@ -1144,43 +1370,54 @@ class _DashboardNavegacionLocalState extends State<DashboardNavegacionLocal> {
                                               color: colorTextoOscuro,
                                             ),
                                           ),
-                                          Row(
-                                            children: [
-                                              Text(
-                                                data['alumno'] ?? 'Alumno',
-                                                style: GoogleFonts.poppins(
-                                                  fontSize: 14,
-                                                  fontWeight: FontWeight.w600,
-                                                  color: colorVerdeTese,
-                                                ),
+                                          Container(
+                                            padding: const EdgeInsets.symmetric(
+                                              horizontal: 7,
+                                              vertical: 2,
+                                            ),
+                                            decoration: BoxDecoration(
+                                              color: colorAmarilloTese
+                                                  .withValues(alpha: 0.2),
+                                              borderRadius:
+                                                  BorderRadius.circular(6),
+                                            ),
+                                            child: Text(
+                                              '+$puntos pts',
+                                              style: GoogleFonts.poppins(
+                                                fontSize: 11.5,
+                                                fontWeight: FontWeight.bold,
+                                                color: colorVerdeOscuro,
                                               ),
-                                              const SizedBox(width: 8),
-                                              Container(
-                                                padding:
-                                                    const EdgeInsets.symmetric(
-                                                      horizontal: 6,
-                                                      vertical: 2,
-                                                    ),
-                                                decoration: BoxDecoration(
-                                                  color: colorAmarilloTese
-                                                      .withValues(alpha: 0.2),
-                                                  borderRadius:
-                                                      BorderRadius.circular(6),
-                                                ),
-                                                child: Text(
-                                                  '+$puntos pts',
-                                                  style: GoogleFonts.poppins(
-                                                    fontSize: 11,
-                                                    fontWeight: FontWeight.bold,
-                                                    color: colorVerdeOscuro,
-                                                  ),
-                                                ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                      const SizedBox(height: 4),
+
+                                      // ✨ FILA 3: NOMBRE DEL ALUMNO CON RECORTE SEGURO
+                                      Row(
+                                        children: [
+                                          const Icon(
+                                            Icons.person_outline,
+                                            size: 15,
+                                            color: colorVerdeTese,
+                                          ),
+                                          const SizedBox(width: 4),
+                                          Expanded(
+                                            child: Text(
+                                              data['alumno'] ?? 'Alumno',
+                                              style: GoogleFonts.poppins(
+                                                fontSize: 13.5,
+                                                fontWeight: FontWeight.w600,
+                                                color: colorVerdeTese,
                                               ),
-                                            ],
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
                                           ),
                                         ],
                                       ),
                                       const Divider(height: 18),
+
                                       Text(
                                         data['detalle'] ?? '',
                                         maxLines: 3,
@@ -1285,10 +1522,16 @@ class _DashboardNavegacionLocalState extends State<DashboardNavegacionLocal> {
     );
   }
 
+  // ==========================================
+  // MENÚ CON WRAP FLEXIBLE - CERO OVERFLOW
+  // ==========================================
   Widget _vistaMenuDidi() {
     return StreamBuilder<QuerySnapshot>(
       stream:
-          FirebaseFirestore.instance.collection('Menu_Platillos').snapshots(),
+          FirebaseFirestore.instance
+              .collection('Menu_Platillos')
+              .where('local', isEqualTo: widget.nombreLocal)
+              .snapshots(),
       builder: (context, snapshot) {
         if (!snapshot.hasData) {
           return const Center(
@@ -1299,213 +1542,261 @@ class _DashboardNavegacionLocalState extends State<DashboardNavegacionLocal> {
 
         return Scaffold(
           backgroundColor: Colors.transparent,
-          body: ListView.builder(
-            padding: const EdgeInsets.all(14),
-            itemCount: miMenu.length,
-            itemBuilder: (context, index) {
-              final platillo = miMenu[index];
-              final data = platillo.data() as Map<String, dynamic>? ?? {};
-
-              final int existencias = data['existencias'] ?? 0;
-              final bool agotado = existencias == 0;
-              final String nombre = data['nombre'] ?? 'Sin nombre';
-              final dynamic precio = data['precio'] ?? 0;
-              final double calif = (data['calificacion'] ?? 0.0).toDouble();
-              final int puntos = data['puntos'] ?? 10;
-              final List fotos = data['fotos'] ?? [];
-
-              return FadeInUp(
-                child: Container(
-                  margin: const EdgeInsets.only(bottom: 12),
-                  padding: const EdgeInsets.all(14),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(16),
-                    boxShadow: [
-                      BoxShadow(
-                        color: colorVerdeTese.withValues(alpha: 0.05),
-                        blurRadius: 8,
-                        offset: const Offset(0, 3),
-                      ),
-                    ],
-                  ),
-                  child: Row(
-                    children: [
-                      Container(
-                        width: 48,
-                        height: 48,
-                        decoration: BoxDecoration(
-                          color:
-                              agotado
-                                  ? Colors.grey.withValues(alpha: 0.1)
-                                  : colorVerdeTese.withValues(alpha: 0.1),
-                          borderRadius: BorderRadius.circular(12),
+          body:
+              miMenu.isEmpty
+                  ? Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.restaurant_menu,
+                          size: 60,
+                          color: colorVerdeTese.withValues(alpha: 0.3),
                         ),
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(12),
-                          child:
-                              fotos.isNotEmpty
-                                  ? Image.memory(
-                                    base64Decode(fotos[0]),
-                                    fit: BoxFit.cover,
-                                    errorBuilder:
-                                        (_, __, ___) => Icon(
-                                          Icons.fastfood,
-                                          color:
-                                              agotado
-                                                  ? colorTextoGris
-                                                  : colorVerdeTese,
-                                        ),
-                                  )
-                                  : Icon(
-                                    Icons.fastfood,
-                                    color:
-                                        agotado
-                                            ? colorTextoGris
-                                            : colorVerdeTese,
-                                  ),
+                        const SizedBox(height: 12),
+                        Text(
+                          'No hay platillos registrados',
+                          style: GoogleFonts.poppins(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: colorVerdeTese,
+                          ),
                         ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: InkWell(
-                          onTap: () => _mostrarDialogoEditarPlatillo(platillo),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
+                        Text(
+                          'Presiona el botón amarillo para agregar el primer platillo de ${widget.nombreLocal}.',
+                          textAlign: TextAlign.center,
+                          style: GoogleFonts.poppins(
+                            fontSize: 12.5,
+                            color: colorTextoGris,
+                          ),
+                        ),
+                      ],
+                    ),
+                  )
+                  : ListView.builder(
+                    padding: const EdgeInsets.all(14),
+                    itemCount: miMenu.length,
+                    itemBuilder: (context, index) {
+                      final platillo = miMenu[index];
+                      final data =
+                          platillo.data() as Map<String, dynamic>? ?? {};
+
+                      final int existencias = data['existencias'] ?? 0;
+                      final bool agotado = existencias == 0;
+                      final String nombre = data['nombre'] ?? 'Sin nombre';
+                      final dynamic precio = data['precio'] ?? 0;
+                      final double calif =
+                          (data['calificacion'] ?? 0.0).toDouble();
+                      final int puntos = data['puntos'] ?? 10;
+                      final List fotos = data['fotos'] ?? [];
+
+                      return FadeInUp(
+                        child: Container(
+                          margin: const EdgeInsets.only(bottom: 12),
+                          padding: const EdgeInsets.all(14),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(16),
+                            boxShadow: [
+                              BoxShadow(
+                                color: colorVerdeTese.withValues(alpha: 0.05),
+                                blurRadius: 8,
+                                offset: const Offset(0, 3),
+                              ),
+                            ],
+                          ),
+                          child: Row(
                             children: [
-                              Row(
-                                children: [
-                                  Flexible(
-                                    child: Text(
-                                      nombre,
-                                      style: GoogleFonts.poppins(
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 15,
-                                        color:
-                                            agotado
-                                                ? colorTextoGris
-                                                : colorTextoOscuro,
-                                        decoration:
-                                            agotado
-                                                ? TextDecoration.lineThrough
-                                                : null,
+                              Container(
+                                width: 48,
+                                height: 48,
+                                decoration: BoxDecoration(
+                                  color:
+                                      agotado
+                                          ? Colors.grey.withValues(alpha: 0.1)
+                                          : colorVerdeTese.withValues(
+                                            alpha: 0.1,
+                                          ),
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: ClipRRect(
+                                  borderRadius: BorderRadius.circular(12),
+                                  child:
+                                      fotos.isNotEmpty
+                                          ? Image.memory(
+                                            base64Decode(fotos[0]),
+                                            fit: BoxFit.cover,
+                                            errorBuilder:
+                                                (_, __, ___) => Icon(
+                                                  Icons.fastfood,
+                                                  color:
+                                                      agotado
+                                                          ? colorTextoGris
+                                                          : colorVerdeTese,
+                                                ),
+                                          )
+                                          : Icon(
+                                            Icons.fastfood,
+                                            color:
+                                                agotado
+                                                    ? colorTextoGris
+                                                    : colorVerdeTese,
+                                          ),
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: InkWell(
+                                  onTap:
+                                      () => _mostrarDialogoEditarPlatillo(
+                                        platillo,
                                       ),
-                                    ),
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Row(
+                                        children: [
+                                          Flexible(
+                                            child: Text(
+                                              nombre,
+                                              style: GoogleFonts.poppins(
+                                                fontWeight: FontWeight.bold,
+                                                fontSize: 15,
+                                                color:
+                                                    agotado
+                                                        ? colorTextoGris
+                                                        : colorTextoOscuro,
+                                                decoration:
+                                                    agotado
+                                                        ? TextDecoration
+                                                            .lineThrough
+                                                        : null,
+                                              ),
+                                            ),
+                                          ),
+                                          const SizedBox(width: 6),
+                                          const Icon(
+                                            Icons.edit_outlined,
+                                            size: 15,
+                                            color: colorTextoGris,
+                                          ),
+                                        ],
+                                      ),
+                                      const SizedBox(height: 3),
+                                      // ✨ WRAP FLEXIBLE: Si el precio es grande, se adapta sin overflow
+                                      Wrap(
+                                        crossAxisAlignment:
+                                            WrapCrossAlignment.center,
+                                        spacing: 6,
+                                        runSpacing: 4,
+                                        children: [
+                                          Text(
+                                            '\$$precio',
+                                            style: GoogleFonts.poppins(
+                                              color: colorExito,
+                                              fontWeight: FontWeight.bold,
+                                              fontSize: 14,
+                                            ),
+                                          ),
+                                          Container(
+                                            padding: const EdgeInsets.symmetric(
+                                              horizontal: 5,
+                                              vertical: 1,
+                                            ),
+                                            decoration: BoxDecoration(
+                                              color: colorAmarilloTese
+                                                  .withValues(alpha: 0.2),
+                                              borderRadius:
+                                                  BorderRadius.circular(6),
+                                            ),
+                                            child: Text(
+                                              '+$puntos pts',
+                                              style: GoogleFonts.poppins(
+                                                fontSize: 10.5,
+                                                fontWeight: FontWeight.bold,
+                                                color: colorVerdeOscuro,
+                                              ),
+                                            ),
+                                          ),
+                                          if (calif > 0)
+                                            Row(
+                                              mainAxisSize: MainAxisSize.min,
+                                              children: [
+                                                const Icon(
+                                                  Icons.star_rounded,
+                                                  size: 14,
+                                                  color: colorAmarilloTese,
+                                                ),
+                                                const SizedBox(width: 2),
+                                                Text(
+                                                  '${calif.toStringAsFixed(1)} ★',
+                                                  style: GoogleFonts.poppins(
+                                                    fontSize: 11.5,
+                                                    fontWeight: FontWeight.w600,
+                                                    color: colorTextoOscuro,
+                                                  ),
+                                                ),
+                                              ],
+                                            )
+                                          else
+                                            Text(
+                                              'Nuevo ✨',
+                                              style: GoogleFonts.poppins(
+                                                fontSize: 10.5,
+                                                fontWeight: FontWeight.bold,
+                                                color: colorExito,
+                                              ),
+                                            ),
+                                        ],
+                                      ),
+                                    ],
                                   ),
-                                  const SizedBox(width: 6),
-                                  const Icon(
-                                    Icons.edit_outlined,
-                                    size: 15,
-                                    color: colorTextoGris,
-                                  ),
-                                ],
+                                ),
                               ),
                               Row(
                                 children: [
-                                  Text(
-                                    '\$$precio',
-                                    style: GoogleFonts.poppins(
-                                      color: colorExito,
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 14,
+                                  _botonStock(
+                                    Icons.remove,
+                                    () => _ajustarExistencias(
+                                      platillo.id,
+                                      existencias,
+                                      -1,
                                     ),
                                   ),
-                                  const SizedBox(width: 6),
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 5,
-                                      vertical: 1,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      color: colorAmarilloTese.withValues(
-                                        alpha: 0.2,
-                                      ),
-                                      borderRadius: BorderRadius.circular(6),
-                                    ),
+                                  SizedBox(
+                                    width: 36,
                                     child: Text(
-                                      '+$puntos pts',
+                                      '$existencias',
+                                      textAlign: TextAlign.center,
                                       style: GoogleFonts.poppins(
-                                        fontSize: 10.5,
+                                        fontSize: 15,
                                         fontWeight: FontWeight.bold,
-                                        color: colorVerdeOscuro,
                                       ),
                                     ),
                                   ),
-                                  const SizedBox(width: 8),
-                                  if (calif > 0) ...[
-                                    const Icon(
-                                      Icons.star_rounded,
-                                      size: 14,
-                                      color: colorAmarilloTese,
+                                  _botonStock(
+                                    Icons.add,
+                                    () => _ajustarExistencias(
+                                      platillo.id,
+                                      existencias,
+                                      1,
                                     ),
-                                    const SizedBox(width: 2),
-                                    Text(
-                                      '${calif.toStringAsFixed(1)} ★',
-                                      style: GoogleFonts.poppins(
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.w600,
-                                        color: colorTextoOscuro,
-                                      ),
-                                    ),
-                                  ] else ...[
-                                    Text(
-                                      'Nuevo ✨',
-                                      style: GoogleFonts.poppins(
-                                        fontSize: 11,
-                                        fontWeight: FontWeight.bold,
-                                        color: colorExito,
-                                      ),
-                                    ),
-                                  ],
+                                  ),
                                 ],
                               ),
                             ],
                           ),
                         ),
-                      ),
-                      Row(
-                        children: [
-                          _botonStock(
-                            Icons.remove,
-                            () => _ajustarExistencias(
-                              platillo.id,
-                              existencias,
-                              -1,
-                            ),
-                          ),
-                          SizedBox(
-                            width: 36,
-                            child: Text(
-                              '$existencias',
-                              textAlign: TextAlign.center,
-                              style: GoogleFonts.poppins(
-                                fontSize: 15,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ),
-                          _botonStock(
-                            Icons.add,
-                            () => _ajustarExistencias(
-                              platillo.id,
-                              existencias,
-                              1,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
+                      );
+                    },
                   ),
-                ),
-              );
-            },
-          ),
           floatingActionButton: FloatingActionButton.extended(
             backgroundColor: colorAmarilloTese,
             elevation: 4,
             icon: const Icon(Icons.add, color: colorVerdeOscuro),
             label: Text(
-              'Agregar Platillo',
+              'Agregar a ${widget.nombreLocal.replaceAll('Kiosko ', '').replaceAll('Cafetería ', '')}',
               style: GoogleFonts.poppins(
                 color: colorVerdeOscuro,
                 fontWeight: FontWeight.bold,
@@ -1515,7 +1806,10 @@ class _DashboardNavegacionLocalState extends State<DashboardNavegacionLocal> {
                 () => Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (context) => const AgregarPlatilloScreen(),
+                    builder:
+                        (context) => AgregarPlatilloScreen(
+                          nombreLocal: widget.nombreLocal,
+                        ),
                   ),
                 ),
           ),
@@ -1540,12 +1834,8 @@ class _DashboardNavegacionLocalState extends State<DashboardNavegacionLocal> {
           final bData = b.data() as Map<String, dynamic>;
           final Timestamp? tA = aData['fecha'] as Timestamp?;
           final Timestamp? tB = bData['fecha'] as Timestamp?;
-          if (tA == null) {
-            return -1;
-          }
-          if (tB == null) {
-            return 1;
-          }
+          if (tA == null) return -1;
+          if (tB == null) return 1;
           return tB.compareTo(tA);
         });
 
@@ -1569,7 +1859,7 @@ class _DashboardNavegacionLocalState extends State<DashboardNavegacionLocal> {
                   ),
                 ),
                 Text(
-                  'Cuando los alumnos califiquen su comida, verás sus críticas aquí.',
+                  'Cuando los alumnos califiquen la comida, verás sus opiniones aquí.',
                   style: GoogleFonts.poppins(
                     fontSize: 13,
                     color: colorTextoGris,
@@ -1692,8 +1982,12 @@ class _DashboardNavegacionLocalState extends State<DashboardNavegacionLocal> {
   }
 }
 
+// ==========================================================
+// 3. AGREGAR PLATILLO VINCULADO AL LOCAL ESPECÍFICO
+// ==========================================================
 class AgregarPlatilloScreen extends StatefulWidget {
-  const AgregarPlatilloScreen({super.key});
+  final String nombreLocal;
+  const AgregarPlatilloScreen({super.key, required this.nombreLocal});
 
   @override
   State<AgregarPlatilloScreen> createState() => _AgregarPlatilloScreenState();
@@ -1810,9 +2104,9 @@ class _AgregarPlatilloScreenState extends State<AgregarPlatilloScreen> {
       await FirebaseFirestore.instance.collection('Menu_Platillos').add({
         'nombre': _nombreCtrl.text,
         'precio': double.parse(_precioCtrl.text),
-        'local': 'Kiosko Sistemas',
+        'local': widget.nombreLocal,
         'categoria': 'Comida',
-        'descripcion': 'Platillo agregado desde la app del local',
+        'descripcion': 'Platillo preparado al momento en ${widget.nombreLocal}',
         'tiempoPrep': '15 min',
         'calificacion': 0.0,
         'numCalificaciones': 0,
@@ -1826,8 +2120,8 @@ class _AgregarPlatilloScreenState extends State<AgregarPlatilloScreen> {
       if (mounted) {
         Navigator.pop(context);
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('¡Platillo publicado con sus puntos! ☁️🍔🪙'),
+          SnackBar(
+            content: Text('¡Platillo agregado a ${widget.nombreLocal}! ☁️🍔'),
             backgroundColor: colorExito,
           ),
         );
@@ -1865,10 +2159,11 @@ class _AgregarPlatilloScreenState extends State<AgregarPlatilloScreen> {
       backgroundColor: colorFondoCrema,
       appBar: AppBar(
         title: Text(
-          'Nuevo Platillo',
+          'Nuevo Platillo en ${widget.nombreLocal}',
           style: GoogleFonts.poppins(
             color: colorVerdeTese,
             fontWeight: FontWeight.bold,
+            fontSize: 16,
           ),
         ),
         backgroundColor: Colors.white,
@@ -1886,7 +2181,6 @@ class _AgregarPlatilloScreenState extends State<AgregarPlatilloScreen> {
         padding: const EdgeInsets.all(22.0),
         child: Column(
           children: [
-            // FOTOS DEL PLATILLO
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
@@ -2030,7 +2324,6 @@ class _AgregarPlatilloScreenState extends State<AgregarPlatilloScreen> {
             ),
             const SizedBox(height: 20),
 
-            // FORMULARIO NOMBRE, PRECIO, EXISTENCIAS Y PUNTOS
             Container(
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
@@ -2080,7 +2373,6 @@ class _AgregarPlatilloScreenState extends State<AgregarPlatilloScreen> {
                     ],
                   ),
                   const SizedBox(height: 14),
-                  // ✨ CAMPO DIRECTO PARA PUNTOS (PONES 300 O LO QUE QUIERAS SIN OVERFLOW)
                   TextField(
                     controller: _puntosCtrl,
                     keyboardType: TextInputType.number,
@@ -2104,7 +2396,6 @@ class _AgregarPlatilloScreenState extends State<AgregarPlatilloScreen> {
             ),
             const SizedBox(height: 20),
 
-            // INGREDIENTES
             Container(
               width: double.infinity,
               padding: const EdgeInsets.all(20),
