@@ -44,20 +44,15 @@ class _LoginEstudianteScreenState extends State<LoginEstudianteScreen> {
     super.dispose();
   }
 
-  void _autocompletarDominio(String dominio) {
+  void _irARegistro() {
     HapticFeedback.selectionClick();
-    final textoActual = _correoCtrl.text.trim();
-    final sinDominio =
-        textoActual.contains('@') ? textoActual.split('@').first : textoActual;
-    setState(() {
-      _correoCtrl.text = '$sinDominio$dominio';
-      _correoCtrl.selection = TextSelection.fromPosition(
-        TextPosition(offset: _correoCtrl.text.length),
-      );
-    });
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => const RegistroEstudianteScreen()),
+    );
   }
 
-  // 🔑 RECUPERACIÓN DE CONTRASEÑA AMIGABLE
+  // 🔑 RECUPERACIÓN DE CONTRASEÑA CON CUALQUIER CORREO
   void _mostrarModalRecuperarPassword() {
     final TextEditingController recupCtrl = TextEditingController(
       text: _correoCtrl.text.trim(),
@@ -97,7 +92,7 @@ class _LoginEstudianteScreenState extends State<LoginEstudianteScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Ingresa tu correo institucional y te enviaremos un enlace seguro para restablecer tu contraseña.',
+                      'Escribe tu correo electrónico registrado y te enviaremos un enlace para crear una nueva contraseña.',
                       style: GoogleFonts.poppins(
                         fontSize: 12.5,
                         color: colorTextoGris,
@@ -108,8 +103,8 @@ class _LoginEstudianteScreenState extends State<LoginEstudianteScreen> {
                       controller: recupCtrl,
                       keyboardType: TextInputType.emailAddress,
                       decoration: InputDecoration(
-                        labelText: 'Correo Institucional',
-                        hintText: 'usuario@tese.edu.mx',
+                        labelText: 'Tu Correo Electrónico',
+                        hintText: 'ejemplo@gmail.com',
                         prefixIcon: const Icon(
                           Icons.mail_outline,
                           color: colorVerdeTese,
@@ -149,7 +144,9 @@ class _LoginEstudianteScreenState extends State<LoginEstudianteScreen> {
                               final correo =
                                   recupCtrl.text.trim().toLowerCase();
                               if (correo.isEmpty || !correo.contains('@')) {
-                                _mostrarAlerta('Ingresa un correo válido.');
+                                _mostrarAlerta(
+                                  'Ingresa un correo electrónico válido.',
+                                );
                                 return;
                               }
                               setStateDialog(() => enviando = true);
@@ -204,7 +201,7 @@ class _LoginEstudianteScreenState extends State<LoginEstudianteScreen> {
     );
   }
 
-  // 🔒 VENTANA OBLIGATORIA: Si entra con Google DEBE poner matrícula y carrera
+  // 🔒 VENTANA OBLIGATORIA: Si entra con Google pide matrícula y carrera
   void _mostrarModalObligatorioGoogle(User user, bool yaTeniaPerfil) {
     final TextEditingController matriculaCtrl = TextEditingController();
     String carreraElegida = kCarrerasTese[0];
@@ -243,7 +240,7 @@ class _LoginEstudianteScreenState extends State<LoginEstudianteScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Para entregarte tus pedidos en ventanilla sin confusiones, registra tu matrícula y carrera institucional:',
+                          'Para entregarte tus pedidos en ventanilla sin confusiones, registra tu matrícula y carrera:',
                           style: GoogleFonts.poppins(
                             fontSize: 12.5,
                             color: colorTextoGris,
@@ -254,7 +251,7 @@ class _LoginEstudianteScreenState extends State<LoginEstudianteScreen> {
                           controller: matriculaCtrl,
                           keyboardType: TextInputType.number,
                           decoration: InputDecoration(
-                            labelText: 'Matrícula Oficial',
+                            labelText: 'Matrícula',
                             hintText: 'Ej. 20240001',
                             prefixIcon: const Icon(
                               Icons.badge_outlined,
@@ -329,11 +326,11 @@ class _LoginEstudianteScreenState extends State<LoginEstudianteScreen> {
                               ? null
                               : () async {
                                 final mat = matriculaCtrl.text.trim();
-                                if (mat.isEmpty || mat.length < 5) {
+                                if (mat.isEmpty || mat.length < 4) {
                                   ScaffoldMessenger.of(context).showSnackBar(
                                     const SnackBar(
                                       content: Text(
-                                        'Por favor ingresa una matrícula válida (mínimo 5 dígitos).',
+                                        'Por favor ingresa una matrícula válida.',
                                       ),
                                     ),
                                   );
@@ -478,10 +475,9 @@ class _LoginEstudianteScreenState extends State<LoginEstudianteScreen> {
       return;
     }
 
-    if (!correo.endsWith('@tese.edu.mx') &&
-        !correo.endsWith('@ecatepec.tecnm.mx')) {
+    if (!correo.contains('@') || !correo.contains('.')) {
       _mostrarAlerta(
-        'Usa tu correo institucional (@tese.edu.mx o @ecatepec.tecnm.mx).',
+        'Ingresa un correo electrónico válido (ej. tu.correo@gmail.com).',
       );
       return;
     }
@@ -503,7 +499,8 @@ class _LoginEstudianteScreenState extends State<LoginEstudianteScreen> {
     } on FirebaseAuthException catch (e) {
       String mensaje = 'Error al iniciar sesión.';
       if (e.code == 'user-not-found') {
-        mensaje = 'No existe una cuenta con este correo. ¡Regístrate abajo!';
+        mensaje =
+            'No existe una cuenta con este correo. ¡Regístrate en el botón de abajo!';
       } else if (e.code == 'wrong-password' || e.code == 'invalid-credential') {
         mensaje = 'Correo o contraseña incorrectos.';
       } else if (e.code == 'network-request-failed') {
@@ -559,37 +556,106 @@ class _LoginEstudianteScreenState extends State<LoginEstudianteScreen> {
       ),
       body: Center(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 8),
+          padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 6),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
+              // 🔀 INTERRUPTOR SUPERIOR MUY VISIBLE: INICIAR SESIÓN | REGISTRARSE
+              Container(
+                padding: const EdgeInsets.all(5),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(20),
+                  boxShadow: [
+                    BoxShadow(
+                      color: colorVerdeTese.withValues(alpha: 0.08),
+                      blurRadius: 12,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(vertical: 10),
+                        decoration: BoxDecoration(
+                          color: colorVerdeTese,
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        child: Text(
+                          'Iniciar Sesión',
+                          textAlign: TextAlign.center,
+                          style: GoogleFonts.poppins(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 13.5,
+                          ),
+                        ),
+                      ),
+                    ),
+                    Expanded(
+                      child: InkWell(
+                        borderRadius: BorderRadius.circular(16),
+                        onTap: _irARegistro,
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 10),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              const Icon(
+                                Icons.person_add_alt_1_rounded,
+                                size: 16,
+                                color: colorVerdeTese,
+                              ),
+                              const SizedBox(width: 5),
+                              Text(
+                                'Crear Cuenta',
+                                style: GoogleFonts.poppins(
+                                  color: colorVerdeTese,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 13.5,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 18),
+
               FadeInDown(
                 child: Text(
-                  'Acceso Estudiantil',
+                  '¡Hola de nuevo! 👋',
                   style: GoogleFonts.poppins(
-                    fontSize: 28,
-                    fontWeight: FontWeight.bold,
+                    fontSize: 27,
+                    fontWeight: FontWeight.w900,
                     color: colorVerdeTese,
                   ),
                 ),
               ),
-              const SizedBox(height: 4),
+              const SizedBox(height: 2),
               Text(
-                'Ingresa para pedir tu comida sin hacer filas',
+                'Ingresa a tu cuenta para pedir sin hacer filas',
                 style: GoogleFonts.poppins(
                   fontSize: 13.5,
                   color: colorTextoGris,
                 ),
               ),
-              const SizedBox(height: 14),
+              const SizedBox(height: 12),
               ZoomIn(
                 child: Image.asset(
                   'assets/patito_login.png',
-                  height: 135,
+                  height: 120,
                   fit: BoxFit.contain,
                 ),
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: 16),
+
+              // CAJA PRINCIPAL DE LOGIN
               Container(
                 padding: const EdgeInsets.all(22),
                 decoration: BoxDecoration(
@@ -610,8 +676,8 @@ class _LoginEstudianteScreenState extends State<LoginEstudianteScreen> {
                       controller: _correoCtrl,
                       keyboardType: TextInputType.emailAddress,
                       decoration: InputDecoration(
-                        labelText: 'Correo Institucional',
-                        hintText: 'ejemplo@tese.edu.mx',
+                        labelText: 'Correo Electrónico',
+                        hintText: 'ejemplo@gmail.com',
                         prefixIcon: const Icon(
                           Icons.mail_outline,
                           color: colorVerdeTese,
@@ -624,55 +690,7 @@ class _LoginEstudianteScreenState extends State<LoginEstudianteScreen> {
                         ),
                       ),
                     ),
-                    const SizedBox(height: 8),
-                    // Chips rápidos para autocompletar el dominio institucional
-                    SingleChildScrollView(
-                      scrollDirection: Axis.horizontal,
-                      child: Row(
-                        children: [
-                          Text(
-                            'Autocompletar: ',
-                            style: GoogleFonts.poppins(
-                              fontSize: 11,
-                              color: colorTextoGris,
-                            ),
-                          ),
-                          ActionChip(
-                            visualDensity: VisualDensity.compact,
-                            backgroundColor: colorFondoCrema,
-                            side: BorderSide.none,
-                            label: Text(
-                              '@tese.edu.mx',
-                              style: GoogleFonts.poppins(
-                                fontSize: 11,
-                                fontWeight: FontWeight.bold,
-                                color: colorVerdeTese,
-                              ),
-                            ),
-                            onPressed:
-                                () => _autocompletarDominio('@tese.edu.mx'),
-                          ),
-                          const SizedBox(width: 6),
-                          ActionChip(
-                            visualDensity: VisualDensity.compact,
-                            backgroundColor: colorFondoCrema,
-                            side: BorderSide.none,
-                            label: Text(
-                              '@ecatepec.tecnm.mx',
-                              style: GoogleFonts.poppins(
-                                fontSize: 11,
-                                fontWeight: FontWeight.bold,
-                                color: colorVerdeTese,
-                              ),
-                            ),
-                            onPressed:
-                                () =>
-                                    _autocompletarDominio('@ecatepec.tecnm.mx'),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 10),
+                    const SizedBox(height: 14),
                     TextField(
                       controller: _passwordCtrl,
                       obscureText: _ocultarPassword,
@@ -717,7 +735,6 @@ class _LoginEstudianteScreenState extends State<LoginEstudianteScreen> {
                         ),
                       ),
                     ),
-                    const SizedBox(height: 4),
                     SizedBox(
                       width: double.infinity,
                       height: 52,
@@ -741,10 +758,10 @@ class _LoginEstudianteScreenState extends State<LoginEstudianteScreen> {
                                   ),
                                 )
                                 : Text(
-                                  'Ingresar con Correo TESE',
+                                  'Iniciar Sesión',
                                   style: GoogleFonts.poppins(
                                     color: Colors.white,
-                                    fontSize: 15,
+                                    fontSize: 15.5,
                                     fontWeight: FontWeight.bold,
                                   ),
                                 ),
@@ -757,7 +774,7 @@ class _LoginEstudianteScreenState extends State<LoginEstudianteScreen> {
                         Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 10),
                           child: Text(
-                            'o ingresa rápido con',
+                            'o entra rápido con',
                             style: GoogleFonts.poppins(
                               color: colorTextoGris,
                               fontSize: 12,
@@ -807,30 +824,83 @@ class _LoginEstudianteScreenState extends State<LoginEstudianteScreen> {
                   ],
                 ),
               ),
-              const SizedBox(height: 14),
-              TextButton.icon(
-                onPressed:
-                    () => Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => const RegistroEstudianteScreen(),
+              const SizedBox(height: 18),
+
+              // 🌟 TARJETA DESTACADA PARA REGISTRARSE (NO OCULTA)
+              FadeInUp(
+                child: Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(18),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(22),
+                    border: Border.all(color: colorAmarilloTese, width: 2),
+                    boxShadow: [
+                      BoxShadow(
+                        color: colorAmarilloTese.withValues(alpha: 0.18),
+                        blurRadius: 16,
+                        offset: const Offset(0, 6),
                       ),
-                    ),
-                icon: const Icon(
-                  Icons.person_add_alt_1_rounded,
-                  color: colorVerdeTese,
-                  size: 18,
-                ),
-                label: Text(
-                  '¿Eres nuevo? Crear cuenta institucional',
-                  textAlign: TextAlign.center,
-                  style: GoogleFonts.poppins(
-                    color: colorVerdeTese,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 13.5,
+                    ],
+                  ),
+                  child: Column(
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Text('🦆', style: TextStyle(fontSize: 20)),
+                          const SizedBox(width: 8),
+                          Text(
+                            '¿Aún no tienes una cuenta?',
+                            style: GoogleFonts.poppins(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w800,
+                              color: colorTextoOscuro,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Regístrate en 1 minuto con cualquier correo y recibe tu primer Patito Estudiante gratis.',
+                        textAlign: TextAlign.center,
+                        style: GoogleFonts.poppins(
+                          fontSize: 12,
+                          color: colorTextoGris,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      SizedBox(
+                        width: double.infinity,
+                        height: 46,
+                        child: ElevatedButton.icon(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: colorAmarilloTese,
+                            foregroundColor: colorVerdeOscuro,
+                            elevation: 2,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(14),
+                            ),
+                          ),
+                          onPressed: _irARegistro,
+                          icon: const Icon(
+                            Icons.person_add_alt_1_rounded,
+                            size: 20,
+                          ),
+                          label: Text(
+                            '¡Crear mi cuenta ahora!',
+                            style: GoogleFonts.poppins(
+                              fontWeight: FontWeight.w800,
+                              fontSize: 14,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ),
+              const SizedBox(height: 16),
             ],
           ),
         ),
@@ -840,7 +910,7 @@ class _LoginEstudianteScreenState extends State<LoginEstudianteScreen> {
 }
 
 // ==========================================
-// 3. REGISTRO INSTITUCIONAL AMIGABLE
+// 3. REGISTRO ABIERTO A CUALQUIER CORREO
 // ==========================================
 class RegistroEstudianteScreen extends StatefulWidget {
   const RegistroEstudianteScreen({super.key});
@@ -885,15 +955,12 @@ class _RegistroEstudianteScreenState extends State<RegistroEstudianteScreen> {
     final confirmPass = _confirmPassCtrl.text.trim();
 
     if (nombre.isEmpty || matricula.isEmpty || correo.isEmpty || pass.isEmpty) {
-      _mostrarAlerta('Por favor completa todos los campos obligatorios.');
+      _mostrarAlerta('Por favor completa los campos obligatorios.');
       return;
     }
 
-    if (!correo.endsWith('@tese.edu.mx') &&
-        !correo.endsWith('@ecatepec.tecnm.mx')) {
-      _mostrarAlerta(
-        'Debes usar tu correo institucional (@tese.edu.mx o @ecatepec.tecnm.mx).',
-      );
+    if (!correo.contains('@') || !correo.contains('.')) {
+      _mostrarAlerta('Por favor ingresa un correo electrónico válido.');
       return;
     }
 
@@ -954,9 +1021,11 @@ class _RegistroEstudianteScreenState extends State<RegistroEstudianteScreen> {
     } on FirebaseAuthException catch (e) {
       String msg = 'Error en el registro.';
       if (e.code == 'email-already-in-use') {
-        msg = 'Este correo institucional ya tiene una cuenta registrada.';
+        msg = 'Este correo electrónico ya tiene una cuenta registrada.';
       } else if (e.code == 'weak-password') {
         msg = 'La contraseña es muy débil.';
+      } else if (e.code == 'invalid-email') {
+        msg = 'El formato del correo electrónico no es válido.';
       }
       _mostrarAlerta(msg);
     } catch (e) {
@@ -995,7 +1064,7 @@ class _RegistroEstudianteScreenState extends State<RegistroEstudianteScreen> {
               ],
             ),
             content: Text(
-              'Tu cuenta del TESE fue creada con éxito y te regalamos tu primer Patito Estudiante 🎓.\n\nTambién enviamos un correo de verificación a tu bandeja institucional.',
+              'Tu cuenta fue creada con éxito y te regalamos tu primer Patito Estudiante 🎓.\n\n¡Ya puedes pedir tus alimentos sin hacer fila!',
               style: GoogleFonts.poppins(
                 fontSize: 13.5,
                 color: colorTextoOscuro,
@@ -1064,9 +1133,7 @@ class _RegistroEstudianteScreenState extends State<RegistroEstudianteScreen> {
   @override
   Widget build(BuildContext context) {
     String labelId =
-        rolSeleccionado == 'Estudiante'
-            ? 'Matrícula Oficial'
-            : 'No. de Empleado';
+        rolSeleccionado == 'Estudiante' ? 'Matrícula' : 'No. de Empleado';
     IconData iconId =
         rolSeleccionado == 'Estudiante'
             ? Icons.badge_outlined
@@ -1076,7 +1143,7 @@ class _RegistroEstudianteScreenState extends State<RegistroEstudianteScreen> {
       backgroundColor: colorFondoCrema,
       appBar: AppBar(
         title: Text(
-          'Registro Institucional',
+          'Crear Cuenta Nueva',
           style: GoogleFonts.poppins(
             color: colorVerdeTese,
             fontWeight: FontWeight.bold,
@@ -1169,8 +1236,8 @@ class _RegistroEstudianteScreenState extends State<RegistroEstudianteScreen> {
                     controller: _correoCtrl,
                     keyboardType: TextInputType.emailAddress,
                     decoration: InputDecoration(
-                      labelText: 'Correo Institucional (@tese.edu.mx)',
-                      hintText: 'tu.correo@tese.edu.mx',
+                      labelText: 'Correo Electrónico',
+                      hintText: 'ejemplo@gmail.com',
                       prefixIcon: const Icon(
                         Icons.alternate_email,
                         color: colorVerdeTese,
@@ -1237,7 +1304,7 @@ class _RegistroEstudianteScreenState extends State<RegistroEstudianteScreen> {
             SizedBox(
               width: double.infinity,
               height: 54,
-              child: ElevatedButton(
+              child: ElevatedButton.icon(
                 style: ElevatedButton.styleFrom(
                   backgroundColor: colorVerdeTese,
                   shape: RoundedRectangleBorder(
@@ -1246,7 +1313,11 @@ class _RegistroEstudianteScreenState extends State<RegistroEstudianteScreen> {
                   elevation: 4,
                 ),
                 onPressed: _estaCargando ? null : _registrarUsuario,
-                child:
+                icon: const Icon(
+                  Icons.check_circle_outline,
+                  color: Colors.white,
+                ),
+                label:
                     _estaCargando
                         ? const SizedBox(
                           height: 22,
@@ -1264,6 +1335,18 @@ class _RegistroEstudianteScreenState extends State<RegistroEstudianteScreen> {
                             fontWeight: FontWeight.bold,
                           ),
                         ),
+              ),
+            ),
+            const SizedBox(height: 14),
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text(
+                '¿Ya tienes cuenta? Regresar a Iniciar Sesión',
+                style: GoogleFonts.poppins(
+                  color: colorVerdeTese,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 13,
+                ),
               ),
             ),
           ],
