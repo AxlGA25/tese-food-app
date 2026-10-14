@@ -7,6 +7,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:image_picker/image_picker.dart';
 import 'colores.dart';
 import 'pantalla_inicio.dart';
+import 'pantalla_gachapon.dart';
 
 Widget _botonStock(IconData icono, VoidCallback onTap) {
   return GestureDetector(
@@ -20,6 +21,276 @@ Widget _botonStock(IconData icono, VoidCallback onTap) {
       ),
       child: Icon(icono, size: 16, color: colorTextoOscuro),
     ),
+  );
+}
+
+// ==========================================================
+// 👨‍🍳 MINI TUTORIAL INTERACTIVO PARA EL PERSONAL DE CAFETERÍA
+// ==========================================================
+void mostrarTutorialCocina(BuildContext context, String nombreLocal) {
+  int paginaActual = 0;
+  final PageController pageCtrl = PageController();
+
+  final List<Map<String, dynamic>> pasos = [
+    {
+      'skin': catalogoPatos[4], // Chef Patito
+      'titulo': '1. Comandas en Tiempo Real 🧾',
+      'desc':
+          'Aquí llegan al instante los pedidos de los alumnos para $nombreLocal. Revisa qué pidieron, sus ingredientes personalizados y si tienen alguna alergia médica.',
+      'tip':
+          'Tip: Toca cualquier comanda para ver el ticket completo en grande.',
+      'color': Colors.redAccent,
+    },
+    {
+      'skin': catalogoPatos[1], // Patito Estudiante
+      'titulo': '2. Avisa con un ¡CUAC! al Alumno 🦆',
+      'desc':
+          'Al tocar "Aceptar y Cocinar", el alumno ve que ya preparas su orden. Al tocar "¡Marcar Listo!", su celular vibrará y sonará ¡CUAC! para que pase a ventanilla.',
+      'tip':
+          'Tip: Cuando le entregues y cobres, toca "Entregar" para liberar sus puntos 🪙.',
+      'color': colorAmarilloTese,
+    },
+    {
+      'skin': catalogoPatos[6], // Patito Cool
+      'titulo': '3. Control de Stock y Menú 📦',
+      'desc':
+          'En la pestaña "Existencias" usa los botones [-] y [+] para ajustar tus piezas. Si llega a 0, el platillo se marca como "Agotado" automáticamente.',
+      'tip':
+          'Tip: Toca un platillo para editar su precio, categoría o ingredientes.',
+      'color': colorVerdeTese,
+    },
+    {
+      'skin': catalogoPatos[13], // Pato Dorado
+      'titulo': '4. Opiniones de tu Sucursal ⭐',
+      'desc':
+          'En la pestaña "Opiniones" verás únicamente las calificaciones y comentarios de los platillos que pertenecen a $nombreLocal.',
+      'tip': 'Tip: ¡Mantén 5 estrellas para ser el kiosko favorito del TESE!',
+      'color': colorExito,
+    },
+  ];
+
+  showDialog(
+    context: context,
+    builder:
+        (ctx) => StatefulBuilder(
+          builder: (contextModal, setStateModal) {
+            final paso = pasos[paginaActual];
+            final bool esUltimo = paginaActual == pasos.length - 1;
+            return Dialog(
+              backgroundColor: Colors.transparent,
+              insetPadding: const EdgeInsets.symmetric(horizontal: 20),
+              child: Container(
+                padding: const EdgeInsets.all(22),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(28),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.2),
+                      blurRadius: 24,
+                      offset: const Offset(0, 10),
+                    ),
+                  ],
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 4,
+                          ),
+                          decoration: BoxDecoration(
+                            color: colorVerdeTese.withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Text(
+                            'Guía de Cocina • ${paginaActual + 1}/${pasos.length}',
+                            style: GoogleFonts.poppins(
+                              fontSize: 11.5,
+                              fontWeight: FontWeight.bold,
+                              color: colorVerdeTese,
+                            ),
+                          ),
+                        ),
+                        IconButton(
+                          visualDensity: VisualDensity.compact,
+                          icon: const Icon(Icons.close, color: colorTextoGris),
+                          onPressed: () => Navigator.pop(ctx),
+                        ),
+                      ],
+                    ),
+                    SizedBox(
+                      height: 295,
+                      child: PageView.builder(
+                        controller: pageCtrl,
+                        itemCount: pasos.length,
+                        onPageChanged: (i) {
+                          HapticFeedback.selectionClick();
+                          setStateModal(() => paginaActual = i);
+                        },
+                        itemBuilder: (_, index) {
+                          final item = pasos[index];
+                          return Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.all(10),
+                                decoration: BoxDecoration(
+                                  color: colorFondoCrema,
+                                  shape: BoxShape.circle,
+                                  border: Border.all(
+                                    color: (item['color'] as Color).withValues(
+                                      alpha: 0.5,
+                                    ),
+                                    width: 2,
+                                  ),
+                                ),
+                                child: PatoVista(
+                                  skin: item['skin'] as PatoSkin,
+                                  tamano: 86,
+                                ),
+                              ),
+                              const SizedBox(height: 14),
+                              Text(
+                                item['titulo'],
+                                textAlign: TextAlign.center,
+                                style: GoogleFonts.poppins(
+                                  fontSize: 17.5,
+                                  fontWeight: FontWeight.bold,
+                                  color: colorTextoOscuro,
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              Text(
+                                item['desc'],
+                                textAlign: TextAlign.center,
+                                style: GoogleFonts.poppins(
+                                  fontSize: 12.8,
+                                  color: colorTextoGris,
+                                  height: 1.4,
+                                ),
+                              ),
+                              const SizedBox(height: 12),
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                  vertical: 7,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: colorFondoCrema,
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: Text(
+                                  item['tip'],
+                                  textAlign: TextAlign.center,
+                                  style: GoogleFonts.poppins(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w600,
+                                    color: colorVerdeTese,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          );
+                        },
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: List.generate(
+                        pasos.length,
+                        (i) => AnimatedContainer(
+                          duration: const Duration(milliseconds: 250),
+                          margin: const EdgeInsets.symmetric(horizontal: 4),
+                          width: paginaActual == i ? 22 : 8,
+                          height: 8,
+                          decoration: BoxDecoration(
+                            color:
+                                paginaActual == i
+                                    ? (paso['color'] as Color)
+                                    : Colors.grey[300],
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 18),
+                    Row(
+                      children: [
+                        if (paginaActual > 0) ...[
+                          Expanded(
+                            child: OutlinedButton(
+                              style: OutlinedButton.styleFrom(
+                                minimumSize: const Size(0, 48),
+                                side: BorderSide(color: Colors.grey.shade300),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(14),
+                                ),
+                              ),
+                              onPressed:
+                                  () => pageCtrl.previousPage(
+                                    duration: const Duration(milliseconds: 300),
+                                    curve: Curves.easeOut,
+                                  ),
+                              child: Text(
+                                'Anterior',
+                                style: GoogleFonts.poppins(
+                                  color: colorTextoGris,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                        ],
+                        Expanded(
+                          flex: 2,
+                          child: ElevatedButton(
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor:
+                                  esUltimo ? colorAmarilloTese : colorVerdeTese,
+                              minimumSize: const Size(0, 48),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(14),
+                              ),
+                            ),
+                            onPressed: () {
+                              HapticFeedback.selectionClick();
+                              if (!esUltimo) {
+                                pageCtrl.nextPage(
+                                  duration: const Duration(milliseconds: 300),
+                                  curve: Curves.easeOut,
+                                );
+                              } else {
+                                Navigator.pop(ctx);
+                              }
+                            },
+                            child: Text(
+                              esUltimo
+                                  ? '¡Listo para cocinar! 👨‍🍳'
+                                  : 'Siguiente ➔',
+                              style: GoogleFonts.poppins(
+                                color:
+                                    esUltimo ? colorVerdeOscuro : Colors.white,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 14,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        ),
   );
 }
 
@@ -48,7 +319,6 @@ class _LoginLocalScreenState extends State<LoginLocalScreen> {
     super.dispose();
   }
 
-  // 💡 Modal amigable para autocompletar sucursales durante pruebas o demos
   void _mostrarAyudaSucursales() {
     final sucursales = [
       {
@@ -93,7 +363,7 @@ class _LoginLocalScreenState extends State<LoginLocalScreen> {
                     ),
                     const SizedBox(width: 8),
                     Text(
-                      ' Directorio de Terminales TESE',
+                      'Directorio de Terminales TESE',
                       style: GoogleFonts.poppins(
                         fontSize: 16.5,
                         fontWeight: FontWeight.bold,
@@ -263,7 +533,7 @@ class _LoginLocalScreenState extends State<LoginLocalScreen> {
             'pinSecreto': pin,
             'nombre': credencialesBase[codigo]!['nombre'],
             'activo': true,
-          });
+          }, SetOptions(merge: true));
       return credencialesBase[codigo]!['nombre'];
     }
     return null;
@@ -534,6 +804,32 @@ class DashboardNavegacionLocal extends StatefulWidget {
 class _DashboardNavegacionLocalState extends State<DashboardNavegacionLocal> {
   int _indiceActual = 0;
   int _filtroEstado = -1;
+
+  @override
+  void initState() {
+    super.initState();
+    _verificarTutorialPrimeraVezCocina();
+  }
+
+  Future<void> _verificarTutorialPrimeraVezCocina() async {
+    try {
+      final doc =
+          await FirebaseFirestore.instance
+              .collection('Locales_Seguridad')
+              .doc(widget.codigoLocal)
+              .get();
+      final data = doc.data() ?? {};
+      if (data['tutorialCocinaVisto'] != true && mounted) {
+        await FirebaseFirestore.instance
+            .collection('Locales_Seguridad')
+            .doc(widget.codigoLocal)
+            .set({'tutorialCocinaVisto': true}, SetOptions(merge: true));
+        Future.delayed(const Duration(milliseconds: 600), () {
+          if (mounted) mostrarTutorialCocina(context, widget.nombreLocal);
+        });
+      }
+    } catch (_) {}
+  }
 
   int _minutosEspera(Timestamp? hora) {
     if (hora == null) return 0;
@@ -1346,6 +1642,25 @@ class _DashboardNavegacionLocalState extends State<DashboardNavegacionLocal> {
           ],
         ),
         actions: [
+          TextButton.icon(
+            onPressed: () {
+              HapticFeedback.selectionClick();
+              mostrarTutorialCocina(context, widget.nombreLocal);
+            },
+            icon: const Icon(
+              Icons.help_outline_rounded,
+              color: colorVerdeTese,
+              size: 18,
+            ),
+            label: Text(
+              'Guía',
+              style: GoogleFonts.poppins(
+                color: colorVerdeTese,
+                fontWeight: FontWeight.bold,
+                fontSize: 12,
+              ),
+            ),
+          ),
           IconButton(
             tooltip: 'Bloquear Terminal',
             icon: const Icon(Icons.lock_outline, color: Colors.redAccent),
@@ -2094,171 +2409,313 @@ class _DashboardNavegacionLocalState extends State<DashboardNavegacionLocal> {
     );
   }
 
+  // ==========================================
+  // ⭐ OPINIONES 100% AISLADAS POR SUCURSAL Y PRODUCTO
+  // ==========================================
   Widget _vistaResenasDidi() {
     return StreamBuilder<QuerySnapshot>(
-      stream: FirebaseFirestore.instance.collection('Resenas').snapshots(),
-      builder: (context, snapshot) {
-        if (!snapshot.hasData) {
+      stream:
+          FirebaseFirestore.instance
+              .collection('Menu_Platillos')
+              .where('local', isEqualTo: widget.nombreLocal)
+              .snapshots(),
+      builder: (context, menuSnap) {
+        if (!menuSnap.hasData) {
           return const Center(
             child: CircularProgressIndicator(color: colorVerdeTese),
           );
         }
 
-        final resenasDocs =
-            List<DocumentSnapshot>.from(snapshot.data!.docs).where((doc) {
-              final d = doc.data() as Map<String, dynamic>;
-              final String? localResena = d['local'] as String?;
-              return localResena == null || localResena == widget.nombreLocal;
-            }).toList();
+        final Set<String> misPlatillosIds = {};
+        final Set<String> misPlatillosNombres = {};
 
-        resenasDocs.sort((a, b) {
-          final aData = a.data() as Map<String, dynamic>;
-          final bData = b.data() as Map<String, dynamic>;
-          final Timestamp? tA = aData['fecha'] as Timestamp?;
-          final Timestamp? tB = bData['fecha'] as Timestamp?;
-          if (tA == null) return -1;
-          if (tB == null) return 1;
-          return tB.compareTo(tA);
-        });
-
-        if (resenasDocs.isEmpty) {
-          return Center(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 28),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    Icons.rate_review_outlined,
-                    size: 70,
-                    color: colorVerdeTese.withValues(alpha: 0.3),
-                  ),
-                  const SizedBox(height: 12),
-                  Text(
-                    'Sin opiniones todavía',
-                    style: GoogleFonts.poppins(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: colorVerdeTese,
-                    ),
-                  ),
-                  Text(
-                    'Cuando los alumnos califiquen sus pedidos, verás sus comentarios y estrellas aquí.',
-                    style: GoogleFonts.poppins(
-                      fontSize: 13,
-                      color: colorTextoGris,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                ],
-              ),
-            ),
-          );
+        for (final doc in menuSnap.data!.docs) {
+          misPlatillosIds.add(doc.id);
+          final d = doc.data() as Map<String, dynamic>? ?? {};
+          if (d['nombre'] != null) {
+            misPlatillosNombres.add(
+              d['nombre'].toString().trim().toLowerCase(),
+            );
+          }
         }
 
-        return ListView.builder(
-          padding: const EdgeInsets.all(16),
-          itemCount: resenasDocs.length,
-          itemBuilder: (context, index) {
-            final resena = resenasDocs[index];
-            final data = resena.data() as Map<String, dynamic>;
-            final String platillo = data['platilloNombre'] ?? 'Comida';
-            final int estrellas = data['estrellas'] ?? 5;
-            final String comentario = data['comentario'] ?? '';
-            final String alumno = data['alumno'] ?? 'Alumno';
+        return StreamBuilder<QuerySnapshot>(
+          stream: FirebaseFirestore.instance.collection('Resenas').snapshots(),
+          builder: (context, snapshot) {
+            if (!snapshot.hasData) {
+              return const Center(
+                child: CircularProgressIndicator(color: colorVerdeTese),
+              );
+            }
 
-            return FadeInUp(
-              delay: Duration(milliseconds: 50 * index),
-              child: Container(
-                margin: const EdgeInsets.only(bottom: 14),
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(18),
-                  boxShadow: [
-                    BoxShadow(
-                      color: colorVerdeTese.withValues(alpha: 0.05),
-                      blurRadius: 10,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Expanded(
-                          child: Text(
-                            platillo,
-                            style: GoogleFonts.poppins(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                              color: colorTextoOscuro,
-                            ),
-                          ),
-                        ),
-                        Row(
-                          children: List.generate(5, (starIndex) {
-                            return Icon(
-                              starIndex < estrellas
-                                  ? Icons.star_rounded
-                                  : Icons.star_outline_rounded,
-                              color:
-                                  starIndex < estrellas
-                                      ? colorAmarilloTese
-                                      : Colors.grey[300],
-                              size: 18,
-                            );
-                          }),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 8),
-                    if (comentario.isNotEmpty) ...[
-                      Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: colorFondoCrema,
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Text(
-                          '« $comentario »',
-                          style: GoogleFonts.poppins(
-                            fontSize: 13.5,
-                            fontStyle: FontStyle.italic,
-                            color: colorTextoOscuro,
-                          ),
+            final resenasDocs =
+                snapshot.data!.docs.where((doc) {
+                  final d = doc.data() as Map<String, dynamic>;
+                  final String localResena =
+                      (d['local'] ?? '').toString().trim();
+                  final String platilloId =
+                      (d['platilloId'] ?? '').toString().trim();
+                  final String platilloNombre =
+                      (d['platilloNombre'] ?? '')
+                          .toString()
+                          .trim()
+                          .toLowerCase();
+
+                  if (localResena.isNotEmpty) {
+                    return localResena == widget.nombreLocal;
+                  }
+
+                  return misPlatillosIds.contains(platilloId) ||
+                      misPlatillosNombres.contains(platilloNombre);
+                }).toList();
+
+            resenasDocs.sort((a, b) {
+              final aData = a.data() as Map<String, dynamic>;
+              final bData = b.data() as Map<String, dynamic>;
+              final Timestamp? tA = aData['fecha'] as Timestamp?;
+              final Timestamp? tB = bData['fecha'] as Timestamp?;
+              if (tA == null) return -1;
+              if (tB == null) return 1;
+              return tB.compareTo(tA);
+            });
+
+            if (resenasDocs.isEmpty) {
+              return Center(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 28),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        Icons.rate_review_outlined,
+                        size: 70,
+                        color: colorVerdeTese.withValues(alpha: 0.3),
+                      ),
+                      const SizedBox(height: 12),
+                      Text(
+                        'Sin opiniones en ${widget.nombreLocal}',
+                        textAlign: TextAlign.center,
+                        style: GoogleFonts.poppins(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: colorVerdeTese,
                         ),
                       ),
-                      const SizedBox(height: 10),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Aquí solo aparecerán las reseñas de los platillos preparados por ${widget.nombreLocal}.',
+                        style: GoogleFonts.poppins(
+                          fontSize: 13,
+                          color: colorTextoGris,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
                     ],
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          'Por: $alumno',
-                          style: GoogleFonts.poppins(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
-                            color: colorTextoGris,
-                          ),
-                        ),
-                        Text(
-                          'Calificación: $estrellas/5',
-                          style: GoogleFonts.poppins(
-                            fontSize: 12,
-                            fontWeight: FontWeight.bold,
-                            color: colorVerdeTese,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
+                  ),
                 ),
-              ),
+              );
+            }
+
+            double sumaEstrellas = 0;
+            for (final r in resenasDocs) {
+              sumaEstrellas +=
+                  (((r.data() as Map)['estrellas'] ?? 5) as num).toDouble();
+            }
+            final double promedioLocal = sumaEstrellas / resenasDocs.length;
+
+            return Column(
+              children: [
+                Container(
+                  width: double.infinity,
+                  margin: const EdgeInsets.fromLTRB(16, 14, 16, 4),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 12,
+                  ),
+                  decoration: BoxDecoration(
+                    color: colorVerdeTese,
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Reputación de ${widget.nombreLocal}',
+                            style: GoogleFonts.poppins(
+                              fontSize: 12,
+                              color: Colors.white70,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          Text(
+                            '${resenasDocs.length} opiniones de tus platillos',
+                            style: GoogleFonts.poppins(
+                              fontSize: 14,
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
+                      ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 6,
+                        ),
+                        decoration: BoxDecoration(
+                          color: colorAmarilloTese,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(
+                              Icons.star_rounded,
+                              color: colorVerdeOscuro,
+                              size: 18,
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              promedioLocal.toStringAsFixed(1),
+                              style: GoogleFonts.poppins(
+                                fontSize: 15,
+                                fontWeight: FontWeight.w900,
+                                color: colorVerdeOscuro,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Expanded(
+                  child: ListView.builder(
+                    padding: const EdgeInsets.all(16),
+                    itemCount: resenasDocs.length,
+                    itemBuilder: (context, index) {
+                      final resena = resenasDocs[index];
+                      final data = resena.data() as Map<String, dynamic>;
+                      final String platillo =
+                          data['platilloNombre'] ?? 'Comida';
+                      final int estrellas = data['estrellas'] ?? 5;
+                      final String comentario = data['comentario'] ?? '';
+                      final String alumno = data['alumno'] ?? 'Alumno';
+
+                      return FadeInUp(
+                        delay: Duration(milliseconds: 50 * index),
+                        child: Container(
+                          margin: const EdgeInsets.only(bottom: 14),
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(18),
+                            boxShadow: [
+                              BoxShadow(
+                                color: colorVerdeTese.withValues(alpha: 0.05),
+                                blurRadius: 10,
+                                offset: const Offset(0, 4),
+                              ),
+                            ],
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Expanded(
+                                    child: Row(
+                                      children: [
+                                        const Icon(
+                                          Icons.fastfood_rounded,
+                                          size: 16,
+                                          color: colorVerdeTese,
+                                        ),
+                                        const SizedBox(width: 6),
+                                        Expanded(
+                                          child: Text(
+                                            platillo,
+                                            style: GoogleFonts.poppins(
+                                              fontSize: 15.5,
+                                              fontWeight: FontWeight.bold,
+                                              color: colorTextoOscuro,
+                                            ),
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  Row(
+                                    children: List.generate(5, (starIndex) {
+                                      return Icon(
+                                        starIndex < estrellas
+                                            ? Icons.star_rounded
+                                            : Icons.star_outline_rounded,
+                                        color:
+                                            starIndex < estrellas
+                                                ? colorAmarilloTese
+                                                : Colors.grey[300],
+                                        size: 18,
+                                      );
+                                    }),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 8),
+                              if (comentario.isNotEmpty) ...[
+                                Container(
+                                  width: double.infinity,
+                                  padding: const EdgeInsets.all(12),
+                                  decoration: BoxDecoration(
+                                    color: colorFondoCrema,
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  child: Text(
+                                    '« $comentario »',
+                                    style: GoogleFonts.poppins(
+                                      fontSize: 13.5,
+                                      fontStyle: FontStyle.italic,
+                                      color: colorTextoOscuro,
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(height: 10),
+                              ],
+                              Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Text(
+                                    'Por: $alumno',
+                                    style: GoogleFonts.poppins(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w600,
+                                      color: colorTextoGris,
+                                    ),
+                                  ),
+                                  Text(
+                                    '📍 ${widget.nombreLocal}',
+                                    style: GoogleFonts.poppins(
+                                      fontSize: 11.5,
+                                      fontWeight: FontWeight.bold,
+                                      color: colorVerdeTese,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              ],
             );
           },
         );
@@ -2502,7 +2959,6 @@ class _AgregarPlatilloScreenState extends State<AgregarPlatilloScreen> {
         padding: const EdgeInsets.all(20.0),
         child: Column(
           children: [
-            // FOTOS
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
@@ -2645,8 +3101,6 @@ class _AgregarPlatilloScreenState extends State<AgregarPlatilloScreen> {
               ),
             ),
             const SizedBox(height: 18),
-
-            // DATOS DEL PLATILLO + CATEGORÍA
             Container(
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
@@ -2786,8 +3240,6 @@ class _AgregarPlatilloScreenState extends State<AgregarPlatilloScreen> {
               ),
             ),
             const SizedBox(height: 18),
-
-            // INGREDIENTES PERSONALIZABLES
             Container(
               width: double.infinity,
               padding: const EdgeInsets.all(20),
