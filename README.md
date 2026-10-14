@@ -80,3 +80,74 @@ lib/
 ├── pantalla_gachapon.dart           # Motor gráfico de 32 Patitos, máquina de cápsulas, ruleta e inspección HD
 ├── cafeteria.dart                   # Login Local 2FA, KDS de comandas, inventario y reseñas por sucursal
 └── servicio_notificaciones.dart     # Configuración de notificaciones nativas Android y monitoreo activo
+```
+
+---
+
+## 🔑 Credenciales de Prueba (Terminales de Cocina KDS)
+
+Para evaluar el aislamiento de sucursales en el módulo **Soy Cafetería / Kiosko** (también disponibles desde el botón de ayuda **Códigos** dentro de la app):
+
+| Sucursal del Campus | Código de Sucursal | PIN Maestro (6 dígitos) |
+| :--- | :---: | :---: |
+| 🖥️ **Kiosko Sistemas** | `KS-SISTEMAS` | `849201` |
+| 📚 **Kiosko Biblioteca** | `KB-BIBLIO` | `715309` |
+| 🍽️ **Cafetería Central** | `CC-CENTRAL` | `938420` |
+
+---
+
+## 📦 Historial de Versiones (Changelog Completo)
+
+El proyecto evolucionó de manera iterativa y modular desde su concepción hasta la versión oficial de producción:
+
+- **`v1.0.0` (Official Release)** — Lanzamiento oficial de producción: Rediseño minimalista pastel con ondas animadas en inicio, Login abierto universal con pestañas visibles, **Multiverso Gachapón HD con 32 patitos animados** (parpadeo, respiración, *Bocchi-Pato, Gojo, Saiyajin, Venom, Batman, Streamer RGB*), inspección holográfica y permisos nativos completos.
+- **`v0.28.0-beta`** — Expansión del Gachapón a 26 skins divididas en 4 Universos (*Carreras TESE, Marvel, Ídolos con Insulini Piloto*), corrección geométrica del huevo, Guía Interactiva para personal de cocina y aislamiento estricto de reseñas por sucursal.
+- **`v0.27.0-beta`** — Implementación de Guía Rápida Interactiva (Onboarding) para estudiantes, Carrito Inteligente con agrupación de ítems (`_GrupoCarrito`), candado anti-mezcla de kioskos y protección de puntos al limpiar historial (`ocultoParaAlumno`).
+- **`v0.26.0-beta`** — Terminales de Cocina Multi-Sucursal con Doble Factor (Código + PIN Maestro), bloqueo anti-fuerza bruta, aislamiento de comandas por kiosko, onboarding forzoso en Google Auth y corrección de *overflows* visuales.
+- **`v0.25.0-beta` a `v0.20.0-beta`** — Integración del sistema de gamificación (**Gachapón de Patitos** con ruleta estilo apertura de cajas y `CustomPainter`), sistema de puntos por compra entregada, rangos estudiantiles y colección persistente en `Usuarios_Perfil`.
+- **`v0.19.0-beta` a `v0.15.0-beta`** — Implementación de notificaciones nativas en segundo plano (`flutter_local_notifications`), alerta sonora personalizada **¡CUAC!**, captura de hasta 3 fotografías en Base64 por platillo y cálculo de calificaciones promedio con reseñas reales.
+- **`v0.14.0-beta` a `v0.9.0-alpha`** — Migración completa a la nube con **Firebase Core, Firebase Auth y Cloud Firestore**, sincronizando usuarios, catálogo de platillos y comandas en tiempo real.
+- **`v0.8.0-alpha`** — Diseño Premium (*Splash Screen*, *Mesh Gradient* y mejoras de UI/UX).
+- **`v0.7.0-alpha`** — Integración de Identidad Visual y mascotas oficiales en el módulo de Cafetería.
+- **`v0.6.0-alpha`** — Ventanas modales para la visualización del detalle de pedidos en tiempo real.
+- **`v0.5.0-alpha`** — Selección de métodos de pago (*Efectivo / Terminal Bancaria*).
+- **`v0.4.1-alpha`** — Dashboard Administrativo: Gestión de Menú con `BottomNavigationBar`.
+- **`v0.4.0-alpha`** — Formulario de registro estudiantil con validaciones.
+- **`v0.2.2-alpha`** — Generador de códigos únicos de orden (`#TESE-XXXXX`) y sala de espera dinámica.
+- **`v0.1.0-alpha`** — Estructura base del proyecto, mockups de login y enrutamiento principal.
+- **`v0.0.3-alpha`** — *Fix:* Configuración y resolución del entorno Java/Gradle para compilación en Android.
+
+---
+
+## ⚙️ Cómo ejecutar este proyecto localmente
+
+1. **Requisitos previos:** Tener instalado [Flutter SDK](https://docs.flutter.dev/get-started/install) (`^3.7.2`) y **Java 17 (JDK)**.
+2. **Clonar este repositorio:**
+   ```bash
+   git clone https://github.com/AxlGA25/tese-food-app.git
+   ```
+3. **Entrar a la carpeta del proyecto:**
+   ```bash
+   cd tese-food-app
+   ```
+4. **Instalar las dependencias:**
+   ```bash
+   flutter pub get
+   ```
+5. **Ejecutar en emulador o dispositivo físico:**
+   ```bash
+   flutter run
+   ```
+6. **Generar APK de producción (Opcional):**
+   ```bash
+   flutter build apk --release
+   ```
+
+---
+
+## 👥 Equipo de Desarrollo
+
+Proyecto desarrollado con orgullo en el **Tecnológico de Estudios Superiores de Ecatepec (TESE)** por:
+
+- **Axel Guerrero Alonso** — *Arquitectura de Software, Backend en Firebase, Motor Gráfico CustomPainter & Full-Stack Flutter* ([@AxlGA25](https://github.com/AxlGA25))
+- **Dana Patricia Calderón García** — *Diseño UI/UX, Identidad Visual, Flujos de Experiencia Estudiantil & Co-Desarrollo Flutter*
