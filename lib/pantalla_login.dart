@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:animate_do/animate_do.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -6,6 +7,22 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'colores.dart';
 import 'pantalla_menu.dart';
+
+const List<String> kCarrerasTese = [
+  'Ing. en Computación',
+  'Ing. en Sistemas Computacionales',
+  'Ing. Informática',
+  'Ing. Mecatrónica',
+  'Ing. Industrial',
+  'Ing. Electrónica',
+  'Ing. Mecánica',
+  'Ing. Química',
+  'Ing. Bioquímica',
+  'Ing. en Gestión Empresarial',
+  'Ing. Aeronáutica',
+  'Lic. en Contaduría Pública',
+  'Otra Área / Administrativo',
+];
 
 class LoginEstudianteScreen extends StatefulWidget {
   const LoginEstudianteScreen({super.key});
@@ -20,21 +37,6 @@ class _LoginEstudianteScreenState extends State<LoginEstudianteScreen> {
   bool _estaCargando = false;
   bool _ocultarPassword = true;
 
-  final List<String> _carrerasTese = [
-    'Ing. en Sistemas Computacionales',
-    'Ing. Informática',
-    'Ing. Mecatrónica',
-    'Ing. Industrial',
-    'Ing. Electrónica',
-    'Ing. Mecánica',
-    'Ing. Química',
-    'Ing. Bioquímica',
-    'Ing. en Gestión Empresarial',
-    'Ing. Aeronáutica',
-    'Lic. en Contaduría Pública',
-    'Otra Área / Administrativo',
-  ];
-
   @override
   void dispose() {
     _correoCtrl.dispose();
@@ -42,20 +44,180 @@ class _LoginEstudianteScreenState extends State<LoginEstudianteScreen> {
     super.dispose();
   }
 
+  void _autocompletarDominio(String dominio) {
+    HapticFeedback.selectionClick();
+    final textoActual = _correoCtrl.text.trim();
+    final sinDominio =
+        textoActual.contains('@') ? textoActual.split('@').first : textoActual;
+    setState(() {
+      _correoCtrl.text = '$sinDominio$dominio';
+      _correoCtrl.selection = TextSelection.fromPosition(
+        TextPosition(offset: _correoCtrl.text.length),
+      );
+    });
+  }
+
+  // 🔑 RECUPERACIÓN DE CONTRASEÑA AMIGABLE
+  void _mostrarModalRecuperarPassword() {
+    final TextEditingController recupCtrl = TextEditingController(
+      text: _correoCtrl.text.trim(),
+    );
+    bool enviando = false;
+
+    showDialog(
+      context: context,
+      builder:
+          (ctx) => StatefulBuilder(
+            builder: (contextDialog, setStateDialog) {
+              return AlertDialog(
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(24),
+                ),
+                title: Row(
+                  children: [
+                    const Icon(
+                      Icons.lock_reset_rounded,
+                      color: colorVerdeTese,
+                      size: 28,
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'Recuperar Contraseña',
+                        style: GoogleFonts.poppins(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 17,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                content: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Ingresa tu correo institucional y te enviaremos un enlace seguro para restablecer tu contraseña.',
+                      style: GoogleFonts.poppins(
+                        fontSize: 12.5,
+                        color: colorTextoGris,
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+                    TextField(
+                      controller: recupCtrl,
+                      keyboardType: TextInputType.emailAddress,
+                      decoration: InputDecoration(
+                        labelText: 'Correo Institucional',
+                        hintText: 'usuario@tese.edu.mx',
+                        prefixIcon: const Icon(
+                          Icons.mail_outline,
+                          color: colorVerdeTese,
+                        ),
+                        filled: true,
+                        fillColor: colorFondoCrema,
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(14),
+                          borderSide: BorderSide.none,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                actions: [
+                  TextButton(
+                    onPressed: enviando ? null : () => Navigator.pop(ctx),
+                    child: Text(
+                      'Cancelar',
+                      style: GoogleFonts.poppins(
+                        color: colorTextoGris,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                  ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: colorVerdeTese,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    onPressed:
+                        enviando
+                            ? null
+                            : () async {
+                              final correo =
+                                  recupCtrl.text.trim().toLowerCase();
+                              if (correo.isEmpty || !correo.contains('@')) {
+                                _mostrarAlerta('Ingresa un correo válido.');
+                                return;
+                              }
+                              setStateDialog(() => enviando = true);
+                              try {
+                                await FirebaseAuth.instance
+                                    .sendPasswordResetEmail(email: correo);
+                                if (!ctx.mounted) return;
+                                Navigator.pop(ctx);
+                                _mostrarMensajeExito(
+                                  '¡Listo! Revisa tu bandeja de entrada o spam en $correo para cambiar tu contraseña. 📩',
+                                );
+                              } on FirebaseAuthException catch (e) {
+                                setStateDialog(() => enviando = false);
+                                if (e.code == 'user-not-found') {
+                                  _mostrarAlerta(
+                                    'No hay ninguna cuenta registrada con ese correo.',
+                                  );
+                                } else {
+                                  _mostrarAlerta(
+                                    'No se pudo enviar el correo. Verifica que esté bien escrito.',
+                                  );
+                                }
+                              } catch (_) {
+                                setStateDialog(() => enviando = false);
+                                _mostrarAlerta(
+                                  'Error de conexión al enviar el enlace.',
+                                );
+                              }
+                            },
+                    child:
+                        enviando
+                            ? const SizedBox(
+                              width: 18,
+                              height: 18,
+                              child: CircularProgressIndicator(
+                                color: Colors.white,
+                                strokeWidth: 2,
+                              ),
+                            )
+                            : Text(
+                              'Enviar enlace',
+                              style: GoogleFonts.poppins(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                  ),
+                ],
+              );
+            },
+          ),
+    );
+  }
+
   // 🔒 VENTANA OBLIGATORIA: Si entra con Google DEBE poner matrícula y carrera
-  void _mostrarModalObligatorioGoogle(User user) {
+  void _mostrarModalObligatorioGoogle(User user, bool yaTeniaPerfil) {
     final TextEditingController matriculaCtrl = TextEditingController();
-    String carreraElegida = _carrerasTese[0];
+    String carreraElegida = kCarrerasTese[0];
     bool guardandoDatos = false;
 
     showDialog(
       context: context,
-      barrierDismissible: false, // 🚫 Prohibido cerrar tocando afuera
+      barrierDismissible: false,
       builder:
           (ctx) => StatefulBuilder(
             builder: (contextDialog, setStateDialog) {
               return PopScope(
-                canPop: false, // 🚫 Prohibido usar el botón atrás de Android
+                canPop: false,
                 child: AlertDialog(
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(24),
@@ -66,7 +228,7 @@ class _LoginEstudianteScreenState extends State<LoginEstudianteScreen> {
                       const SizedBox(width: 8),
                       Expanded(
                         child: Text(
-                          'Datos Requeridos TESE',
+                          '¡Casi listo! Datos TESE',
                           style: GoogleFonts.poppins(
                             fontWeight: FontWeight.bold,
                             fontSize: 17,
@@ -81,7 +243,7 @@ class _LoginEstudianteScreenState extends State<LoginEstudianteScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Para ingresar como estudiante, es obligatorio registrar tu matrícula y carrera institucional.',
+                          'Para entregarte tus pedidos en ventanilla sin confusiones, registra tu matrícula y carrera institucional:',
                           style: GoogleFonts.poppins(
                             fontSize: 12.5,
                             color: colorTextoGris,
@@ -118,7 +280,7 @@ class _LoginEstudianteScreenState extends State<LoginEstudianteScreen> {
                             ),
                           ),
                           items:
-                              _carrerasTese
+                              kCarrerasTese
                                   .map(
                                     (c) => DropdownMenuItem(
                                       value: c,
@@ -143,12 +305,9 @@ class _LoginEstudianteScreenState extends State<LoginEstudianteScreen> {
                           guardandoDatos
                               ? null
                               : () async {
-                                // Si cancela, cerramos su sesión de Google y lo regresamos
                                 await FirebaseAuth.instance.signOut();
                                 await GoogleSignIn().signOut();
-                                if (ctx.mounted) {
-                                  Navigator.pop(ctx);
-                                }
+                                if (ctx.mounted) Navigator.pop(ctx);
                               },
                       child: Text(
                         'Cancelar',
@@ -174,7 +333,7 @@ class _LoginEstudianteScreenState extends State<LoginEstudianteScreen> {
                                   ScaffoldMessenger.of(context).showSnackBar(
                                     const SnackBar(
                                       content: Text(
-                                        'Por favor ingresa una matrícula válida.',
+                                        'Por favor ingresa una matrícula válida (mínimo 5 dígitos).',
                                       ),
                                     ),
                                   );
@@ -183,7 +342,6 @@ class _LoginEstudianteScreenState extends State<LoginEstudianteScreen> {
 
                                 setStateDialog(() => guardandoDatos = true);
 
-                                // Guardamos el perfil completo y obligatorio
                                 await FirebaseFirestore.instance
                                     .collection('Usuarios')
                                     .doc(user.uid)
@@ -195,36 +353,33 @@ class _LoginEstudianteScreenState extends State<LoginEstudianteScreen> {
                                       'identificador': mat,
                                       'carrera_area': carreraElegida,
                                       'correo': user.email ?? '',
-                                      'telefono': '',
                                       'fecha_registro':
                                           FieldValue.serverTimestamp(),
                                       'alergia':
                                           'Sin restricciones alimentarias 😋',
-                                      'puntos': 0,
-                                    });
+                                    }, SetOptions(merge: true));
 
-                                await FirebaseFirestore.instance
-                                    .collection('Usuarios_Perfil')
-                                    .doc(user.uid)
-                                    .set({
-                                      'patoEquipadoId': 'estudiante',
-                                      'coleccionPatos': {'estudiante': 1},
-                                      'puntosGastadosEnGachapon': 0,
-                                    });
+                                if (!yaTeniaPerfil) {
+                                  await FirebaseFirestore.instance
+                                      .collection('Usuarios_Perfil')
+                                      .doc(user.uid)
+                                      .set({
+                                        'patoEquipadoId': 'estudiante',
+                                        'coleccionPatos': {'estudiante': 1},
+                                        'puntosGastadosEnGachapon': 0,
+                                      }, SetOptions(merge: true));
+                                }
 
-                                if (ctx.mounted) {
-                                  Navigator.pop(ctx); // Cierra modal
-                                }
-                                if (mounted) {
-                                  Navigator.pushReplacement(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder:
-                                          (context) =>
-                                              const NavegacionEstudiante(),
-                                    ),
-                                  );
-                                }
+                                if (ctx.mounted) Navigator.pop(ctx);
+                                if (!mounted) return;
+                                Navigator.pushReplacement(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder:
+                                        (context) =>
+                                            const NavegacionEstudiante(),
+                                  ),
+                                );
                               },
                       child:
                           guardandoDatos
@@ -260,7 +415,7 @@ class _LoginEstudianteScreenState extends State<LoginEstudianteScreen> {
       final GoogleSignInAccount? googleUser = await googleSignIn.signIn();
 
       if (googleUser == null) {
-        setState(() => _estaCargando = false);
+        if (mounted) setState(() => _estaCargando = false);
         return;
       }
 
@@ -281,53 +436,58 @@ class _LoginEstudianteScreenState extends State<LoginEstudianteScreen> {
                 .collection('Usuarios')
                 .doc(user.uid)
                 .get();
+        final perfilDoc =
+            await FirebaseFirestore.instance
+                .collection('Usuarios_Perfil')
+                .doc(user.uid)
+                .get();
 
-        // Si es usuario nuevo o nunca puso matrícula, ABRIMOS EL MODAL OBLIGATORIO
-        if (!userDoc.exists ||
-            (userDoc.data()?['identificador'] == 'Sin Matrícula' ||
-                userDoc.data()?['identificador'] == 'Google Auth')) {
-          if (mounted) {
-            _mostrarModalObligatorioGoogle(user);
-          }
+        final String? idActual = userDoc.data()?['identificador'] as String?;
+        final bool faltaMatricula =
+            !userDoc.exists ||
+            idActual == null ||
+            idActual.isEmpty ||
+            idActual == 'Sin Matrícula' ||
+            idActual == 'Google Auth';
+
+        if (!mounted) return;
+        if (faltaMatricula) {
+          _mostrarModalObligatorioGoogle(user, perfilDoc.exists);
         } else {
-          // Ya tiene perfil completo -> Entra directo
-          if (mounted) {
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(
-                builder: (context) => const NavegacionEstudiante(),
-              ),
-            );
-          }
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(
+              builder: (context) => const NavegacionEstudiante(),
+            ),
+          );
         }
       }
     } catch (e) {
       _mostrarAlerta('Error al iniciar sesión con Google.');
     } finally {
-      if (mounted) {
-        setState(() => _estaCargando = false);
-      }
+      if (mounted) setState(() => _estaCargando = false);
     }
   }
 
-  void _iniciarSesionCorreo() async {
+  Future<void> _iniciarSesionCorreo() async {
     final correo = _correoCtrl.text.trim().toLowerCase();
     final password = _passwordCtrl.text.trim();
 
     if (correo.isEmpty || password.isEmpty) {
-      _mostrarAlerta('Por favor completa todos los campos.');
+      _mostrarAlerta('Por favor escribe tu correo y contraseña.');
       return;
     }
 
     if (!correo.endsWith('@tese.edu.mx') &&
         !correo.endsWith('@ecatepec.tecnm.mx')) {
       _mostrarAlerta(
-        'Ingresa tu correo institucional del TESE (@tese.edu.mx).',
+        'Usa tu correo institucional (@tese.edu.mx o @ecatepec.tecnm.mx).',
       );
       return;
     }
 
     setState(() => _estaCargando = true);
+    HapticFeedback.lightImpact();
 
     try {
       await FirebaseAuth.instance.signInWithEmailAndPassword(
@@ -335,18 +495,17 @@ class _LoginEstudianteScreenState extends State<LoginEstudianteScreen> {
         password: password,
       );
 
-      if (mounted) {
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (context) => const NavegacionEstudiante()),
-        );
-      }
+      if (!mounted) return;
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (context) => const NavegacionEstudiante()),
+      );
     } on FirebaseAuthException catch (e) {
       String mensaje = 'Error al iniciar sesión.';
       if (e.code == 'user-not-found') {
-        mensaje = 'No existe una cuenta registrada con este correo.';
+        mensaje = 'No existe una cuenta con este correo. ¡Regístrate abajo!';
       } else if (e.code == 'wrong-password' || e.code == 'invalid-credential') {
-        mensaje = 'Contraseña o correo incorrectos.';
+        mensaje = 'Correo o contraseña incorrectos.';
       } else if (e.code == 'network-request-failed') {
         mensaje = 'Revisa tu conexión a internet.';
       }
@@ -354,17 +513,28 @@ class _LoginEstudianteScreenState extends State<LoginEstudianteScreen> {
     } catch (_) {
       _mostrarAlerta('Ocurrió un error inesperado.');
     } finally {
-      if (mounted) {
-        setState(() => _estaCargando = false);
-      }
+      if (mounted) setState(() => _estaCargando = false);
     }
   }
 
   void _mostrarAlerta(String mensaje) {
+    if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(mensaje, style: GoogleFonts.poppins(fontSize: 13.5)),
+        content: Text(mensaje, style: GoogleFonts.poppins(fontSize: 13)),
         backgroundColor: Colors.redAccent,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+      ),
+    );
+  }
+
+  void _mostrarMensajeExito(String mensaje) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(mensaje, style: GoogleFonts.poppins(fontSize: 13)),
+        backgroundColor: colorExito,
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
       ),
@@ -389,7 +559,7 @@ class _LoginEstudianteScreenState extends State<LoginEstudianteScreen> {
       ),
       body: Center(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 10),
+          padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 8),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
@@ -405,21 +575,21 @@ class _LoginEstudianteScreenState extends State<LoginEstudianteScreen> {
               ),
               const SizedBox(height: 4),
               Text(
-                'Ingresa para pedir sin hacer filas',
+                'Ingresa para pedir tu comida sin hacer filas',
                 style: GoogleFonts.poppins(
                   fontSize: 13.5,
                   color: colorTextoGris,
                 ),
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 14),
               ZoomIn(
                 child: Image.asset(
                   'assets/patito_login.png',
-                  height: 140,
+                  height: 135,
                   fit: BoxFit.contain,
                 ),
               ),
-              const SizedBox(height: 24),
+              const SizedBox(height: 20),
               Container(
                 padding: const EdgeInsets.all(22),
                 decoration: BoxDecoration(
@@ -434,12 +604,13 @@ class _LoginEstudianteScreenState extends State<LoginEstudianteScreen> {
                   ],
                 ),
                 child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     TextField(
                       controller: _correoCtrl,
                       keyboardType: TextInputType.emailAddress,
                       decoration: InputDecoration(
-                        labelText: 'Correo Institucional (@tese.edu.mx)',
+                        labelText: 'Correo Institucional',
                         hintText: 'ejemplo@tese.edu.mx',
                         prefixIcon: const Icon(
                           Icons.mail_outline,
@@ -453,10 +624,59 @@ class _LoginEstudianteScreenState extends State<LoginEstudianteScreen> {
                         ),
                       ),
                     ),
-                    const SizedBox(height: 14),
+                    const SizedBox(height: 8),
+                    // Chips rápidos para autocompletar el dominio institucional
+                    SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      child: Row(
+                        children: [
+                          Text(
+                            'Autocompletar: ',
+                            style: GoogleFonts.poppins(
+                              fontSize: 11,
+                              color: colorTextoGris,
+                            ),
+                          ),
+                          ActionChip(
+                            visualDensity: VisualDensity.compact,
+                            backgroundColor: colorFondoCrema,
+                            side: BorderSide.none,
+                            label: Text(
+                              '@tese.edu.mx',
+                              style: GoogleFonts.poppins(
+                                fontSize: 11,
+                                fontWeight: FontWeight.bold,
+                                color: colorVerdeTese,
+                              ),
+                            ),
+                            onPressed:
+                                () => _autocompletarDominio('@tese.edu.mx'),
+                          ),
+                          const SizedBox(width: 6),
+                          ActionChip(
+                            visualDensity: VisualDensity.compact,
+                            backgroundColor: colorFondoCrema,
+                            side: BorderSide.none,
+                            label: Text(
+                              '@ecatepec.tecnm.mx',
+                              style: GoogleFonts.poppins(
+                                fontSize: 11,
+                                fontWeight: FontWeight.bold,
+                                color: colorVerdeTese,
+                              ),
+                            ),
+                            onPressed:
+                                () =>
+                                    _autocompletarDominio('@ecatepec.tecnm.mx'),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 10),
                     TextField(
                       controller: _passwordCtrl,
                       obscureText: _ocultarPassword,
+                      onSubmitted: (_) => _iniciarSesionCorreo(),
                       decoration: InputDecoration(
                         labelText: 'Contraseña',
                         prefixIcon: const Icon(
@@ -483,7 +703,21 @@ class _LoginEstudianteScreenState extends State<LoginEstudianteScreen> {
                         ),
                       ),
                     ),
-                    const SizedBox(height: 20),
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: TextButton(
+                        onPressed: _mostrarModalRecuperarPassword,
+                        child: Text(
+                          '¿Olvidaste tu contraseña?',
+                          style: GoogleFonts.poppins(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: colorVerdeTese,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 4),
                     SizedBox(
                       width: double.infinity,
                       height: 52,
@@ -498,8 +732,13 @@ class _LoginEstudianteScreenState extends State<LoginEstudianteScreen> {
                         onPressed: _estaCargando ? null : _iniciarSesionCorreo,
                         child:
                             _estaCargando
-                                ? const CircularProgressIndicator(
-                                  color: Colors.white,
+                                ? const SizedBox(
+                                  height: 22,
+                                  width: 22,
+                                  child: CircularProgressIndicator(
+                                    color: Colors.white,
+                                    strokeWidth: 2.5,
+                                  ),
                                 )
                                 : Text(
                                   'Ingresar con Correo TESE',
@@ -512,14 +751,13 @@ class _LoginEstudianteScreenState extends State<LoginEstudianteScreen> {
                       ),
                     ),
                     const SizedBox(height: 16),
-
                     Row(
                       children: [
                         const Expanded(child: Divider()),
                         Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 10),
                           child: Text(
-                            'o ingresa con',
+                            'o ingresa rápido con',
                             style: GoogleFonts.poppins(
                               color: colorTextoGris,
                               fontSize: 12,
@@ -529,9 +767,7 @@ class _LoginEstudianteScreenState extends State<LoginEstudianteScreen> {
                         const Expanded(child: Divider()),
                       ],
                     ),
-                    const SizedBox(height: 16),
-
-                    // 🌐 BOTÓN DE GOOGLE
+                    const SizedBox(height: 14),
                     SizedBox(
                       width: double.infinity,
                       height: 50,
@@ -571,8 +807,8 @@ class _LoginEstudianteScreenState extends State<LoginEstudianteScreen> {
                   ],
                 ),
               ),
-              const SizedBox(height: 16),
-              TextButton(
+              const SizedBox(height: 14),
+              TextButton.icon(
                 onPressed:
                     () => Navigator.push(
                       context,
@@ -580,8 +816,13 @@ class _LoginEstudianteScreenState extends State<LoginEstudianteScreen> {
                         builder: (context) => const RegistroEstudianteScreen(),
                       ),
                     ),
-                child: Text(
-                  '¿No tienes cuenta? Registrarme con mi correo institucional',
+                icon: const Icon(
+                  Icons.person_add_alt_1_rounded,
+                  color: colorVerdeTese,
+                  size: 18,
+                ),
+                label: Text(
+                  '¿Eres nuevo? Crear cuenta institucional',
                   textAlign: TextAlign.center,
                   style: GoogleFonts.poppins(
                     color: colorVerdeTese,
@@ -599,7 +840,7 @@ class _LoginEstudianteScreenState extends State<LoginEstudianteScreen> {
 }
 
 // ==========================================
-// 3. REGISTRO INSTITUCIONAL
+// 3. REGISTRO INSTITUCIONAL AMIGABLE
 // ==========================================
 class RegistroEstudianteScreen extends StatefulWidget {
   const RegistroEstudianteScreen({super.key});
@@ -619,22 +860,7 @@ class _RegistroEstudianteScreenState extends State<RegistroEstudianteScreen> {
 
   String rolSeleccionado = 'Estudiante';
   final List<String> opcionesRol = ['Estudiante', 'Maestro', 'Directivo'];
-
-  String? areaSeleccionada;
-  final List<String> areasTese = [
-    'Ing. en Sistemas Computacionales',
-    'Ing. Informática',
-    'Ing. Mecatrónica',
-    'Ing. Industrial',
-    'Ing. Electrónica',
-    'Ing. Mecánica',
-    'Ing. Química',
-    'Ing. Bioquímica',
-    'Ing. en Gestión Empresarial',
-    'Ing. Aeronáutica',
-    'Lic. en Contaduría Pública',
-    'Otra Área / Administrativo',
-  ];
+  String areaSeleccionada = kCarrerasTese[0];
 
   bool _estaCargando = false;
   bool _ocultarPass = true;
@@ -650,7 +876,7 @@ class _RegistroEstudianteScreenState extends State<RegistroEstudianteScreen> {
     super.dispose();
   }
 
-  void _registrarUsuario() async {
+  Future<void> _registrarUsuario() async {
     final nombre = _nombreCtrl.text.trim();
     final matricula = _matriculaCtrl.text.trim();
     final correo = _correoCtrl.text.trim().toLowerCase();
@@ -659,14 +885,14 @@ class _RegistroEstudianteScreenState extends State<RegistroEstudianteScreen> {
     final confirmPass = _confirmPassCtrl.text.trim();
 
     if (nombre.isEmpty || matricula.isEmpty || correo.isEmpty || pass.isEmpty) {
-      _mostrarAlerta('Por favor completa los campos obligatorios.');
+      _mostrarAlerta('Por favor completa todos los campos obligatorios.');
       return;
     }
 
     if (!correo.endsWith('@tese.edu.mx') &&
         !correo.endsWith('@ecatepec.tecnm.mx')) {
       _mostrarAlerta(
-        'Debes registrarte con tu correo institucional del TESE (@tese.edu.mx).',
+        'Debes usar tu correo institucional (@tese.edu.mx o @ecatepec.tecnm.mx).',
       );
       return;
     }
@@ -677,11 +903,12 @@ class _RegistroEstudianteScreenState extends State<RegistroEstudianteScreen> {
     }
 
     if (pass != confirmPass) {
-      _mostrarAlerta('Las contraseñas no coinciden.');
+      _mostrarAlerta('Las contraseñas no coinciden. Revisa que sean iguales.');
       return;
     }
 
     setState(() => _estaCargando = true);
+    HapticFeedback.mediumImpact();
 
     try {
       final UserCredential credencial = await FirebaseAuth.instance
@@ -690,7 +917,10 @@ class _RegistroEstudianteScreenState extends State<RegistroEstudianteScreen> {
       final User? user = credencial.user;
 
       if (user != null) {
-        await user.sendEmailVerification();
+        await user.updateDisplayName(nombre);
+        try {
+          await user.sendEmailVerification();
+        } catch (_) {}
 
         await FirebaseFirestore.instance
             .collection('Usuarios')
@@ -700,8 +930,7 @@ class _RegistroEstudianteScreenState extends State<RegistroEstudianteScreen> {
               'nombre_completo': nombre,
               'rol': rolSeleccionado,
               'identificador': matricula,
-              'carrera_area':
-                  areaSeleccionada ?? 'Ing. en Sistemas Computacionales',
+              'carrera_area': areaSeleccionada,
               'correo': correo,
               'telefono': telefono,
               'fecha_registro': FieldValue.serverTimestamp(),
@@ -719,7 +948,7 @@ class _RegistroEstudianteScreenState extends State<RegistroEstudianteScreen> {
             });
 
         if (mounted) {
-          _mostrarDialogoExito();
+          _mostrarDialogoExito(nombre.split(' ').first);
         }
       }
     } on FirebaseAuthException catch (e) {
@@ -733,62 +962,72 @@ class _RegistroEstudianteScreenState extends State<RegistroEstudianteScreen> {
     } catch (e) {
       _mostrarAlerta('Error inesperado al registrar.');
     } finally {
-      if (mounted) {
-        setState(() => _estaCargando = false);
-      }
+      if (mounted) setState(() => _estaCargando = false);
     }
   }
 
-  void _mostrarDialogoExito() {
+  void _mostrarDialogoExito(String primerNombre) {
     showDialog(
       context: context,
       barrierDismissible: false,
       builder:
           (ctx) => AlertDialog(
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(22),
+              borderRadius: BorderRadius.circular(24),
             ),
             title: Row(
               children: [
                 const Icon(
-                  Icons.mark_email_read_outlined,
+                  Icons.celebration_rounded,
                   color: colorExito,
                   size: 28,
                 ),
                 const SizedBox(width: 10),
-                Text(
-                  '¡Registro Exitoso!',
-                  style: GoogleFonts.poppins(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 18,
+                Expanded(
+                  child: Text(
+                    '¡Bienvenido, $primerNombre! 🦆',
+                    style: GoogleFonts.poppins(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 18,
+                    ),
                   ),
                 ),
               ],
             ),
             content: Text(
-              'Tu cuenta fue creada correctamente.\n\nTe enviamos un enlace de confirmación a tu correo institucional de Microsoft Outlook. Ya puedes iniciar sesión.',
+              'Tu cuenta del TESE fue creada con éxito y te regalamos tu primer Patito Estudiante 🎓.\n\nTambién enviamos un correo de verificación a tu bandeja institucional.',
               style: GoogleFonts.poppins(
                 fontSize: 13.5,
                 color: colorTextoOscuro,
               ),
             ),
             actions: [
-              ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: colorVerdeTese,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: colorVerdeTese,
+                    minimumSize: const Size(0, 48),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
                   ),
-                ),
-                onPressed: () {
-                  Navigator.pop(ctx);
-                  Navigator.pop(context);
-                },
-                child: Text(
-                  'Ir a Iniciar Sesión',
-                  style: GoogleFonts.poppins(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
+                  onPressed: () {
+                    Navigator.pop(ctx);
+                    Navigator.pushAndRemoveUntil(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const NavegacionEstudiante(),
+                      ),
+                      (route) => false,
+                    );
+                  },
+                  child: Text(
+                    'Entrar al Menú Ahora 🍔',
+                    style: GoogleFonts.poppins(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                 ),
               ),
@@ -798,6 +1037,7 @@ class _RegistroEstudianteScreenState extends State<RegistroEstudianteScreen> {
   }
 
   void _mostrarAlerta(String mensaje) {
+    if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(mensaje, style: GoogleFonts.poppins(fontSize: 13.5)),
@@ -824,9 +1064,13 @@ class _RegistroEstudianteScreenState extends State<RegistroEstudianteScreen> {
   @override
   Widget build(BuildContext context) {
     String labelId =
-        rolSeleccionado == 'Estudiante' ? 'Matrícula' : 'No. Empleado';
+        rolSeleccionado == 'Estudiante'
+            ? 'Matrícula Oficial'
+            : 'No. de Empleado';
     IconData iconId =
-        rolSeleccionado == 'Estudiante' ? Icons.badge : Icons.work_outline;
+        rolSeleccionado == 'Estudiante'
+            ? Icons.badge_outlined
+            : Icons.work_outline;
 
     return Scaffold(
       backgroundColor: colorFondoCrema,
@@ -872,7 +1116,7 @@ class _RegistroEstudianteScreenState extends State<RegistroEstudianteScreen> {
                     isExpanded: true,
                     decoration: _decoracionCampo(
                       'Rol en el TESE',
-                      Icons.groups,
+                      Icons.groups_outlined,
                     ),
                     value: rolSeleccionado,
                     items:
@@ -884,23 +1128,21 @@ class _RegistroEstudianteScreenState extends State<RegistroEstudianteScreen> {
                     onChanged: (val) => setState(() => rolSeleccionado = val!),
                   ),
                   const SizedBox(height: 14),
-
                   TextField(
                     controller: _nombreCtrl,
+                    textCapitalization: TextCapitalization.words,
                     decoration: _decoracionCampo(
                       'Nombre Completo',
                       Icons.person_outline,
                     ),
                   ),
                   const SizedBox(height: 14),
-
                   TextField(
                     controller: _matriculaCtrl,
                     keyboardType: TextInputType.number,
                     decoration: _decoracionCampo(labelId, iconId),
                   ),
                   const SizedBox(height: 14),
-
                   DropdownButtonFormField<String>(
                     isExpanded: true,
                     decoration: _decoracionCampo(
@@ -909,7 +1151,7 @@ class _RegistroEstudianteScreenState extends State<RegistroEstudianteScreen> {
                     ),
                     value: areaSeleccionada,
                     items:
-                        areasTese
+                        kCarrerasTese
                             .map(
                               (c) => DropdownMenuItem(
                                 value: c,
@@ -917,16 +1159,18 @@ class _RegistroEstudianteScreenState extends State<RegistroEstudianteScreen> {
                               ),
                             )
                             .toList(),
-                    onChanged: (val) => setState(() => areaSeleccionada = val),
+                    onChanged:
+                        (val) => setState(
+                          () => areaSeleccionada = val ?? kCarrerasTese[0],
+                        ),
                   ),
                   const SizedBox(height: 14),
-
                   TextField(
                     controller: _correoCtrl,
                     keyboardType: TextInputType.emailAddress,
                     decoration: InputDecoration(
                       labelText: 'Correo Institucional (@tese.edu.mx)',
-                      hintText: 'tu.matricula@tese.edu.mx',
+                      hintText: 'tu.correo@tese.edu.mx',
                       prefixIcon: const Icon(
                         Icons.alternate_email,
                         color: colorVerdeTese,
@@ -940,22 +1184,21 @@ class _RegistroEstudianteScreenState extends State<RegistroEstudianteScreen> {
                     ),
                   ),
                   const SizedBox(height: 14),
-
                   TextField(
                     controller: _telefonoCtrl,
                     keyboardType: TextInputType.phone,
+                    maxLength: 10,
                     decoration: _decoracionCampo(
-                      'Teléfono (10 dígitos)',
+                      'Teléfono (10 dígitos, opcional)',
                       Icons.phone_outlined,
-                    ),
+                    ).copyWith(counterText: ''),
                   ),
                   const SizedBox(height: 14),
-
                   TextField(
                     controller: _passCtrl,
                     obscureText: _ocultarPass,
                     decoration: InputDecoration(
-                      labelText: 'Crear Contraseña (mínimo 6 caracteres)',
+                      labelText: 'Contraseña (mínimo 6 caracteres)',
                       prefixIcon: const Icon(
                         Icons.lock_outline,
                         color: colorVerdeTese,
@@ -979,7 +1222,6 @@ class _RegistroEstudianteScreenState extends State<RegistroEstudianteScreen> {
                     ),
                   ),
                   const SizedBox(height: 14),
-
                   TextField(
                     controller: _confirmPassCtrl,
                     obscureText: _ocultarPass,
@@ -992,10 +1234,9 @@ class _RegistroEstudianteScreenState extends State<RegistroEstudianteScreen> {
               ),
             ),
             const SizedBox(height: 24),
-
             SizedBox(
               width: double.infinity,
-              height: 52,
+              height: 54,
               child: ElevatedButton(
                 style: ElevatedButton.styleFrom(
                   backgroundColor: colorVerdeTese,
@@ -1007,9 +1248,16 @@ class _RegistroEstudianteScreenState extends State<RegistroEstudianteScreen> {
                 onPressed: _estaCargando ? null : _registrarUsuario,
                 child:
                     _estaCargando
-                        ? const CircularProgressIndicator(color: Colors.white)
+                        ? const SizedBox(
+                          height: 22,
+                          width: 22,
+                          child: CircularProgressIndicator(
+                            color: Colors.white,
+                            strokeWidth: 2.5,
+                          ),
+                        )
                         : Text(
-                          'Registrarme con Correo TESE',
+                          'Crear Cuenta y Entrar',
                           style: GoogleFonts.poppins(
                             color: Colors.white,
                             fontSize: 16,

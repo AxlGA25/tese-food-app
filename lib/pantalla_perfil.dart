@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:animate_do/animate_do.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -7,6 +8,7 @@ import 'package:google_sign_in/google_sign_in.dart';
 import 'colores.dart';
 import 'pantalla_inicio.dart';
 import 'pantalla_gachapon.dart';
+import 'pantalla_menu.dart';
 
 class PerfilEstudianteScreen extends StatefulWidget {
   const PerfilEstudianteScreen({super.key});
@@ -42,6 +44,159 @@ class _PerfilEstudianteScreenState extends State<PerfilEstudianteScreen> {
     'Lic. en Contaduría Pública',
     'Otra Área / Administrativo',
   ];
+
+  // 🦆 SELECTOR INTERACTIVO DE AVATAR DE PATITO
+  void _mostrarSelectorDePatito(
+    String uid,
+    String patoActualId,
+    Map<String, int> coleccion,
+  ) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder:
+          (ctx) => Container(
+            height: MediaQuery.of(ctx).size.height * 0.72,
+            padding: const EdgeInsets.fromLTRB(20, 14, 20, 16),
+            decoration: const BoxDecoration(
+              color: Color(0xFF16352E),
+              borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+            ),
+            child: Column(
+              children: [
+                Container(
+                  width: 44,
+                  height: 5,
+                  decoration: BoxDecoration(
+                    color: Colors.white24,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
+                const SizedBox(height: 14),
+                Text(
+                  'Elige tu Patito de Perfil 🦆',
+                  style: GoogleFonts.poppins(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
+                ),
+                Text(
+                  'Toca cualquier patito desbloqueado para equiparlo',
+                  style: GoogleFonts.poppins(
+                    fontSize: 12,
+                    color: Colors.white70,
+                  ),
+                ),
+                const SizedBox(height: 14),
+                Expanded(
+                  child: GridView.builder(
+                    gridDelegate:
+                        const SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: 3,
+                          mainAxisSpacing: 10,
+                          crossAxisSpacing: 10,
+                          childAspectRatio: 0.76,
+                        ),
+                    itemCount: catalogoPatos.length,
+                    itemBuilder: (_, i) {
+                      final skin = catalogoPatos[i];
+                      final int cant = coleccion[skin.id] ?? 0;
+                      final bool desbloqueado = cant > 0;
+                      final bool equipado = skin.id == patoActualId;
+
+                      return GestureDetector(
+                        onTap: () {
+                          if (!desbloqueado) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text(
+                                  '¡Aún no tienes este patito! Consíguelo en el Gachapón 🥚',
+                                ),
+                              ),
+                            );
+                            return;
+                          }
+                          HapticFeedback.mediumImpact();
+                          FirebaseFirestore.instance
+                              .collection('Usuarios_Perfil')
+                              .doc(uid)
+                              .set({
+                                'patoEquipadoId': skin.id,
+                              }, SetOptions(merge: true));
+                          Navigator.pop(ctx);
+                        },
+                        child: Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color:
+                                equipado
+                                    ? colorAmarilloTese.withValues(alpha: 0.18)
+                                    : Colors.white.withValues(alpha: 0.06),
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(
+                              color:
+                                  equipado
+                                      ? colorAmarilloTese
+                                      : (desbloqueado
+                                          ? skin.rareza.color
+                                          : Colors.white12),
+                              width: equipado ? 2.5 : 1.5,
+                            ),
+                          ),
+                          child: Column(
+                            children: [
+                              Expanded(
+                                child: FittedBox(
+                                  child:
+                                      desbloqueado
+                                          ? PatoVista(skin: skin, tamano: 90)
+                                          : ColorFiltered(
+                                            colorFilter: const ColorFilter.mode(
+                                              Color(0xFF0B1B17),
+                                              BlendMode.srcIn,
+                                            ),
+                                            child: PatoVista(
+                                              skin: skin,
+                                              tamano: 90,
+                                            ),
+                                          ),
+                                ),
+                              ),
+                              Text(
+                                desbloqueado ? skin.nombre : '???',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: GoogleFonts.poppins(
+                                  fontSize: 10.5,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.white,
+                                ),
+                              ),
+                              Text(
+                                equipado ? 'EQUIPADO ✨' : skin.rareza.nombre,
+                                style: GoogleFonts.poppins(
+                                  fontSize: 9.5,
+                                  fontWeight: FontWeight.bold,
+                                  color:
+                                      equipado
+                                          ? colorAmarilloTese
+                                          : skin.rareza.color,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              ],
+            ),
+          ),
+    );
+  }
 
   // ✏️ EDITAR NOMBRE, MATRÍCULA Y CARRERA EN VIVO
   void _editarPerfil(
@@ -291,36 +446,43 @@ class _PerfilEstudianteScreenState extends State<PerfilEstudianteScreen> {
     );
   }
 
+  // ✅ PARCHEADO: Descuenta exactamente 50 pts por huevo y actualiza colección sin sobrescribir
   void _abrirGachapon(
     String uid,
     int puntosDisponibles,
     Map<String, int> coleccionActual,
   ) {
+    final Map<String, int> copiaColeccion = Map<String, int>.from(
+      coleccionActual,
+    );
+    const int costoPorHuevo = 50;
+
     Navigator.push(
       context,
       MaterialPageRoute(
         builder:
             (_) => PantallaGachapon(
               puntos: puntosDisponibles,
-              costoTirada: 50,
-              coleccionInicial: coleccionActual,
-              onPuntosCambian: (puntosRestantes) {
+              costoTirada: costoPorHuevo,
+              coleccionInicial: copiaColeccion,
+              onPuntosCambian: (_) {
                 FirebaseFirestore.instance
                     .collection('Usuarios_Perfil')
                     .doc(uid)
                     .set({
                       'puntosGastadosEnGachapon': FieldValue.increment(
-                        puntosDisponibles - puntosRestantes,
+                        costoPorHuevo,
                       ),
                     }, SetOptions(merge: true));
               },
               onPatoObtenido: (pato, veces) {
+                copiaColeccion[pato.id] = veces;
                 FirebaseFirestore.instance
                     .collection('Usuarios_Perfil')
                     .doc(uid)
                     .set({
                       'patoEquipadoId': pato.id,
-                      'coleccionPatos': {...coleccionActual, pato.id: veces},
+                      'coleccionPatos': copiaColeccion,
                     }, SetOptions(merge: true));
               },
             ),
@@ -368,8 +530,7 @@ class _PerfilEstudianteScreenState extends State<PerfilEstudianteScreen> {
                 onPressed: () async {
                   Navigator.pop(ctx);
                   await FirebaseAuth.instance.signOut();
-                  await GoogleSignIn()
-                      .signOut(); // Cierra sesión de Google también
+                  await GoogleSignIn().signOut();
                   if (context.mounted) {
                     Navigator.pushAndRemoveUntil(
                       context,
@@ -411,6 +572,13 @@ class _PerfilEstudianteScreenState extends State<PerfilEstudianteScreen> {
         backgroundColor: Colors.transparent,
         elevation: 0,
         centerTitle: true,
+        actions: [
+          IconButton(
+            tooltip: 'Ver Guía de la App',
+            icon: const Icon(Icons.help_outline_rounded, color: colorVerdeTese),
+            onPressed: () => mostrarMiniTutorialTese(context),
+          ),
+        ],
       ),
       body: StreamBuilder<DocumentSnapshot>(
         stream:
@@ -521,59 +689,88 @@ class _PerfilEstudianteScreenState extends State<PerfilEstudianteScreen> {
                           child: Center(
                             child: Column(
                               children: [
-                                Stack(
-                                  alignment: Alignment.bottomRight,
-                                  children: [
-                                    Container(
-                                      padding: const EdgeInsets.all(4),
-                                      decoration: BoxDecoration(
-                                        shape: BoxShape.circle,
-                                        border: Border.all(
+                                GestureDetector(
+                                  onTap:
+                                      () => _mostrarSelectorDePatito(
+                                        uid,
+                                        patoEquipadoId,
+                                        coleccionPatos,
+                                      ),
+                                  child: Stack(
+                                    alignment: Alignment.bottomRight,
+                                    children: [
+                                      Container(
+                                        padding: const EdgeInsets.all(4),
+                                        decoration: BoxDecoration(
+                                          shape: BoxShape.circle,
+                                          border: Border.all(
+                                            color: patoEquipado.rareza.color,
+                                            width: 3.5,
+                                          ),
+                                          boxShadow: [
+                                            BoxShadow(
+                                              color: patoEquipado.rareza.color
+                                                  .withValues(alpha: 0.35),
+                                              blurRadius: 14,
+                                            ),
+                                          ],
+                                        ),
+                                        child: CircleAvatar(
+                                          radius: 52,
+                                          backgroundColor: const Color(
+                                            0xFF16352E,
+                                          ),
+                                          child: ClipOval(
+                                            child: PatoVista(
+                                              skin: patoEquipado,
+                                              tamano: 92,
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 8,
+                                          vertical: 4,
+                                        ),
+                                        decoration: BoxDecoration(
                                           color: patoEquipado.rareza.color,
-                                          width: 3.5,
-                                        ),
-                                        boxShadow: [
-                                          BoxShadow(
-                                            color: patoEquipado.rareza.color
-                                                .withValues(alpha: 0.35),
-                                            blurRadius: 14,
-                                          ),
-                                        ],
-                                      ),
-                                      child: CircleAvatar(
-                                        radius: 52,
-                                        backgroundColor: const Color(
-                                          0xFF16352E,
-                                        ),
-                                        child: ClipOval(
-                                          child: PatoVista(
-                                            skin: patoEquipado,
-                                            tamano: 92,
+                                          borderRadius: BorderRadius.circular(
+                                            10,
                                           ),
                                         ),
-                                      ),
-                                    ),
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 7,
-                                        vertical: 3,
-                                      ),
-                                      decoration: BoxDecoration(
-                                        color: patoEquipado.rareza.color,
-                                        borderRadius: BorderRadius.circular(10),
-                                      ),
-                                      child: Text(
-                                        patoEquipado.rareza.nombre,
-                                        style: GoogleFonts.poppins(
-                                          fontSize: 10,
-                                          fontWeight: FontWeight.bold,
-                                          color: colorVerdeOscuro,
+                                        child: Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            const Icon(
+                                              Icons.swap_horiz_rounded,
+                                              size: 12,
+                                              color: colorVerdeOscuro,
+                                            ),
+                                            const SizedBox(width: 2),
+                                            Text(
+                                              patoEquipado.rareza.nombre,
+                                              style: GoogleFonts.poppins(
+                                                fontSize: 10,
+                                                fontWeight: FontWeight.bold,
+                                                color: colorVerdeOscuro,
+                                              ),
+                                            ),
+                                          ],
                                         ),
                                       ),
-                                    ),
-                                  ],
+                                    ],
+                                  ),
                                 ),
-                                const SizedBox(height: 12),
+                                const SizedBox(height: 6),
+                                Text(
+                                  'Toca tu patito para cambiar de skin',
+                                  style: GoogleFonts.poppins(
+                                    fontSize: 11,
+                                    color: colorTextoGris,
+                                  ),
+                                ),
+                                const SizedBox(height: 6),
                                 Text(
                                   nombreReal,
                                   textAlign: TextAlign.center,
@@ -733,7 +930,7 @@ class _PerfilEstudianteScreenState extends State<PerfilEstudianteScreen> {
                                       size: 22,
                                     ),
                                     label: Text(
-                                      'Gachapón de Patitos 🦆 (Tirar Huevo)',
+                                      'Gachapón de Patitos 🦆 (50 pts)',
                                       style: GoogleFonts.poppins(
                                         fontWeight: FontWeight.w800,
                                         fontSize: 13.5,

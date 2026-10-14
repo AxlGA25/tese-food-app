@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:animate_do/animate_do.dart';
 import 'colores.dart';
@@ -82,17 +83,25 @@ class _PantallaDetallePlatilloState extends State<PantallaDetallePlatillo> {
     );
   }
 
-  Widget _botonCantidad(IconData icono, VoidCallback onTap) {
+  Widget _botonCantidad(
+    IconData icono,
+    VoidCallback onTap, {
+    bool habilitado = true,
+  }) {
     return GestureDetector(
-      onTap: onTap,
+      onTap: habilitado ? onTap : null,
       child: Container(
         padding: const EdgeInsets.all(8),
         decoration: BoxDecoration(
-          color: colorFondoCrema,
+          color: habilitado ? colorFondoCrema : Colors.grey.shade200,
           shape: BoxShape.circle,
           border: Border.all(color: colorTextoGris.withValues(alpha: 0.3)),
         ),
-        child: Icon(icono, size: 18, color: colorTextoOscuro),
+        child: Icon(
+          icono,
+          size: 18,
+          color: habilitado ? colorTextoOscuro : Colors.grey,
+        ),
       ),
     );
   }
@@ -102,7 +111,10 @@ class _PantallaDetallePlatilloState extends State<PantallaDetallePlatillo> {
     final platillo = widget.platillo;
     final acento = acentoDeCategoria(platillo.categoria);
     final total = platillo.precio * cantidad;
+    final int puntosTotales = platillo.puntos * cantidad;
     final bool tieneFotos = platillo.fotos.isNotEmpty;
+    final bool agotado = platillo.existencias <= 0;
+    final int stockMax = platillo.existencias > 0 ? platillo.existencias : 1;
 
     return Scaffold(
       backgroundColor: colorFondoCrema,
@@ -173,7 +185,6 @@ class _PantallaDetallePlatilloState extends State<PantallaDetallePlatillo> {
                 ),
               ),
 
-              // INDICADOR DE FOTOS (1/3, 2/3) SI TIENE MÁS DE UNA
               if (tieneFotos && platillo.fotos.length > 1)
                 Positioned(
                   bottom: 16,
@@ -198,7 +209,6 @@ class _PantallaDetallePlatilloState extends State<PantallaDetallePlatillo> {
                   ),
                 ),
 
-              // BOTONES SUPERIORES (REGRESAR Y POPULAR)
               SafeArea(
                 child: Padding(
                   padding: const EdgeInsets.symmetric(
@@ -314,7 +324,18 @@ class _PantallaDetallePlatilloState extends State<PantallaDetallePlatillo> {
                         platillo.tiempoPrep,
                         colorVerdeTese,
                       ),
-                      _chipInfo(Icons.local_offer, platillo.categoria, acento),
+                      _chipInfo(
+                        Icons.stars_rounded,
+                        '+$puntosTotales pts 🪙',
+                        colorVerdeTese,
+                      ),
+                      _chipInfo(
+                        Icons.inventory_2_outlined,
+                        agotado
+                            ? 'Agotado'
+                            : '${platillo.existencias} disponibles',
+                        agotado ? Colors.redAccent : colorExito,
+                      ),
                     ],
                   ),
                   const SizedBox(height: 22),
@@ -329,7 +350,7 @@ class _PantallaDetallePlatilloState extends State<PantallaDetallePlatillo> {
                   const SizedBox(height: 6),
                   Text(
                     platillo.descripcion.isEmpty
-                        ? 'Delicioso, recién preparado para ti.'
+                        ? 'Delicioso, recién preparado al momento para ti.'
                         : platillo.descripcion,
                     style: GoogleFonts.poppins(
                       fontSize: 14,
@@ -338,13 +359,13 @@ class _PantallaDetallePlatilloState extends State<PantallaDetallePlatillo> {
                     ),
                   ),
 
-                  // INGREDIENTES PERSONALIZABLES
+                  // INGREDIENTES PERSONALIZABLES CON EXPLICACIÓN VISUAL
                   if (platillo.ingredientes.isNotEmpty) ...[
                     const SizedBox(height: 22),
                     const Divider(),
                     const SizedBox(height: 12),
                     Text(
-                      'Personaliza tu platillo',
+                      'Personaliza tus ingredientes',
                       style: GoogleFonts.poppins(
                         fontSize: 15,
                         fontWeight: FontWeight.bold,
@@ -353,7 +374,7 @@ class _PantallaDetallePlatilloState extends State<PantallaDetallePlatillo> {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      'Toca para cambiar: Normal ➔ Sin ➔ Extra',
+                      'Toca cada ingrediente para cambiarlo a tu gusto:',
                       style: GoogleFonts.poppins(
                         fontSize: 12,
                         color: colorTextoGris,
@@ -384,6 +405,7 @@ class _PantallaDetallePlatilloState extends State<PantallaDetallePlatillo> {
 
                             return GestureDetector(
                               onTap: () {
+                                HapticFeedback.selectionClick();
                                 setState(() {
                                   estadoIngredientes[ing] = (estado + 1) % 3;
                                 });
@@ -432,21 +454,35 @@ class _PantallaDetallePlatilloState extends State<PantallaDetallePlatillo> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Text(
-                        'Cantidad',
-                        style: GoogleFonts.poppins(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w600,
-                          color: colorTextoOscuro,
-                        ),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Cantidad',
+                            style: GoogleFonts.poppins(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w600,
+                              color: colorTextoOscuro,
+                            ),
+                          ),
+                          if (!agotado)
+                            Text(
+                              'Máximo $stockMax por existencias',
+                              style: GoogleFonts.poppins(
+                                fontSize: 11,
+                                color: colorTextoGris,
+                              ),
+                            ),
+                        ],
                       ),
                       Row(
                         children: [
                           _botonCantidad(Icons.remove, () {
                             if (cantidad > 1) {
+                              HapticFeedback.selectionClick();
                               setState(() => cantidad--);
                             }
-                          }),
+                          }, habilitado: !agotado && cantidad > 1),
                           Padding(
                             padding: const EdgeInsets.symmetric(horizontal: 18),
                             child: Text(
@@ -458,10 +494,20 @@ class _PantallaDetallePlatilloState extends State<PantallaDetallePlatillo> {
                               ),
                             ),
                           ),
-                          _botonCantidad(
-                            Icons.add,
-                            () => setState(() => cantidad++),
-                          ),
+                          _botonCantidad(Icons.add, () {
+                            if (cantidad < stockMax) {
+                              HapticFeedback.selectionClick();
+                              setState(() => cantidad++);
+                            } else {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text(
+                                    'Solo quedan $stockMax piezas disponibles en el kiosko.',
+                                  ),
+                                ),
+                              );
+                            }
+                          }, habilitado: !agotado && cantidad < stockMax),
                         ],
                       ),
                     ],
@@ -471,7 +517,7 @@ class _PantallaDetallePlatilloState extends State<PantallaDetallePlatillo> {
             ),
           ),
 
-          // BOTÓN AGREGAR AL CARRITO
+          // BOTÓN AGREGAR AL CARRITO (PROTEGIDO CONTRA AGOTADOS)
           Container(
             padding: const EdgeInsets.fromLTRB(22, 16, 22, 18),
             decoration: const BoxDecoration(
@@ -490,34 +536,47 @@ class _PantallaDetallePlatilloState extends State<PantallaDetallePlatillo> {
                 width: double.infinity,
                 child: ElevatedButton(
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: acento,
+                    backgroundColor: agotado ? Colors.grey : acento,
                     elevation: 2,
                     minimumSize: const Size(double.infinity, 56),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(18),
                     ),
                   ),
-                  onPressed: () {
-                    List<String> personalizacionFinal = [];
-                    estadoIngredientes.forEach((ing, estado) {
-                      if (estado == 1) personalizacionFinal.add('Sin $ing');
-                      if (estado == 2) personalizacionFinal.add('Extra $ing');
-                    });
+                  onPressed:
+                      agotado
+                          ? null
+                          : () {
+                            List<String> personalizacionFinal = [];
+                            estadoIngredientes.forEach((ing, estado) {
+                              if (estado == 1) {
+                                personalizacionFinal.add('Sin $ing');
+                              }
+                              if (estado == 2) {
+                                personalizacionFinal.add('Extra $ing');
+                              }
+                            });
 
-                    final platilloPersonalizado = widget.platillo.copyWith(
-                      personalizacion: personalizacionFinal,
-                    );
+                            final platilloPersonalizado = widget.platillo
+                                .copyWith(
+                                  personalizacion: personalizacionFinal,
+                                );
 
-                    for (int i = 0; i < cantidad; i++) {
-                      widget.onAgregar(platilloPersonalizado);
-                    }
-                    Navigator.pop(context, true);
-                  },
+                            for (int i = 0; i < cantidad; i++) {
+                              widget.onAgregar(platilloPersonalizado);
+                            }
+                            Navigator.pop(context, true);
+                          },
                   child: Text(
-                    'Agregar • \$${total.toStringAsFixed(0)}',
+                    agotado
+                        ? 'Platillo Agotado Temporalmente 🚫'
+                        : 'Agregar al pedido • \$${total.toStringAsFixed(0)}',
                     style: GoogleFonts.poppins(
-                      color: colorTextoSobreAcento(acento),
-                      fontSize: 17,
+                      color:
+                          agotado
+                              ? Colors.white
+                              : colorTextoSobreAcento(acento),
+                      fontSize: 16.5,
                       fontWeight: FontWeight.bold,
                     ),
                   ),

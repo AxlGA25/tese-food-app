@@ -1,23 +1,3 @@
-// ─────────────────────────────────────────────────────────────────────────────
-// GACHAPÓN DE PATITOS 🦆🥚
-//
-// Cambias tus puntos por un "Huevo Misterioso". El huevo se agita, se rompe y
-// arranca una ruleta (como al abrir una caja en Counter-Strike) que se frena
-// poco a poco sobre tu patito. Hay 5 rarezas y 15 skins de patito dibujadas
-// con código (no necesitan imágenes).
-//
-// USO (desde donde tengas tus puntos):
-//
-//   Navigator.push(context, MaterialPageRoute(
-//     builder: (_) => PantallaGachapon(
-//       puntos: misPuntos,
-//       onPuntosCambian: (nuevos) { /* guardar los puntos que quedaron */ },
-//       onPatoObtenido: (pato, veces) { /* guardar pato.id y cuántos tiene */ },
-//     ),
-//   ));
-//
-// Usa `confetti` (que ya tienes en el proyecto). Nada más.
-// ─────────────────────────────────────────────────────────────────────────────
 import 'dart:math' as math;
 import 'package:confetti/confetti.dart';
 import 'package:flutter/material.dart';
@@ -25,7 +5,32 @@ import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'colores.dart';
 
-// ═════════════════════════════ DATOS ═════════════════════════════
+// ═════════════════════════════ UNIVERSOS Y RAREZAS ═════════════════════════════
+
+enum UniversoPato { tese, marvel, leyendas, especiales }
+
+extension UniversoInfo on UniversoPato {
+  String get nombre => switch (this) {
+    UniversoPato.tese => 'Carreras TESE',
+    UniversoPato.marvel => 'Universo Marvel',
+    UniversoPato.leyendas => 'Ídolos & Leyendas',
+    UniversoPato.especiales => 'Clásicos & Míticos',
+  };
+
+  String get emoji => switch (this) {
+    UniversoPato.tese => '🎓',
+    UniversoPato.marvel => '🕷️',
+    UniversoPato.leyendas => '✈️',
+    UniversoPato.especiales => '✨',
+  };
+
+  Color get colorTema => switch (this) {
+    UniversoPato.tese => const Color(0xFF00E5A3),
+    UniversoPato.marvel => const Color(0xFFFF3864),
+    UniversoPato.leyendas => const Color(0xFFFFB800),
+    UniversoPato.especiales => const Color(0xFF9D4EDD),
+  };
+}
 
 enum Rareza { comun, rara, epica, mitica, legendaria }
 
@@ -39,20 +44,19 @@ extension RarezaInfo on Rareza {
   };
 
   Color get color => switch (this) {
-    Rareza.comun => const Color(0xFF8FB8A8),
-    Rareza.rara => const Color(0xFF4DA3FF),
-    Rareza.epica => const Color(0xFFA06BFF),
-    Rareza.mitica => const Color(0xFFFF5FA2),
-    Rareza.legendaria => const Color(0xFFFFC53D),
+    Rareza.comun => const Color(0xFF7AE582),
+    Rareza.rara => const Color(0xFF38B6FF),
+    Rareza.epica => const Color(0xFFB56BFF),
+    Rareza.mitica => const Color(0xFFFF4D8D),
+    Rareza.legendaria => const Color(0xFFFFD13B),
   };
 
-  // Probabilidad en % (suman 100).
   int get peso => switch (this) {
-    Rareza.comun => 55,
-    Rareza.rara => 25,
-    Rareza.epica => 12,
-    Rareza.mitica => 6,
-    Rareza.legendaria => 2,
+    Rareza.comun => 45,
+    Rareza.rara => 27,
+    Rareza.epica => 15,
+    Rareza.mitica => 9,
+    Rareza.legendaria => 4,
   };
 }
 
@@ -67,6 +71,16 @@ enum Accesorio {
   auriculares,
   ninja,
   pirata,
+  pilotoInsulini,
+  spiderman,
+  ironman,
+  wolverine,
+  deadpool,
+  cascoIng,
+  visorSistemas,
+  visorMeca,
+  lentesQuimica,
+  cubosRock,
 }
 
 enum EfectoCuerpo { ninguno, galaxia, arcoiris, oro, diamante }
@@ -76,6 +90,7 @@ class PatoSkin {
   final String nombre;
   final String frase;
   final Rareza rareza;
+  final UniversoPato universo;
   final Color cuerpo;
   final Color? cuerpo2;
   final Color pico;
@@ -87,6 +102,7 @@ class PatoSkin {
     required this.nombre,
     required this.frase,
     required this.rareza,
+    this.universo = UniversoPato.especiales,
     required this.cuerpo,
     this.cuerpo2,
     this.pico = const Color(0xFFFF9F1C),
@@ -98,136 +114,285 @@ class PatoSkin {
       efecto == EfectoCuerpo.oro || efecto == EfectoCuerpo.diamante;
 }
 
+// ═════════════════════════ CATÁLOGO DE 26 PATITOS ═════════════════════════
+// Mantenemos los primeros 15 índices compatibles y sumamos los nuevos universos
+
 const List<PatoSkin> catalogoPatos = [
-  // ── Comunes ──
+  // 0: Clásico
   PatoSkin(
     id: 'clasico',
     nombre: 'Patito Clásico',
-    frase: 'El de toda la vida. Nunca falla.',
+    frase: 'El de toda la vida. Nunca falla en el receso.',
     rareza: Rareza.comun,
+    universo: UniversoPato.especiales,
     cuerpo: Color(0xFFFFD84D),
   ),
+  // 1: Estudiante (Default inicial)
   PatoSkin(
     id: 'estudiante',
-    nombre: 'Patito Estudiante',
-    frase: 'Se graduó con honores... del receso.',
+    nombre: 'Patito Estudiante TESE',
+    frase: 'Se graduó con honores... pero de la cafetería.',
     rareza: Rareza.comun,
+    universo: UniversoPato.tese,
     cuerpo: Color(0xFFFFD84D),
     accesorio: Accesorio.birrete,
   ),
+  // 2: Matcha
   PatoSkin(
     id: 'matcha',
     nombre: 'Patito Matcha',
-    frase: 'Fresco, zen y sin prisa.',
+    frase: 'Fresco, zen y sin prisa para entrar a clase.',
     rareza: Rareza.comun,
+    universo: UniversoPato.especiales,
     cuerpo: Color(0xFFB7E08C),
   ),
+  // 3: Chicle
   PatoSkin(
     id: 'chicle',
     nombre: 'Patito Chicle',
-    frase: 'Dulce, rosita y un poco pegajoso.',
+    frase: 'Dulce, rosita y siempre pide postre.',
     rareza: Rareza.comun,
+    universo: UniversoPato.especiales,
     cuerpo: Color(0xFFFFB3D1),
   ),
-  // ── Raras ──
+  // 4: Chef
   PatoSkin(
     id: 'chef',
     nombre: 'Chef Patito',
-    frase: 'Sus chilaquiles son los más crujientes.',
+    frase: 'Sus chilaquiles del kiosko son los más crujientes.',
     rareza: Rareza.rara,
+    universo: UniversoPato.tese,
     cuerpo: Color(0xFFFFF3D6),
     accesorio: Accesorio.gorroChef,
   ),
+  // 5: Hielo
   PatoSkin(
     id: 'hielo',
     nombre: 'Patito Hielo',
-    frase: 'Su playlist congela hasta el café.',
+    frase: 'Su playlist congela hasta el café de la mañana.',
     rareza: Rareza.rara,
+    universo: UniversoPato.especiales,
     cuerpo: Color(0xFFA8DCFF),
     accesorio: Accesorio.auriculares,
   ),
+  // 6: Cool
   PatoSkin(
     id: 'cool',
     nombre: 'Patito Cool',
-    frase: 'Trae lentes hasta dentro del salón.',
+    frase: 'Trae lentes oscuros hasta en el laboratorio.',
     rareza: Rareza.rara,
+    universo: UniversoPato.especiales,
     cuerpo: Color(0xFFFFA94D),
     accesorio: Accesorio.lentes,
   ),
+  // 7: Ninja
   PatoSkin(
     id: 'ninja',
     nombre: 'Patito Ninja',
-    frase: 'Llega a la cafetería sin que lo vean.',
+    frase: 'Recoge su pedido en ventanilla sin que nadie lo vea.',
     rareza: Rareza.rara,
+    universo: UniversoPato.especiales,
     cuerpo: Color(0xFF3A3A48),
     accesorio: Accesorio.ninja,
   ),
-  // ── Épicas ──
+  // 8: Pirata
   PatoSkin(
     id: 'pirata',
     nombre: 'Capitán Patito',
-    frase: 'Navega entre mesas buscando el último taco.',
+    frase: 'Navega entre mesas buscando la última mesa libre.',
     rareza: Rareza.epica,
+    universo: UniversoPato.especiales,
     cuerpo: Color(0xFFE76F51),
     accesorio: Accesorio.pirata,
   ),
+  // 9: Mago
   PatoSkin(
     id: 'mago',
     nombre: 'Patito Mago',
-    frase: 'Hace aparecer tortas de la nada.',
+    frase: 'Hace aparecer tortas y pasar Cálculo por arte de magia.',
     rareza: Rareza.epica,
+    universo: UniversoPato.leyendas,
     cuerpo: Color(0xFF9B7BFF),
     accesorio: Accesorio.mago,
   ),
+  // 10: Patonauta
   PatoSkin(
     id: 'astronauta',
-    nombre: 'Patonauta',
-    frase: 'Rumbo al kiosko más lejano del campus.',
+    nombre: 'Pato Aeronáutico',
+    frase: 'Orgullo de Ing. Aeronáutica rumbo a la estratósfera.',
     rareza: Rareza.epica,
+    universo: UniversoPato.tese,
     cuerpo: Color(0xFFF1F5F9),
     accesorio: Accesorio.casco,
   ),
-  // ── Míticas ──
+  // 11: Galaxia
   PatoSkin(
     id: 'galaxia',
     nombre: 'Pato Galáctico',
-    frase: 'Nació de una estrella a la hora del receso.',
+    frase: 'Nació de una supernova a la hora del receso.',
     rareza: Rareza.mitica,
+    universo: UniversoPato.especiales,
     cuerpo: Color(0xFF2D1B69),
     cuerpo2: Color(0xFF7B4DE0),
     pico: Color(0xFFFFC857),
     efecto: EfectoCuerpo.galaxia,
   ),
+  // 12: Arcoíris
   PatoSkin(
     id: 'arcoiris',
     nombre: 'Pato Arcoíris',
-    frase: 'Cambia de color según su antojo.',
+    frase: 'Brilla con RGB a 240 FPS mientras come.',
     rareza: Rareza.mitica,
+    universo: UniversoPato.especiales,
     cuerpo: Color(0xFF6BC5FF),
     efecto: EfectoCuerpo.arcoiris,
     accesorio: Accesorio.lentes,
   ),
-  // ── Legendarias ──
+  // 13: Pato Dorado
   PatoSkin(
     id: 'oro',
-    nombre: 'Pato Dorado',
-    frase: 'Leyenda del TESE. Solo 1 de cada 50.',
+    nombre: 'Pato Dorado VIP',
+    frase: 'Leyenda dorada del TESE. Brilla en todo el campus.',
     rareza: Rareza.legendaria,
+    universo: UniversoPato.leyendas,
     cuerpo: Color(0xFFFFD54A),
     cuerpo2: Color(0xFFE09A00),
     pico: Color(0xFFFF7A00),
     efecto: EfectoCuerpo.oro,
     accesorio: Accesorio.corona,
   ),
+  // 14: Pato Diamante
   PatoSkin(
     id: 'diamante',
     nombre: 'Pato Diamante',
-    frase: 'Brilla tanto que no necesita hacer fila.',
+    frase: 'Forjado bajo presión en semana de exámenes finales.',
     rareza: Rareza.legendaria,
+    universo: UniversoPato.especiales,
     cuerpo: Color(0xFFBDF3FF),
     cuerpo2: Color(0xFFFFC2F0),
     efecto: EfectoCuerpo.diamante,
     accesorio: Accesorio.casco,
+  ),
+
+  // ── NUEVOS: LEYENDAS & ÍDOLOS TESE ──
+  PatoSkin(
+    id: 'insulini',
+    nombre: 'Pato Insulini Piloto',
+    frase:
+        '¡Del TESE para el mundo! Con casco de aviador y cero miedo al éxito.',
+    rareza: Rareza.legendaria,
+    universo: UniversoPato.leyendas,
+    cuerpo: Color(0xFFFFDF6B),
+    cuerpo2: Color(0xFFF4A261),
+    efecto: EfectoCuerpo.oro,
+    accesorio: Accesorio.pilotoInsulini,
+  ),
+  PatoSkin(
+    id: 'rockstar_rosa',
+    nombre: 'Pato RockStar',
+    frase: 'Tímido en el salón, pero se avienta unos solos de guitarra épicos.',
+    rareza: Rareza.mitica,
+    universo: UniversoPato.leyendas,
+    cuerpo: Color(0xFFFF9EBB),
+    cuerpo2: Color(0xFFFF6B9D),
+    accesorio: Accesorio.cubosRock,
+  ),
+
+  // ── NUEVOS: UNIVERSO MARVEL ──
+  PatoSkin(
+    id: 'spider_pato',
+    nombre: 'Spidey-Pato',
+    frase: 'Tu vecino amigable del TESE. Atrapa su torta con telaraña.',
+    rareza: Rareza.mitica,
+    universo: UniversoPato.marvel,
+    cuerpo: Color(0xFFE62429),
+    cuerpo2: Color(0xFF1D4ED8),
+    pico: Color(0xFFFFB703),
+    accesorio: Accesorio.spiderman,
+  ),
+  PatoSkin(
+    id: 'iron_pato',
+    nombre: 'Iron-Pato',
+    frase: 'Genio, millonario y con Reactor Arc para calentar sus chilaquiles.',
+    rareza: Rareza.legendaria,
+    universo: UniversoPato.marvel,
+    cuerpo: Color(0xFFB91C1C),
+    cuerpo2: Color(0xFFF59E0B),
+    pico: Color(0xFFFBBF24),
+    efecto: EfectoCuerpo.oro,
+    accesorio: Accesorio.ironman,
+  ),
+  PatoSkin(
+    id: 'wolverine_pato',
+    nombre: 'Pato Wolverine',
+    frase: 'Garras de Adamantium listas para partir la milanesa, bub.',
+    rareza: Rareza.epica,
+    universo: UniversoPato.marvel,
+    cuerpo: Color(0xFFFACC15),
+    cuerpo2: Color(0xFF1E3A8A),
+    accesorio: Accesorio.wolverine,
+  ),
+  PatoSkin(
+    id: 'dead_pato',
+    nombre: 'Dead-Pato',
+    frase: 'Rompe la cuarta pared mientras pide unas chimichangas en la cafe.',
+    rareza: Rareza.epica,
+    universo: UniversoPato.marvel,
+    cuerpo: Color(0xFFDC2626),
+    cuerpo2: Color(0xFF18181B),
+    accesorio: Accesorio.deadpool,
+  ),
+  PatoSkin(
+    id: 'hulk_pato',
+    nombre: 'Hulk-Pato',
+    frase: '¡PATO APLASTA EL HAMBRE! Siempre pide doble porción.',
+    rareza: Rareza.rara,
+    universo: UniversoPato.marvel,
+    cuerpo: Color(0xFF4ADE80),
+    cuerpo2: Color(0xFF7E22CE),
+    accesorio: Accesorio.ninja,
+  ),
+
+  // ── NUEVOS: CARRERAS DEL TESE ──
+  PatoSkin(
+    id: 'ing_sistemas',
+    nombre: 'Pato Computación / Sistemas',
+    frase: 'Compila a la primera gracias a una torta y un café bien cargado.',
+    rareza: Rareza.epica,
+    universo: UniversoPato.tese,
+    cuerpo: Color(0xFF1E293B),
+    cuerpo2: Color(0xFF0F172A),
+    pico: Color(0xFF00F5D4),
+    accesorio: Accesorio.visorSistemas,
+  ),
+  PatoSkin(
+    id: 'ing_mecatronica',
+    nombre: 'Pato Mecatrónico',
+    frase: 'Mitad pato, mitad ESP32 con sensores ultrasónicos.',
+    rareza: Rareza.epica,
+    universo: UniversoPato.tese,
+    cuerpo: Color(0xFF94A3B8),
+    cuerpo2: Color(0xFF475569),
+    pico: Color(0xFFFF6B35),
+    accesorio: Accesorio.visorMeca,
+  ),
+  PatoSkin(
+    id: 'ing_industrial',
+    nombre: 'Pato Industrial & Gestión',
+    frase: 'Optimiza los tiempos de entrega del kiosko con normas ISO.',
+    rareza: Rareza.rara,
+    universo: UniversoPato.tese,
+    cuerpo: Color(0xFF60A5FA),
+    accesorio: Accesorio.cascoIng,
+  ),
+  PatoSkin(
+    id: 'ing_quimica',
+    nombre: 'Pato Químico / Bioquímico',
+    frase: 'Calcula la fórmula exacta de la salsa verde más picosa.',
+    rareza: Rareza.rara,
+    universo: UniversoPato.tese,
+    cuerpo: Color(0xFFA7F3D0),
+    accesorio: Accesorio.lentesQuimica,
   ),
 ];
 
@@ -237,10 +402,8 @@ Color _ajustarLuz(Color c, double delta) {
   return hsl.withLightness(luz).toColor();
 }
 
-// ═════════════════════════ EL PATITO (dibujado) ═════════════════════════
+// ═════════════════════════ EL PATITO (DIBUJADO) ═════════════════════════
 
-/// Un patito con su skin. Puedes reutilizarlo en otras pantallas
-/// (por ejemplo, para mostrar el patito favorito en el perfil).
 class PatoVista extends StatelessWidget {
   final PatoSkin skin;
   final Animation<double>? reloj;
@@ -296,10 +459,9 @@ class _PintorPato extends CustomPainter {
     canvas.scale(size.width / 200, size.height / 200);
     const area = Rect.fromLTWH(0, 0, 200, 200);
 
-    // sombra y patas
     canvas.drawOval(
       Rect.fromCenter(center: const Offset(100, 194), width: 120, height: 12),
-      Paint()..color = Colors.black.withValues(alpha: 0.2),
+      Paint()..color = Colors.black.withValues(alpha: 0.22),
     );
     final pata = Paint()..color = skin.pico;
     canvas.drawOval(
@@ -319,7 +481,6 @@ class _PintorPato extends CustomPainter {
           ..color = _ajustarLuz(skin.cuerpo, -0.22);
     final alaPintura = Paint()..color = _ajustarLuz(skin.cuerpo, -0.06);
 
-    // cuerpo + cabeza (en una capa, para que el brillo solo caiga sobre el pato)
     canvas.saveLayer(area, Paint());
     final cuerpo = Rect.fromCenter(
       center: const Offset(100, 140),
@@ -489,8 +650,6 @@ class _PintorPato extends CustomPainter {
     }
   }
 
-  // ───────── accesorios ─────────
-
   void _accesorio(Canvas canvas) {
     switch (skin.accesorio) {
       case Accesorio.ninguno:
@@ -513,9 +672,30 @@ class _PintorPato extends CustomPainter {
         _ninja(canvas);
       case Accesorio.pirata:
         _pirata(canvas);
+      case Accesorio.pilotoInsulini:
+        _pilotoInsulini(canvas);
+      case Accesorio.spiderman:
+        _spiderman(canvas);
+      case Accesorio.ironman:
+        _ironman(canvas);
+      case Accesorio.wolverine:
+        _wolverine(canvas);
+      case Accesorio.deadpool:
+        _deadpool(canvas);
+      case Accesorio.cascoIng:
+        _cascoIng(canvas);
+      case Accesorio.visorSistemas:
+        _visorSistemas(canvas);
+      case Accesorio.visorMeca:
+        _visorMeca(canvas);
+      case Accesorio.lentesQuimica:
+        _lentesQuimica(canvas);
+      case Accesorio.cubosRock:
+        _cubosRock(canvas);
     }
   }
 
+  // ── ACCESORIOS ORIGINALES ──
   void _birrete(Canvas canvas) {
     canvas.drawRRect(
       RRect.fromRectAndRadius(
@@ -532,13 +712,6 @@ class _PintorPato extends CustomPainter {
           ..lineTo(36, 32)
           ..close();
     canvas.drawPath(tablero, Paint()..color = colorVerdeOscuro);
-    canvas.drawPath(
-      tablero,
-      Paint()
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 1.5
-        ..color = Colors.white.withValues(alpha: 0.18),
-    );
     final cordon =
         Paint()
           ..style = PaintingStyle.stroke
@@ -550,13 +723,6 @@ class _PintorPato extends CustomPainter {
     canvas.drawCircle(
       const Offset(100, 32),
       4,
-      Paint()..color = colorAmarilloTese,
-    );
-    canvas.drawRRect(
-      RRect.fromRectAndRadius(
-        Rect.fromCenter(center: const Offset(150, 62), width: 8, height: 12),
-        const Radius.circular(3),
-      ),
       Paint()..color = colorAmarilloTese,
     );
   }
@@ -604,13 +770,6 @@ class _PintorPato extends CustomPainter {
     canvas.drawLine(const Offset(143, 80), const Offset(160, 76), armazon);
     canvas.drawRRect(izq, Paint()..color = negro);
     canvas.drawRRect(der, Paint()..color = negro);
-    final destello =
-        Paint()
-          ..color = Colors.white.withValues(alpha: 0.35)
-          ..strokeWidth = 3
-          ..strokeCap = StrokeCap.round;
-    canvas.drawLine(const Offset(66, 75), const Offset(74, 71), destello);
-    canvas.drawLine(const Offset(114, 75), const Offset(122, 71), destello);
   }
 
   void _corona(Canvas canvas) {
@@ -632,40 +791,11 @@ class _PintorPato extends CustomPainter {
           ..lineTo(140, 46)
           ..close();
     canvas.drawPath(corona, dorado);
-    canvas.drawPath(
-      corona,
-      Paint()
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 2.5
-        ..strokeJoin = StrokeJoin.round
-        ..color = const Color(0xFFB37F00),
-    );
-    canvas.drawRRect(
-      RRect.fromRectAndRadius(
-        const Rect.fromLTRB(60, 40, 140, 52),
-        const Radius.circular(4),
-      ),
-      Paint()..color = const Color(0xFFE5A800),
-    );
     canvas.drawCircle(
       const Offset(100, 32),
       5,
       Paint()..color = const Color(0xFFFF4D6D),
     );
-    canvas.drawCircle(
-      const Offset(74, 46),
-      3.5,
-      Paint()..color = const Color(0xFF4DD0E1),
-    );
-    canvas.drawCircle(
-      const Offset(126, 46),
-      3.5,
-      Paint()..color = const Color(0xFF4DD0E1),
-    );
-    final perla = Paint()..color = Colors.white;
-    for (final p in const [Offset(58, 14), Offset(100, 6), Offset(142, 14)]) {
-      canvas.drawCircle(p, 3.2, perla);
-    }
   }
 
   void _casco(Canvas canvas) {
@@ -683,29 +813,11 @@ class _PintorPato extends CustomPainter {
         ..strokeWidth = 5
         ..color = Colors.white.withValues(alpha: 0.75),
     );
-    canvas.drawArc(
-      Rect.fromCircle(center: c, radius: 56),
-      math.pi * 1.1,
-      math.pi * 0.35,
-      false,
-      Paint()
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 5
-        ..strokeCap = StrokeCap.round
-        ..color = Colors.white.withValues(alpha: 0.85),
-    );
     final collar = RRect.fromRectAndRadius(
       const Rect.fromLTRB(36, 128, 164, 150),
       const Radius.circular(10),
     );
     canvas.drawRRect(collar, Paint()..color = const Color(0xFFC9D3DB));
-    canvas.drawRRect(
-      collar,
-      Paint()
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 2.5
-        ..color = const Color(0xFF8E9BA6),
-    );
   }
 
   void _mago(Canvas canvas) {
@@ -715,32 +827,13 @@ class _PintorPato extends CustomPainter {
           ..quadraticBezierTo(84, 22, 104, 2)
           ..quadraticBezierTo(114, 22, 144, 46)
           ..close();
-    canvas.drawPath(
-      cono,
-      Paint()
-        ..shader = const LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [Color(0xFF7B5CFF), Color(0xFF4B2FC0)],
-        ).createShader(const Rect.fromLTWH(56, 2, 88, 44)),
-    );
-    final borde =
-        Paint()
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = 2.5
-          ..color = const Color(0xFF2E1C8A);
-    canvas.drawPath(cono, borde);
+    canvas.drawPath(cono, Paint()..color = const Color(0xFF5B3FD0));
     final ala = Rect.fromCenter(
       center: const Offset(100, 46),
       width: 124,
       height: 20,
     );
-    canvas.drawOval(ala, Paint()..color = const Color(0xFF5B3FD0));
-    canvas.drawOval(ala, borde);
-    final estrella = Paint()..color = const Color(0xFFFFE066);
-    canvas.drawCircle(const Offset(98, 28), 3, estrella);
-    canvas.drawCircle(const Offset(116, 36), 2.5, estrella);
-    canvas.drawCircle(const Offset(84, 38), 2, estrella);
+    canvas.drawOval(ala, Paint()..color = const Color(0xFF4B2FC0));
   }
 
   void _auriculares(Canvas canvas) {
@@ -763,32 +856,11 @@ class _PintorPato extends CustomPainter {
         const Radius.circular(9),
       );
       canvas.drawRRect(copa, Paint()..color = colorAmarilloTese);
-      canvas.drawRRect(
-        copa,
-        Paint()
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = 2.5
-          ..color = const Color(0xFF2B2B35),
-      );
     }
   }
 
   void _ninja(Canvas canvas) {
     final rojo = Paint()..color = const Color(0xFFD62828);
-    final cola1 =
-        Path()
-          ..moveTo(158, 54)
-          ..lineTo(192, 44)
-          ..lineTo(180, 62)
-          ..close();
-    final cola2 =
-        Path()
-          ..moveTo(158, 60)
-          ..lineTo(190, 78)
-          ..lineTo(172, 70)
-          ..close();
-    canvas.drawPath(cola1, rojo);
-    canvas.drawPath(cola2, rojo);
     canvas.drawRRect(
       RRect.fromRectAndRadius(
         const Rect.fromLTRB(38, 48, 162, 66),
@@ -815,24 +887,272 @@ class _PintorPato extends CustomPainter {
           ..quadraticBezierTo(100, 40, 26, 52)
           ..close();
     canvas.drawPath(sombrero, negro);
-    canvas.drawPath(
-      sombrero,
-      Paint()
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 3
-        ..color = colorAmarilloTese,
-    );
-    canvas.drawCircle(const Offset(100, 28), 9, Paint()..color = Colors.white);
-    canvas.drawCircle(const Offset(96.5, 27), 2.2, negro);
-    canvas.drawCircle(const Offset(103.5, 27), 2.2, negro);
-    canvas.drawLine(
-      const Offset(40, 86),
-      const Offset(160, 66),
-      Paint()
-        ..color = const Color(0xFF1B1B22)
-        ..strokeWidth = 3,
-    );
     canvas.drawCircle(const Offset(76, 80), 12, negro);
+  }
+
+  // ── NUEVOS ACCESORIOS: INSULINI, MARVEL Y TESE ──
+
+  void _pilotoInsulini(Canvas canvas) {
+    // Casco de aviador de cuero café con orejeras y goggles arriba
+    final cuero = Paint()..color = const Color(0xFF6B3E26);
+    final cueroOsc = Paint()..color = const Color(0xFF4A2816);
+    final borrega = Paint()..color = const Color(0xFFF5EBE1);
+
+    // Domo del gorro
+    canvas.drawArc(
+      Rect.fromCircle(center: const Offset(100, 74), radius: 64),
+      math.pi * 1.02,
+      math.pi * 0.96,
+      true,
+      cuero,
+    );
+    // Orejeras laterales de piloto
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(
+        const Rect.fromLTRB(34, 58, 52, 108),
+        const Radius.circular(10),
+      ),
+      cueroOsc,
+    );
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(
+        const Rect.fromLTRB(148, 58, 166, 108),
+        const Radius.circular(10),
+      ),
+      cueroOsc,
+    );
+    // Frente de borreguito
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(
+        const Rect.fromLTRB(50, 38, 150, 56),
+        const Radius.circular(8),
+      ),
+      borrega,
+    );
+    // Correa de goggles en la frente
+    canvas.drawRect(const Rect.fromLTRB(40, 42, 160, 50), cueroOsc);
+    // Lentes de aviador (Goggles en la frente)
+    for (final x in const [76.0, 124.0]) {
+      canvas.drawCircle(
+        Offset(x, 45),
+        16,
+        Paint()..color = const Color(0xFFD97706),
+      );
+      canvas.drawCircle(
+        Offset(x, 45),
+        12,
+        Paint()..color = const Color(0xFF38BDF8),
+      );
+      canvas.drawCircle(Offset(x - 4, 41), 3.5, Paint()..color = Colors.white);
+    }
+    // Bufanda blanca de aviador en el cuello
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(
+        const Rect.fromLTRB(56, 118, 144, 134),
+        const Radius.circular(8),
+      ),
+      Paint()..color = Colors.white,
+    );
+  }
+
+  void _spiderman(Canvas canvas) {
+    // Ojos arácnidos blancos angulares con borde negro grueso
+    final negro =
+        Paint()
+          ..color = Colors.black
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 5
+          ..strokeJoin = StrokeJoin.round;
+    final blanco = Paint()..color = Colors.white;
+
+    final ojoIzq =
+        Path()
+          ..moveTo(52, 68)
+          ..quadraticBezierTo(72, 60, 90, 82)
+          ..quadraticBezierTo(68, 96, 52, 68)
+          ..close();
+    final ojoDer =
+        Path()
+          ..moveTo(148, 68)
+          ..quadraticBezierTo(128, 60, 110, 82)
+          ..quadraticBezierTo(132, 96, 148, 68)
+          ..close();
+
+    canvas.drawPath(ojoIzq, blanco);
+    canvas.drawPath(ojoIzq, negro);
+    canvas.drawPath(ojoDer, blanco);
+    canvas.drawPath(ojoDer, negro);
+  }
+
+  void _ironman(Canvas canvas) {
+    // Placa frontal dorada + ojos brillantes + Reactor Arc en el pecho
+    final placa = RRect.fromRectAndRadius(
+      const Rect.fromLTRB(60, 44, 140, 92),
+      const Radius.circular(14),
+    );
+    canvas.drawRRect(placa, Paint()..color = const Color(0xFFFBBF24));
+    final luzAzul = Paint()..color = const Color(0xFF38BDF8);
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(
+        const Rect.fromLTRB(66, 72, 90, 80),
+        const Radius.circular(3),
+      ),
+      luzAzul,
+    );
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(
+        const Rect.fromLTRB(110, 72, 134, 80),
+        const Radius.circular(3),
+      ),
+      luzAzul,
+    );
+    // Reactor Arc en el pecho
+    canvas.drawCircle(
+      const Offset(100, 145),
+      16,
+      Paint()..color = const Color(0xFF0284C7),
+    );
+    canvas.drawCircle(
+      const Offset(100, 145),
+      11,
+      Paint()..color = const Color(0xFFE0F2FE),
+    );
+  }
+
+  void _wolverine(Canvas canvas) {
+    // Aletas negras icónicas de la máscara de Wolverine
+    final negro = Paint()..color = const Color(0xFF111827);
+    final aletaIzq =
+        Path()
+          ..moveTo(68, 86)
+          ..lineTo(30, 40)
+          ..lineTo(54, 62)
+          ..lineTo(86, 80)
+          ..close();
+    final aletaDer =
+        Path()
+          ..moveTo(132, 86)
+          ..lineTo(170, 40)
+          ..lineTo(146, 62)
+          ..lineTo(114, 80)
+          ..close();
+    canvas.drawPath(aletaIzq, negro);
+    canvas.drawPath(aletaDer, negro);
+  }
+
+  void _deadpool(Canvas canvas) {
+    // Parches negros ovalados + ojitos blancos expresivos
+    final negro = Paint()..color = const Color(0xFF18181B);
+    final blanco = Paint()..color = Colors.white;
+    canvas.drawOval(
+      Rect.fromCenter(center: const Offset(74, 78), width: 32, height: 42),
+      negro,
+    );
+    canvas.drawOval(
+      Rect.fromCenter(center: const Offset(126, 78), width: 32, height: 42),
+      negro,
+    );
+    canvas.drawOval(
+      Rect.fromCenter(center: const Offset(74, 78), width: 14, height: 10),
+      blanco,
+    );
+    canvas.drawOval(
+      Rect.fromCenter(center: const Offset(126, 78), width: 14, height: 12),
+      blanco,
+    );
+  }
+
+  void _cascoIng(Canvas canvas) {
+    // Casco amarillo de ingeniero industrial / civil
+    final amarillo = Paint()..color = const Color(0xFFFACC15);
+    canvas.drawArc(
+      Rect.fromCircle(center: const Offset(100, 56), radius: 52),
+      math.pi,
+      math.pi,
+      true,
+      amarillo,
+    );
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(
+        const Rect.fromLTRB(40, 48, 160, 58),
+        const Radius.circular(6),
+      ),
+      Paint()..color = const Color(0xFFEAB308),
+    );
+  }
+
+  void _visorSistemas(Canvas canvas) {
+    // Visor hacker verde neón matrix + audífonos gamer
+    final verdeNeon =
+        Paint()..color = const Color(0xFF00F5D4).withValues(alpha: 0.85);
+    final marco = Paint()..color = const Color(0xFF0F172A);
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(
+        const Rect.fromLTRB(48, 66, 152, 92),
+        const Radius.circular(10),
+      ),
+      marco,
+    );
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(
+        const Rect.fromLTRB(52, 70, 148, 88),
+        const Radius.circular(8),
+      ),
+      verdeNeon,
+    );
+    _auriculares(canvas);
+  }
+
+  void _visorMeca(Canvas canvas) {
+    // Antena robótica + monóculo láser rojo
+    final metal = Paint()..color = const Color(0xFF64748B);
+    canvas.drawRect(const Rect.fromLTRB(97, 4, 103, 26), metal);
+    canvas.drawCircle(
+      const Offset(100, 6),
+      6,
+      Paint()..color = const Color(0xFFEF4444),
+    );
+    canvas.drawCircle(const Offset(124, 80), 16, metal);
+    canvas.drawCircle(
+      const Offset(124, 80),
+      11,
+      Paint()..color = const Color(0xFFEF4444),
+    );
+  }
+
+  void _lentesQuimica(Canvas canvas) {
+    // Goggles protectores de laboratorio transparentes con borde verde
+    final cristal =
+        Paint()..color = const Color(0xFF6EE7B7).withValues(alpha: 0.55);
+    final borde =
+        Paint()
+          ..color = const Color(0xFF059669)
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 4;
+    final rect = RRect.fromRectAndRadius(
+      const Rect.fromLTRB(52, 66, 148, 94),
+      const Radius.circular(12),
+    );
+    canvas.drawRRect(rect, cristal);
+    canvas.drawRRect(rect, borde);
+  }
+
+  void _cubosRock(Canvas canvas) {
+    // Los icónicos dos cubitos azul y amarillo en el cabello de rockera
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(
+        const Rect.fromLTRB(132, 42, 152, 62),
+        const Radius.circular(4),
+      ),
+      Paint()..color = const Color(0xFF38BDF8),
+    );
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(
+        const Rect.fromLTRB(144, 56, 164, 76),
+        const Radius.circular(4),
+      ),
+      Paint()..color = const Color(0xFFFACC15),
+    );
   }
 
   @override
@@ -840,68 +1160,78 @@ class _PintorPato extends CustomPainter {
       oldDelegate.skin != skin;
 }
 
-// ═════════════════════════ EL HUEVO Y LOS RAYOS ═════════════════════════
+// ═════════════════════ EL HUEVO AL DERECHO Y LOS RAYOS ═════════════════════
 
 class _PintorHuevo extends CustomPainter {
-  final double grietas; // 0 = entero, 1 = totalmente roto
-  const _PintorHuevo(this.grietas);
+  final double grietas;
+  final Color colorAcento;
+  const _PintorHuevo(this.grietas, this.colorAcento);
 
   @override
   void paint(Canvas canvas, Size size) {
     final w = size.width;
     final h = size.height;
+
+    // 🥚 GEOMETRÍA CORREGIDA: Punta estrecha arriba (y=0) y base redonda ancha abajo (y=0.68)
     final huevo =
         Path()
           ..moveTo(w * 0.5, 0)
-          ..cubicTo(w * 0.98, h * 0.02, w * 1.02, h * 0.78, w * 0.5, h)
-          ..cubicTo(w * -0.02, h * 0.78, w * 0.02, h * 0.02, w * 0.5, 0)
+          ..cubicTo(w * 0.78, 0, w * 1.0, h * 0.38, w * 1.0, h * 0.65)
+          ..cubicTo(w * 1.0, h * 0.88, w * 0.78, h, w * 0.5, h)
+          ..cubicTo(w * 0.22, h, 0, h * 0.88, 0, h * 0.65)
+          ..cubicTo(0, h * 0.38, w * 0.22, 0, w * 0.5, 0)
           ..close();
 
     canvas.drawPath(
       huevo,
       Paint()
-        ..shader = const RadialGradient(
-          center: Alignment(-0.3, -0.4),
-          radius: 1.0,
-          colors: [Color(0xFFFFFBEF), Color(0xFFFFE9B8), Color(0xFFFFC96B)],
+        ..shader = RadialGradient(
+          center: const Alignment(-0.25, -0.35),
+          radius: 1.05,
+          colors: [
+            const Color(0xFFFFFFFF),
+            const Color(0xFFFFF3D1),
+            colorAcento.withValues(alpha: 0.55),
+          ],
         ).createShader(Offset.zero & size),
     );
 
     canvas.save();
     canvas.clipPath(huevo);
-    final mancha = Paint()..color = colorSalvia.withValues(alpha: 0.45);
-    canvas.drawCircle(Offset(w * 0.30, h * 0.36), w * 0.07, mancha);
-    canvas.drawCircle(Offset(w * 0.70, h * 0.28), w * 0.05, mancha);
-    canvas.drawCircle(Offset(w * 0.68, h * 0.62), w * 0.08, mancha);
-    canvas.drawCircle(Offset(w * 0.26, h * 0.70), w * 0.05, mancha);
-    canvas.drawCircle(Offset(w * 0.50, h * 0.84), w * 0.06, mancha);
+    final mancha = Paint()..color = colorAcento.withValues(alpha: 0.35);
+    canvas.drawCircle(Offset(w * 0.32, h * 0.42), w * 0.08, mancha);
+    canvas.drawCircle(Offset(w * 0.68, h * 0.32), w * 0.06, mancha);
+    canvas.drawCircle(Offset(w * 0.70, h * 0.66), w * 0.09, mancha);
+    canvas.drawCircle(Offset(w * 0.26, h * 0.72), w * 0.06, mancha);
+    canvas.drawCircle(Offset(w * 0.50, h * 0.85), w * 0.07, mancha);
     canvas.restore();
 
+    // Brillo especular en la parte superior izquierda
     canvas.drawOval(
-      Rect.fromLTWH(w * 0.2, h * 0.1, w * 0.13, h * 0.2),
-      Paint()..color = Colors.white.withValues(alpha: 0.55),
+      Rect.fromLTWH(w * 0.24, h * 0.14, w * 0.14, h * 0.22),
+      Paint()..color = Colors.white.withValues(alpha: 0.7),
     );
     canvas.drawPath(
       huevo,
       Paint()
         ..style = PaintingStyle.stroke
         ..strokeWidth = 4
-        ..color = Colors.white.withValues(alpha: 0.65),
+        ..color = Colors.white.withValues(alpha: 0.85),
     );
 
     if (grietas > 0) {
       _grieta(canvas, size, [
-        Offset(w * 0.50, h * 0.28),
-        Offset(w * 0.40, h * 0.38),
-        Offset(w * 0.54, h * 0.46),
-        Offset(w * 0.38, h * 0.57),
-        Offset(w * 0.52, h * 0.66),
-        Offset(w * 0.42, h * 0.78),
+        Offset(w * 0.50, h * 0.24),
+        Offset(w * 0.40, h * 0.36),
+        Offset(w * 0.55, h * 0.46),
+        Offset(w * 0.38, h * 0.58),
+        Offset(w * 0.52, h * 0.68),
+        Offset(w * 0.42, h * 0.80),
       ]);
       _grieta(canvas, size, [
-        Offset(w * 0.54, h * 0.46),
-        Offset(w * 0.68, h * 0.52),
-        Offset(w * 0.62, h * 0.63),
+        Offset(w * 0.55, h * 0.46),
+        Offset(w * 0.70, h * 0.52),
+        Offset(w * 0.62, h * 0.65),
       ]);
     }
   }
@@ -933,16 +1263,16 @@ class _PintorHuevo extends CustomPainter {
       camino,
       Paint()
         ..style = PaintingStyle.stroke
-        ..strokeWidth = 3
+        ..strokeWidth = 3.2
         ..strokeJoin = StrokeJoin.round
         ..strokeCap = StrokeCap.round
-        ..color = const Color(0xFF8A5A00),
+        ..color = const Color(0xFF5A2D0C),
     );
   }
 
   @override
   bool shouldRepaint(covariant _PintorHuevo oldDelegate) =>
-      oldDelegate.grietas != grietas;
+      oldDelegate.grietas != grietas || oldDelegate.colorAcento != colorAcento;
 }
 
 class _PintorRayos extends CustomPainter {
@@ -955,7 +1285,7 @@ class _PintorRayos extends CustomPainter {
     final c = size.center(Offset.zero);
     final radio = size.width;
     const n = 12;
-    final pintura = Paint()..color = color.withValues(alpha: 0.18);
+    final pintura = Paint()..color = color.withValues(alpha: 0.22);
     for (var i = 0; i < n; i++) {
       final a0 = t * 2 * math.pi + i * (2 * math.pi / n);
       final a1 = a0 + math.pi / n;
@@ -972,7 +1302,7 @@ class _PintorRayos extends CustomPainter {
       150,
       Paint()
         ..shader = RadialGradient(
-          colors: [color.withValues(alpha: 0.55), color.withValues(alpha: 0)],
+          colors: [color.withValues(alpha: 0.6), color.withValues(alpha: 0)],
         ).createShader(Rect.fromCircle(center: c, radius: 150)),
     );
   }
@@ -982,7 +1312,7 @@ class _PintorRayos extends CustomPainter {
       oldDelegate.t != t || oldDelegate.color != color;
 }
 
-// ═══════════════════════ TARJETAS (ruleta y colección) ═══════════════════════
+// ═══════════════════════ TARJETAS (RULETA Y COLECCIÓN) ═══════════════════════
 
 class _TarjetaCinta extends StatelessWidget {
   final PatoSkin skin;
@@ -1006,18 +1336,18 @@ class _TarjetaCinta extends StatelessWidget {
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [const Color(0xFF1B3A33), color.withValues(alpha: 0.35)],
+            colors: [const Color(0xFF2B195C), color.withValues(alpha: 0.42)],
           ),
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(18),
           border: Border.all(
-            color: color.withValues(alpha: activa ? 1 : 0.55),
-            width: activa ? 2.5 : 1.5,
+            color: color.withValues(alpha: activa ? 1 : 0.6),
+            width: activa ? 2.8 : 1.5,
           ),
           boxShadow:
               activa
                   ? [
                     BoxShadow(
-                      color: color.withValues(alpha: 0.7),
+                      color: color.withValues(alpha: 0.8),
                       blurRadius: 18,
                     ),
                   ]
@@ -1062,12 +1392,12 @@ class _CeldaColeccion extends StatelessWidget {
   Widget build(BuildContext context) {
     final tiene = cantidad > 0;
     final color = skin.rareza.color;
-    final pato = PatoVista(skin: skin, reloj: reloj, tamano: 100);
+    final pato = PatoVista(skin: skin, reloj: reloj, tamano: 96);
     return Container(
       padding: const EdgeInsets.all(8),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.06),
-        borderRadius: BorderRadius.circular(16),
+        color: Colors.white.withValues(alpha: tiene ? 0.12 : 0.05),
+        borderRadius: BorderRadius.circular(18),
         border: Border.all(
           color: tiene ? color : Colors.white12,
           width: tiene ? 2 : 1,
@@ -1085,11 +1415,19 @@ class _CeldaColeccion extends StatelessWidget {
                             ? pato
                             : ColorFiltered(
                               colorFilter: const ColorFilter.mode(
-                                Color(0xFF0B1B17),
+                                Color(0xFF12092B),
                                 BlendMode.srcIn,
                               ),
                               child: pato,
                             ),
+                  ),
+                ),
+                Positioned(
+                  top: 0,
+                  left: 0,
+                  child: Text(
+                    skin.universo.emoji,
+                    style: const TextStyle(fontSize: 12),
                   ),
                 ),
                 if (cantidad > 1)
@@ -1109,8 +1447,8 @@ class _CeldaColeccion extends StatelessWidget {
                         'x$cantidad',
                         style: GoogleFonts.poppins(
                           fontSize: 10,
-                          fontWeight: FontWeight.w800,
-                          color: colorVerdeOscuro,
+                          fontWeight: FontWeight.w900,
+                          color: const Color(0xFF1A0F3B),
                         ),
                       ),
                     ),
@@ -1133,7 +1471,7 @@ class _CeldaColeccion extends StatelessWidget {
             skin.rareza.nombre,
             style: GoogleFonts.poppins(
               fontSize: 9.5,
-              fontWeight: FontWeight.w600,
+              fontWeight: FontWeight.w700,
               color: color,
             ),
           ),
@@ -1143,30 +1481,21 @@ class _CeldaColeccion extends StatelessWidget {
   }
 }
 
-// ═════════════════════════════ LA PANTALLA ═════════════════════════════
+// ═════════════════════════════ LA PANTALLA ARCADE ═════════════════════════════
 
 enum _Fase { reposo, abriendo, girando, revelado }
 
 class PantallaGachapon extends StatefulWidget {
-  /// Puntos con los que entra el usuario.
   final int puntos;
-
-  /// Cuántos puntos cuesta abrir un huevo.
   final int costoTirada;
-
-  /// Colección que ya tiene: id del pato -> cuántos tiene.
   final Map<String, int> coleccionInicial;
-
-  /// Se llama con los puntos que quedan después de gastar.
   final ValueChanged<int>? onPuntosCambian;
-
-  /// Se llama al salir un patito (y cuántos tiene ya de ese).
   final void Function(PatoSkin pato, int veces)? onPatoObtenido;
 
   const PantallaGachapon({
     super.key,
     required this.puntos,
-    this.costoTirada = 100,
+    this.costoTirada = 50,
     this.coleccionInicial = const {},
     this.onPuntosCambian,
     this.onPatoObtenido,
@@ -1180,9 +1509,14 @@ class _PantallaGachaponState extends State<PantallaGachapon>
     with TickerProviderStateMixin {
   static const double _anchoItem = 120;
 
+  // Paleta vibrante Arcade Multiverso (Adiós verde oscuro triste)
+  static const Color _fondoArcadeArriba = Color(0xFF2E1760);
+  static const Color _fondoArcadeAbajo = Color(0xFF150A30);
+
   late int _puntos;
   late final Map<String, int> _coleccion;
   _Fase _fase = _Fase.reposo;
+  UniversoPato? _universoFiltro; // null = Todos los universos mezclados
   final math.Random _azar = math.Random();
 
   late final AnimationController _reloj;
@@ -1230,7 +1564,12 @@ class _PantallaGachaponState extends State<PantallaGachapon>
     super.dispose();
   }
 
-  // ───────── lógica del sorteo ─────────
+  List<PatoSkin> get _poolDisponible {
+    if (_universoFiltro == null) return catalogoPatos;
+    final filtrados =
+        catalogoPatos.where((p) => p.universo == _universoFiltro).toList();
+    return filtrados.isNotEmpty ? filtrados : catalogoPatos;
+  }
 
   Rareza _sortearRareza() {
     final total = Rareza.values.fold<int>(0, (suma, r) => suma + r.peso);
@@ -1243,9 +1582,13 @@ class _PantallaGachaponState extends State<PantallaGachapon>
   }
 
   PatoSkin _sortearSkin() {
+    final pool = _poolDisponible;
     final rareza = _sortearRareza();
-    final lista = catalogoPatos.where((s) => s.rareza == rareza).toList();
-    return lista[_azar.nextInt(lista.length)];
+    final candidatos = pool.where((s) => s.rareza == rareza).toList();
+    if (candidatos.isNotEmpty) {
+      return candidatos[_azar.nextInt(candidatos.length)];
+    }
+    return pool[_azar.nextInt(pool.length)];
   }
 
   void _prepararCinta(PatoSkin ganador) {
@@ -1258,13 +1601,10 @@ class _PantallaGachaponState extends State<PantallaGachapon>
     _indiceMarcador.value = -1;
   }
 
-  // ───────── secuencia de apertura ─────────
-
   Future<void> _abrirHuevo() async {
     if (_fase != _Fase.reposo || _puntos < widget.costoTirada) return;
     HapticFeedback.mediumImpact();
 
-    // El resultado se decide y se guarda YA; la animación solo lo revela.
     final ganador = _sortearSkin();
     final veces = (_coleccion[ganador.id] ?? 0) + 1;
     _coleccion[ganador.id] = veces;
@@ -1308,17 +1648,16 @@ class _PantallaGachaponState extends State<PantallaGachapon>
     _cinta.addListener(_alMoverCinta);
     await _cinta.animateTo(
       destino,
-      duration: const Duration(milliseconds: 7500),
+      duration: const Duration(milliseconds: 6500),
       curve: Curves.easeOutQuart,
     );
     _cinta.removeListener(_alMoverCinta);
     if (!mounted) return;
-    await Future.delayed(const Duration(milliseconds: 450));
+    await Future.delayed(const Duration(milliseconds: 400));
     if (!mounted) return;
     _revelar();
   }
 
-  // "tic tic tic" cada vez que un patito pasa por la marca central
   void _alMoverCinta() {
     if (!_cinta.hasClients) return;
     final vista = _anchoVista > 0 ? _anchoVista : 360.0;
@@ -1351,79 +1690,140 @@ class _PantallaGachaponState extends State<PantallaGachapon>
   }
 
   void _mostrarColeccion() {
+    UniversoPato? filtroModal;
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder:
-          (ctx) => Container(
-            height: MediaQuery.of(ctx).size.height * 0.78,
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-            decoration: const BoxDecoration(
-              color: Color(0xFF16352E),
-              borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
-            ),
-            child: Column(
-              children: [
-                Container(
-                  width: 44,
-                  height: 5,
-                  decoration: BoxDecoration(
-                    color: Colors.white24,
-                    borderRadius: BorderRadius.circular(8),
+          (ctx) => StatefulBuilder(
+            builder: (contextModal, setStateModal) {
+              final listaMostrar =
+                  filtroModal == null
+                      ? catalogoPatos
+                      : catalogoPatos
+                          .where((p) => p.universo == filtroModal)
+                          .toList();
+
+              return Container(
+                height: MediaQuery.of(ctx).size.height * 0.82,
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+                decoration: const BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [_fondoArcadeArriba, _fondoArcadeAbajo],
                   ),
+                  borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
                 ),
-                const SizedBox(height: 14),
-                Text(
-                  'Mi colección · ${_coleccion.length}/${catalogoPatos.length}',
-                  style: GoogleFonts.poppins(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w800,
-                    color: Colors.white,
-                  ),
+                child: Column(
+                  children: [
+                    Container(
+                      width: 44,
+                      height: 5,
+                      decoration: BoxDecoration(
+                        color: Colors.white24,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      'Multiverso de Patitos · ${_coleccion.length}/${catalogoPatos.length}',
+                      style: GoogleFonts.poppins(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w800,
+                        color: Colors.white,
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      child: Row(
+                        children: [
+                          ChoiceChip(
+                            label: const Text('🌌 Todos'),
+                            selected: filtroModal == null,
+                            selectedColor: colorAmarilloTese,
+                            backgroundColor: Colors.white12,
+                            labelStyle: GoogleFonts.poppins(
+                              fontSize: 11.5,
+                              fontWeight: FontWeight.bold,
+                              color:
+                                  filtroModal == null
+                                      ? const Color(0xFF150A30)
+                                      : Colors.white,
+                            ),
+                            onSelected:
+                                (_) => setStateModal(() => filtroModal = null),
+                          ),
+                          const SizedBox(width: 6),
+                          ...UniversoPato.values.map((u) {
+                            final sel = filtroModal == u;
+                            return Padding(
+                              padding: const EdgeInsets.only(right: 6),
+                              child: ChoiceChip(
+                                label: Text('${u.emoji} ${u.nombre}'),
+                                selected: sel,
+                                selectedColor: u.colorTema,
+                                backgroundColor: Colors.white12,
+                                labelStyle: GoogleFonts.poppins(
+                                  fontSize: 11.5,
+                                  fontWeight: FontWeight.bold,
+                                  color:
+                                      sel
+                                          ? const Color(0xFF150A30)
+                                          : Colors.white,
+                                ),
+                                onSelected:
+                                    (_) => setStateModal(() => filtroModal = u),
+                              ),
+                            );
+                          }),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Expanded(
+                      child: GridView.builder(
+                        gridDelegate:
+                            const SliverGridDelegateWithFixedCrossAxisCount(
+                              crossAxisCount: 3,
+                              mainAxisSpacing: 10,
+                              crossAxisSpacing: 10,
+                              childAspectRatio: 0.76,
+                            ),
+                        itemCount: listaMostrar.length,
+                        itemBuilder:
+                            (_, i) => _CeldaColeccion(
+                              skin: listaMostrar[i],
+                              cantidad: _coleccion[listaMostrar[i].id] ?? 0,
+                              reloj: _reloj,
+                            ),
+                      ),
+                    ),
+                  ],
                 ),
-                const SizedBox(height: 12),
-                Expanded(
-                  child: GridView.builder(
-                    gridDelegate:
-                        const SliverGridDelegateWithFixedCrossAxisCount(
-                          crossAxisCount: 3,
-                          mainAxisSpacing: 10,
-                          crossAxisSpacing: 10,
-                          childAspectRatio: 0.78,
-                        ),
-                    itemCount: catalogoPatos.length,
-                    itemBuilder:
-                        (_, i) => _CeldaColeccion(
-                          skin: catalogoPatos[i],
-                          cantidad: _coleccion[catalogoPatos[i].id] ?? 0,
-                          reloj: _reloj,
-                        ),
-                  ),
-                ),
-              ],
-            ),
+              );
+            },
           ),
     );
   }
 
-  // ───────── construcción de la pantalla ─────────
-
   @override
   Widget build(BuildContext context) {
-    final glow =
+    final Color colorAcento =
         (_fase == _Fase.revelado && _ganador != null)
             ? _ganador!.rareza.color
-            : colorSalvia;
+            : (_universoFiltro?.colorTema ?? const Color(0xFFFFB800));
     final puedeVerColeccion = _fase == _Fase.reposo || _fase == _Fase.revelado;
     final rareza = _ganador?.rareza;
     final particulas =
         rareza == Rareza.legendaria
-            ? 70
-            : (rareza != null && rareza.index >= 2 ? 40 : 22);
+            ? 75
+            : (rareza != null && rareza.index >= 2 ? 45 : 25);
 
     return Scaffold(
-      backgroundColor: colorVerdeOscuro,
+      backgroundColor: _fondoArcadeAbajo,
       extendBodyBehindAppBar: true,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
@@ -1431,10 +1831,10 @@ class _PantallaGachaponState extends State<PantallaGachapon>
         centerTitle: true,
         iconTheme: const IconThemeData(color: Colors.white),
         title: Text(
-          'Gachapón de Patitos',
+          'Multiverso Gachapón 🦆',
           style: GoogleFonts.poppins(
             color: Colors.white,
-            fontWeight: FontWeight.bold,
+            fontWeight: FontWeight.w800,
             fontSize: 18,
           ),
         ),
@@ -1461,24 +1861,29 @@ class _PantallaGachaponState extends State<PantallaGachapon>
       ),
       body: Stack(
         children: [
+          // Fondo vibrante Cósmico Arcade con transición dinámica
           Positioned.fill(
             child: AnimatedContainer(
-              duration: const Duration(milliseconds: 600),
+              duration: const Duration(milliseconds: 500),
               decoration: BoxDecoration(
                 gradient: RadialGradient(
-                  center: const Alignment(0, -0.2),
-                  radius: 1.0,
-                  colors: [glow.withValues(alpha: 0.28), colorVerdeOscuro],
+                  center: const Alignment(0, -0.15),
+                  radius: 1.1,
+                  colors: [
+                    colorAcento.withValues(alpha: 0.38),
+                    _fondoArcadeArriba,
+                    _fondoArcadeAbajo,
+                  ],
                 ),
               ),
             ),
           ),
           SafeArea(
             child: Padding(
-              padding: const EdgeInsets.only(top: kToolbarHeight),
+              padding: const EdgeInsets.only(top: kToolbarHeight - 10),
               child: AnimatedSwitcher(
                 duration: const Duration(milliseconds: 350),
-                child: _contenido(),
+                child: _contenido(colorAcento),
               ),
             ),
           ),
@@ -1508,8 +1913,8 @@ class _PantallaGachaponState extends State<PantallaGachapon>
                   rareza?.color ?? colorAmarilloTese,
                   Colors.white,
                   colorAmarilloTese,
-                  colorRosa,
-                  colorSalvia,
+                  const Color(0xFF38B6FF),
+                  const Color(0xFFFF4D8D),
                 ],
               ),
             ),
@@ -1519,11 +1924,14 @@ class _PantallaGachaponState extends State<PantallaGachapon>
     );
   }
 
-  Widget _contenido() {
+  Widget _contenido(Color colorAcento) {
     switch (_fase) {
       case _Fase.reposo:
       case _Fase.abriendo:
-        return KeyedSubtree(key: const ValueKey('huevo'), child: _vistaHuevo());
+        return KeyedSubtree(
+          key: const ValueKey('huevo'),
+          child: _vistaHuevo(colorAcento),
+        );
       case _Fase.girando:
         return KeyedSubtree(key: const ValueKey('cinta'), child: _vistaCinta());
       case _Fase.revelado:
@@ -1536,11 +1944,14 @@ class _PantallaGachaponState extends State<PantallaGachapon>
 
   Widget _pildoraPuntos() {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 7),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.10),
+        color: Colors.white.withValues(alpha: 0.14),
         borderRadius: BorderRadius.circular(30),
-        border: Border.all(color: colorAmarilloTese.withValues(alpha: 0.6)),
+        border: Border.all(
+          color: colorAmarilloTese.withValues(alpha: 0.8),
+          width: 1.5,
+        ),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -1552,11 +1963,11 @@ class _PantallaGachaponState extends State<PantallaGachapon>
             duration: const Duration(milliseconds: 900),
             builder:
                 (context, valor, _) => Text(
-                  '$valor pts',
+                  '$valor pts disponibles',
                   style: GoogleFonts.poppins(
                     color: Colors.white,
                     fontWeight: FontWeight.bold,
-                    fontSize: 18,
+                    fontSize: 15,
                   ),
                 ),
           ),
@@ -1565,15 +1976,28 @@ class _PantallaGachaponState extends State<PantallaGachapon>
     );
   }
 
-  // ───────── fase 1: el huevo ─────────
+  // ───────── FASE 1: SELECTOR DE UNIVERSO Y HUEVO AL DERECHO ─────────
 
-  Widget _vistaHuevo() {
+  Widget _vistaHuevo(Color colorAcento) {
     final alcanza = _puntos >= widget.costoTirada;
     final reposo = _fase == _Fase.reposo;
     return Column(
       children: [
-        const SizedBox(height: 10),
         _pildoraPuntos(),
+        const SizedBox(height: 12),
+        // Selector de Máquina / Universo
+        SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: Row(
+            children: [
+              _chipUniverso(null, '🌌 Todos', const Color(0xFFFFB800)),
+              ...UniversoPato.values.map(
+                (u) => _chipUniverso(u, '${u.emoji} ${u.nombre}', u.colorTema),
+              ),
+            ],
+          ),
+        ),
         Expanded(
           child: Center(
             child: AnimatedBuilder(
@@ -1591,7 +2015,7 @@ class _PantallaGachaponState extends State<PantallaGachapon>
                     angle: giro,
                     child: Transform.scale(
                       scale: 1 + 0.12 * s,
-                      child: _huevo(s),
+                      child: _huevo(s, colorAcento),
                     ),
                   ),
                 );
@@ -1623,7 +2047,7 @@ class _PantallaGachaponState extends State<PantallaGachapon>
                       '${r.nombre} ${r.peso}%',
                       style: GoogleFonts.poppins(
                         fontSize: 11,
-                        color: Colors.white70,
+                        color: Colors.white,
                       ),
                     ),
                   ],
@@ -1631,29 +2055,29 @@ class _PantallaGachaponState extends State<PantallaGachapon>
             ],
           ),
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: 14),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 24),
           child: SizedBox(
             width: double.infinity,
-            height: 58,
+            height: 56,
             child: ElevatedButton.icon(
               onPressed: (reposo && alcanza) ? _abrirHuevo : null,
-              icon: const Icon(Icons.egg_alt),
+              icon: const Icon(Icons.egg_alt_rounded, size: 24),
               label: Text(
-                'Abrir huevo · ${widget.costoTirada} pts',
+                'Abrir Cápsula · ${widget.costoTirada} pts',
                 style: GoogleFonts.poppins(
-                  fontSize: 17,
-                  fontWeight: FontWeight.w800,
+                  fontSize: 16.5,
+                  fontWeight: FontWeight.w900,
                 ),
               ),
               style: ElevatedButton.styleFrom(
-                backgroundColor: colorAmarilloTese,
-                foregroundColor: colorVerdeOscuro,
+                backgroundColor: colorAcento,
+                foregroundColor: const Color(0xFF150A30),
                 disabledBackgroundColor: Colors.white12,
                 disabledForegroundColor: Colors.white38,
-                elevation: 8,
-                shadowColor: colorAmarilloTese.withValues(alpha: 0.5),
+                elevation: 10,
+                shadowColor: colorAcento.withValues(alpha: 0.6),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(30),
                 ),
@@ -1664,43 +2088,96 @@ class _PantallaGachaponState extends State<PantallaGachapon>
         const SizedBox(height: 8),
         Text(
           alcanza
-              ? 'Cada pedido que haces suma puntos 🦆'
-              : 'Te faltan ${widget.costoTirada - _puntos} puntos. ¡Sigue pidiendo!',
-          style: GoogleFonts.poppins(fontSize: 12, color: Colors.white60),
+              ? (_universoFiltro == null
+                  ? 'Tirando de TODOS los universos (26 skins) 🦆'
+                  : 'Tirando cápsula de: ${_universoFiltro!.nombre} ${_universoFiltro!.emoji}')
+              : 'Te faltan ${widget.costoTirada - _puntos} puntos. ¡Pide en la cafetería para ganar más!',
+          style: GoogleFonts.poppins(fontSize: 11.5, color: Colors.white70),
         ),
-        const SizedBox(height: 18),
+        const SizedBox(height: 16),
       ],
     );
   }
 
-  Widget _huevo(double s) {
+  Widget _chipUniverso(UniversoPato? u, String texto, Color color) {
+    final bool activo = _universoFiltro == u;
+    return Padding(
+      padding: const EdgeInsets.only(right: 8),
+      child: GestureDetector(
+        onTap: () {
+          if (_fase != _Fase.reposo) return;
+          HapticFeedback.selectionClick();
+          setState(() => _universoFiltro = u);
+        },
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+          decoration: BoxDecoration(
+            color: activo ? color : Colors.white.withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+              color: activo ? Colors.white : color.withValues(alpha: 0.4),
+              width: 1.5,
+            ),
+            boxShadow:
+                activo
+                    ? [
+                      BoxShadow(
+                        color: color.withValues(alpha: 0.5),
+                        blurRadius: 10,
+                      ),
+                    ]
+                    : null,
+          ),
+          child: Text(
+            texto,
+            style: GoogleFonts.poppins(
+              fontSize: 12,
+              fontWeight: FontWeight.bold,
+              color: activo ? const Color(0xFF150A30) : Colors.white,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _huevo(double s, Color colorAcento) {
     return SizedBox(
       width: 230,
-      height: 290,
+      height: 275,
       child: Stack(
         alignment: Alignment.center,
         children: [
           Container(
-            width: 200,
-            height: 200,
+            width: 190,
+            height: 190,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
               boxShadow: [
                 BoxShadow(
-                  color: colorAmarilloTese.withValues(alpha: 0.30 + 0.35 * s),
-                  blurRadius: 70 + 50 * s,
-                  spreadRadius: 12 + 20 * s,
+                  color: colorAcento.withValues(alpha: 0.35 + 0.35 * s),
+                  blurRadius: 65 + 45 * s,
+                  spreadRadius: 12 + 18 * s,
                 ),
               ],
             ),
           ),
-          CustomPaint(size: const Size(180, 235), painter: _PintorHuevo(s)),
-          Text(
-            '?',
-            style: GoogleFonts.poppins(
-              fontSize: 88,
-              fontWeight: FontWeight.w900,
-              color: colorVerdeTese.withValues(alpha: 0.35 * (1 - s)),
+          CustomPaint(
+            size: const Size(175, 225),
+            painter: _PintorHuevo(s, colorAcento),
+          ),
+          Padding(
+            padding: const EdgeInsets.only(top: 18),
+            child: Text(
+              _universoFiltro?.emoji ?? '?',
+              style: GoogleFonts.poppins(
+                fontSize: _universoFiltro == null ? 80 : 58,
+                fontWeight: FontWeight.w900,
+                color: const Color(
+                  0xFF2E1760,
+                ).withValues(alpha: 0.45 * (1 - s)),
+              ),
             ),
           ),
         ],
@@ -1708,17 +2185,17 @@ class _PantallaGachaponState extends State<PantallaGachapon>
     );
   }
 
-  // ───────── fase 2: la ruleta ─────────
+  // ───────── FASE 2: RULETA ─────────
 
   Widget _desvanecido(bool izquierda) {
     return Container(
-      width: 70,
+      width: 65,
       height: 190,
       decoration: BoxDecoration(
         gradient: LinearGradient(
           begin: izquierda ? Alignment.centerLeft : Alignment.centerRight,
           end: izquierda ? Alignment.centerRight : Alignment.centerLeft,
-          colors: [colorVerdeOscuro, colorVerdeOscuro.withValues(alpha: 0)],
+          colors: [_fondoArcadeAbajo, _fondoArcadeAbajo.withValues(alpha: 0)],
         ),
       ),
     );
@@ -1731,16 +2208,16 @@ class _PantallaGachaponState extends State<PantallaGachapon>
         _pildoraPuntos(),
         const SizedBox(height: 28),
         Text(
-          '¡Abriendo el huevo!',
+          '¡Girando el Multiverso!',
           style: GoogleFonts.poppins(
-            fontSize: 20,
-            fontWeight: FontWeight.w800,
+            fontSize: 22,
+            fontWeight: FontWeight.w900,
             color: Colors.white,
           ),
         ),
         const SizedBox(height: 4),
         Text(
-          '¿Qué patito saldrá?',
+          '¿Qué patito saldrá de la cápsula?',
           style: GoogleFonts.poppins(fontSize: 13, color: Colors.white70),
         ),
         const SizedBox(height: 26),
@@ -1819,34 +2296,62 @@ class _PantallaGachaponState extends State<PantallaGachapon>
     );
   }
 
-  // ───────── fase 3: la revelación ─────────
+  // ───────── FASE 3: REVELACIÓN ─────────
 
   Widget _etiquetaRareza(PatoSkin pato) {
     final c = pato.rareza.color;
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 7),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(colors: [c, _ajustarLuz(c, 0.12)]),
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [BoxShadow(color: c.withValues(alpha: 0.6), blurRadius: 16)],
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          for (var i = 0; i <= pato.rareza.index; i++)
-            const Icon(Icons.star_rounded, size: 16, color: colorVerdeOscuro),
-          const SizedBox(width: 6),
-          Text(
-            pato.rareza.nombre.toUpperCase(),
+    return Wrap(
+      spacing: 8,
+      alignment: WrapAlignment.center,
+      children: [
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(colors: [c, _ajustarLuz(c, 0.12)]),
+            borderRadius: BorderRadius.circular(20),
+            boxShadow: [
+              BoxShadow(color: c.withValues(alpha: 0.6), blurRadius: 16),
+            ],
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              for (var i = 0; i <= pato.rareza.index; i++)
+                const Icon(
+                  Icons.star_rounded,
+                  size: 15,
+                  color: Color(0xFF150A30),
+                ),
+              const SizedBox(width: 5),
+              Text(
+                pato.rareza.nombre.toUpperCase(),
+                style: GoogleFonts.poppins(
+                  fontWeight: FontWeight.w900,
+                  fontSize: 12,
+                  letterSpacing: 1.5,
+                  color: const Color(0xFF150A30),
+                ),
+              ),
+            ],
+          ),
+        ),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha: 0.14),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: Colors.white30),
+          ),
+          child: Text(
+            '${pato.universo.emoji} ${pato.universo.nombre}',
             style: GoogleFonts.poppins(
-              fontWeight: FontWeight.w900,
-              fontSize: 13,
-              letterSpacing: 2,
-              color: colorVerdeOscuro,
+              fontWeight: FontWeight.bold,
+              fontSize: 11.5,
+              color: Colors.white,
             ),
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 
@@ -1860,7 +2365,7 @@ class _PantallaGachaponState extends State<PantallaGachapon>
       child: Column(
         children: [
           SizedBox(
-            height: 300,
+            height: 290,
             width: double.infinity,
             child: Stack(
               alignment: Alignment.center,
@@ -1892,7 +2397,7 @@ class _PantallaGachaponState extends State<PantallaGachapon>
                           ),
                           child: child,
                         ),
-                    child: PatoVista(skin: pato, reloj: _reloj, tamano: 230),
+                    child: PatoVista(skin: pato, reloj: _reloj, tamano: 225),
                   ),
                 ),
               ],
@@ -1904,7 +2409,7 @@ class _PantallaGachaponState extends State<PantallaGachapon>
             pato.nombre,
             textAlign: TextAlign.center,
             style: GoogleFonts.poppins(
-              fontSize: 28,
+              fontSize: 26,
               fontWeight: FontWeight.w900,
               color: Colors.white,
             ),
@@ -1922,15 +2427,17 @@ class _PantallaGachaponState extends State<PantallaGachapon>
               color:
                   _esNuevo
                       ? colorAmarilloTese
-                      : Colors.white.withValues(alpha: 0.12),
+                      : Colors.white.withValues(alpha: 0.14),
               borderRadius: BorderRadius.circular(20),
             ),
             child: Text(
-              _esNuevo ? '¡NUEVO EN TU COLECCIÓN!' : 'Ya lo tenías · x$veces',
+              _esNuevo
+                  ? '¡NUEVO EN TU COLECCIÓN Y EQUIPADO!'
+                  : 'Ya lo tenías · x$veces',
               style: GoogleFonts.poppins(
                 fontSize: 12,
                 fontWeight: FontWeight.w800,
-                color: _esNuevo ? colorVerdeOscuro : Colors.white,
+                color: _esNuevo ? const Color(0xFF150A30) : Colors.white,
               ),
             ),
           ),
@@ -1942,7 +2449,7 @@ class _PantallaGachaponState extends State<PantallaGachapon>
                   onPressed: _mostrarColeccion,
                   icon: const Icon(Icons.collections_bookmark_rounded),
                   label: Text(
-                    'Colección',
+                    'Ver todos',
                     style: GoogleFonts.poppins(fontWeight: FontWeight.w700),
                   ),
                   style: OutlinedButton.styleFrom(
@@ -1959,14 +2466,14 @@ class _PantallaGachaponState extends State<PantallaGachapon>
               Expanded(
                 child: ElevatedButton.icon(
                   onPressed: _volverAlHuevo,
-                  icon: const Icon(Icons.egg_alt),
+                  icon: const Icon(Icons.egg_alt_rounded),
                   label: Text(
-                    alcanza ? 'Otro huevo' : 'Listo',
-                    style: GoogleFonts.poppins(fontWeight: FontWeight.w800),
+                    alcanza ? 'Otra cápsula' : 'Listo',
+                    style: GoogleFonts.poppins(fontWeight: FontWeight.w900),
                   ),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: colorAmarilloTese,
-                    foregroundColor: colorVerdeOscuro,
+                    foregroundColor: const Color(0xFF150A30),
                     minimumSize: const Size(0, 52),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(26),

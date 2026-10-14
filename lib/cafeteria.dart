@@ -24,7 +24,7 @@ Widget _botonStock(IconData icono, VoidCallback onTap) {
 }
 
 // ==========================================================
-// 1. ACCESO BLINDADO ANTI-HACKEOS CON DOBLE FACTOR
+// 1. ACCESO BLINDADO ANTI-HACKEOS CON AYUDA INTERACTIVA
 // ==========================================================
 class LoginLocalScreen extends StatefulWidget {
   const LoginLocalScreen({super.key});
@@ -48,6 +48,119 @@ class _LoginLocalScreenState extends State<LoginLocalScreen> {
     super.dispose();
   }
 
+  // 💡 Modal amigable para autocompletar sucursales durante pruebas o demos
+  void _mostrarAyudaSucursales() {
+    final sucursales = [
+      {
+        'codigo': 'KS-SISTEMAS',
+        'pin': '849201',
+        'nombre': 'Kiosko Sistemas',
+        'icono': Icons.computer,
+      },
+      {
+        'codigo': 'KB-BIBLIO',
+        'pin': '715309',
+        'nombre': 'Kiosko Biblioteca',
+        'icono': Icons.menu_book,
+      },
+      {
+        'codigo': 'CC-CENTRAL',
+        'pin': '938420',
+        'nombre': 'Cafetería Central',
+        'icono': Icons.storefront,
+      },
+    ];
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder:
+          (ctx) => Padding(
+            padding: const EdgeInsets.fromLTRB(22, 18, 22, 26),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    const Icon(
+                      Icons.key_rounded,
+                      color: colorVerdeTese,
+                      size: 24,
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      ' Directorio de Terminales TESE',
+                      style: GoogleFonts.poppins(
+                        fontSize: 16.5,
+                        fontWeight: FontWeight.bold,
+                        color: colorTextoOscuro,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  'Toca cualquier sucursal para rellenar su código rápidamente:',
+                  style: GoogleFonts.poppins(
+                    fontSize: 12.5,
+                    color: colorTextoGris,
+                  ),
+                ),
+                const Divider(height: 22),
+                ...sucursales.map(
+                  (s) => ListTile(
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 6,
+                      vertical: 2,
+                    ),
+                    leading: CircleAvatar(
+                      backgroundColor: colorVerdeTese.withValues(alpha: 0.1),
+                      child: Icon(
+                        s['icono'] as IconData,
+                        color: colorVerdeTese,
+                        size: 20,
+                      ),
+                    ),
+                    title: Text(
+                      s['nombre'] as String,
+                      style: GoogleFonts.poppins(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                        color: colorTextoOscuro,
+                      ),
+                    ),
+                    subtitle: Text(
+                      'Código: ${s['codigo']}  •  PIN: ${s['pin']}',
+                      style: GoogleFonts.poppins(
+                        fontSize: 12,
+                        color: colorTextoGris,
+                      ),
+                    ),
+                    trailing: const Icon(
+                      Icons.touch_app,
+                      color: colorAmarilloTese,
+                      size: 20,
+                    ),
+                    onTap: () {
+                      HapticFeedback.selectionClick();
+                      setState(() {
+                        _codigoCtrl.text = s['codigo'] as String;
+                        _pinCtrl.text = s['pin'] as String;
+                      });
+                      Navigator.pop(ctx);
+                    },
+                  ),
+                ),
+              ],
+            ),
+          ),
+    );
+  }
+
   Future<void> _autenticarLocalSeguro() async {
     final codigo = _codigoCtrl.text.trim().toUpperCase();
     final pin = _pinCtrl.text.trim();
@@ -64,7 +177,7 @@ class _LoginLocalScreenState extends State<LoginLocalScreen> {
 
     if (_intentosFallidos >= 3) {
       _mostrarAlerta(
-        '⛔ Acceso bloqueado por seguridad. Demasiados intentos fallidos.',
+        '⛔ Acceso bloqueado temporalmente. Demasiados intentos fallidos.',
       );
       return;
     }
@@ -85,47 +198,46 @@ class _LoginLocalScreenState extends State<LoginLocalScreen> {
         final data = query.docs.first.data();
         final String nombreLocal = data['nombre'] ?? 'Kiosko Sistemas';
 
-        if (mounted) {
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(
-              builder:
-                  (context) => DashboardNavegacionLocal(
-                    nombreLocal: nombreLocal,
-                    codigoLocal: codigo,
-                  ),
-            ),
-          );
-        }
+        if (!mounted) return;
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder:
+                (context) => DashboardNavegacionLocal(
+                  nombreLocal: nombreLocal,
+                  codigoLocal: codigo,
+                ),
+          ),
+        );
       } else {
         final fallbackValido = await _verificarEInicializarLlavesMaestras(
           codigo,
           pin,
         );
+        if (!mounted) return;
         if (fallbackValido != null) {
-          if (mounted) {
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(
-                builder:
-                    (context) => DashboardNavegacionLocal(
-                      nombreLocal: fallbackValido,
-                      codigoLocal: codigo,
-                    ),
-              ),
-            );
-          }
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(
+              builder:
+                  (context) => DashboardNavegacionLocal(
+                    nombreLocal: fallbackValido,
+                    codigoLocal: codigo,
+                  ),
+            ),
+          );
         } else {
           setState(() {
             _intentosFallidos++;
             _estaValidando = false;
           });
           _mostrarAlerta(
-            'Credenciales no autorizadas. Intento ${_intentosFallidos}/3.',
+            'Credenciales no autorizadas. Intento $_intentosFallidos/3.',
           );
         }
       }
     } catch (e) {
+      if (!mounted) return;
       setState(() => _estaValidando = false);
       _mostrarAlerta('Error al verificar credenciales con el servidor.');
     }
@@ -158,6 +270,7 @@ class _LoginLocalScreenState extends State<LoginLocalScreen> {
   }
 
   void _mostrarAlerta(String mensaje) {
+    if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(mensaje, style: GoogleFonts.poppins(fontSize: 13)),
@@ -183,6 +296,25 @@ class _LoginLocalScreenState extends State<LoginLocalScreen> {
           ),
           onPressed: () => Navigator.pop(context),
         ),
+        actions: [
+          TextButton.icon(
+            onPressed: _mostrarAyudaSucursales,
+            icon: const Icon(
+              Icons.help_outline_rounded,
+              color: colorVerdeTese,
+              size: 18,
+            ),
+            label: Text(
+              'Códigos',
+              style: GoogleFonts.poppins(
+                color: colorVerdeTese,
+                fontWeight: FontWeight.bold,
+                fontSize: 12.5,
+              ),
+            ),
+          ),
+          const SizedBox(width: 8),
+        ],
       ),
       body: Center(
         child: SingleChildScrollView(
@@ -193,11 +325,11 @@ class _LoginLocalScreenState extends State<LoginLocalScreen> {
               ZoomIn(
                 child: Image.asset(
                   'assets/pedidoParaEntregar.png',
-                  height: 150,
+                  height: 145,
                   fit: BoxFit.contain,
                 ),
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 14),
               FadeInDown(
                 child: Text(
                   'Terminal de Cocina',
@@ -211,7 +343,7 @@ class _LoginLocalScreenState extends State<LoginLocalScreen> {
               const SizedBox(height: 4),
               FadeInDown(
                 child: Text(
-                  'Acceso restringido para personal de cafetería',
+                  'Acceso exclusivo para personal de cafetería y kioskos',
                   textAlign: TextAlign.center,
                   style: GoogleFonts.poppins(
                     fontSize: 13,
@@ -219,7 +351,7 @@ class _LoginLocalScreenState extends State<LoginLocalScreen> {
                   ),
                 ),
               ),
-              const SizedBox(height: 26),
+              const SizedBox(height: 22),
               Container(
                 padding: const EdgeInsets.all(22),
                 decoration: BoxDecoration(
@@ -240,9 +372,9 @@ class _LoginLocalScreenState extends State<LoginLocalScreen> {
                       textAlign: TextAlign.center,
                       textCapitalization: TextCapitalization.characters,
                       style: GoogleFonts.poppins(
-                        fontSize: 18,
+                        fontSize: 17,
                         fontWeight: FontWeight.bold,
-                        letterSpacing: 2,
+                        letterSpacing: 1.5,
                         color: colorTextoOscuro,
                       ),
                       decoration: InputDecoration(
@@ -268,9 +400,9 @@ class _LoginLocalScreenState extends State<LoginLocalScreen> {
                       obscureText: _ocultarPin,
                       maxLength: 6,
                       style: GoogleFonts.poppins(
-                        fontSize: 22,
+                        fontSize: 20,
                         fontWeight: FontWeight.w900,
-                        letterSpacing: 8,
+                        letterSpacing: 6,
                         color: colorTextoOscuro,
                       ),
                       decoration: InputDecoration(
@@ -298,7 +430,7 @@ class _LoginLocalScreenState extends State<LoginLocalScreen> {
                         ),
                       ),
                     ),
-                    const SizedBox(height: 20),
+                    const SizedBox(height: 18),
                     SizedBox(
                       width: double.infinity,
                       child: ElevatedButton.icon(
@@ -319,8 +451,13 @@ class _LoginLocalScreenState extends State<LoginLocalScreen> {
                             _estaValidando ? null : _autenticarLocalSeguro,
                         label:
                             _estaValidando
-                                ? const CircularProgressIndicator(
-                                  color: Colors.white,
+                                ? const SizedBox(
+                                  height: 22,
+                                  width: 22,
+                                  child: CircularProgressIndicator(
+                                    color: Colors.white,
+                                    strokeWidth: 2.5,
+                                  ),
                                 )
                                 : Text(
                                   'Desbloquear Terminal',
@@ -330,6 +467,23 @@ class _LoginLocalScreenState extends State<LoginLocalScreen> {
                                     fontWeight: FontWeight.bold,
                                   ),
                                 ),
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    TextButton.icon(
+                      onPressed: _mostrarAyudaSucursales,
+                      icon: const Icon(
+                        Icons.touch_app_outlined,
+                        size: 16,
+                        color: colorVerdeTese,
+                      ),
+                      label: Text(
+                        'Elegir sucursal rápidamente',
+                        style: GoogleFonts.poppins(
+                          fontSize: 12.5,
+                          fontWeight: FontWeight.bold,
+                          color: colorVerdeTese,
+                        ),
                       ),
                     ),
                   ],
@@ -382,9 +536,7 @@ class _DashboardNavegacionLocalState extends State<DashboardNavegacionLocal> {
   int _filtroEstado = -1;
 
   int _minutosEspera(Timestamp? hora) {
-    if (hora == null) {
-      return 0;
-    }
+    if (hora == null) return 0;
     return DateTime.now().difference(hora.toDate()).inMinutes;
   }
 
@@ -415,10 +567,9 @@ class _DashboardNavegacionLocalState extends State<DashboardNavegacionLocal> {
   }
 
   void _ajustarExistencias(String idDoc, int existenciasActuales, int cambio) {
+    HapticFeedback.selectionClick();
     int nuevaCantidad = existenciasActuales + cambio;
-    if (nuevaCantidad < 0) {
-      nuevaCantidad = 0;
-    }
+    if (nuevaCantidad < 0) nuevaCantidad = 0;
     FirebaseFirestore.instance.collection('Menu_Platillos').doc(idDoc).update({
       'existencias': nuevaCantidad,
     });
@@ -481,6 +632,59 @@ class _DashboardNavegacionLocalState extends State<DashboardNavegacionLocal> {
     );
   }
 
+  void _confirmarEliminarPlatillo(
+    BuildContext ctxModal,
+    String docId,
+    String nombre,
+  ) {
+    showDialog(
+      context: context,
+      builder:
+          (ctxConfirm) => AlertDialog(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(20),
+            ),
+            title: Text(
+              '¿Eliminar platillo?',
+              style: GoogleFonts.poppins(fontWeight: FontWeight.bold),
+            ),
+            content: Text(
+              '¿Seguro que deseas borrar "$nombre" del menú de ${widget.nombreLocal}?',
+              style: GoogleFonts.poppins(fontSize: 13.5, color: colorTextoGris),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctxConfirm),
+                child: const Text('Cancelar'),
+              ),
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.redAccent,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                onPressed: () {
+                  FirebaseFirestore.instance
+                      .collection('Menu_Platillos')
+                      .doc(docId)
+                      .delete();
+                  Navigator.pop(ctxConfirm);
+                  Navigator.pop(ctxModal);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Se eliminó "$nombre" del menú.')),
+                  );
+                },
+                child: const Text(
+                  'Sí, eliminar',
+                  style: TextStyle(color: Colors.white),
+                ),
+              ),
+            ],
+          ),
+    );
+  }
+
   void _mostrarDialogoEditarPlatillo(DocumentSnapshot doc) {
     final data = doc.data() as Map<String, dynamic>? ?? {};
     final TextEditingController precioCtrl = TextEditingController(
@@ -492,10 +696,18 @@ class _DashboardNavegacionLocalState extends State<DashboardNavegacionLocal> {
     final TextEditingController puntosCtrl = TextEditingController(
       text: '${data['puntos'] ?? 10}',
     );
+    final TextEditingController descCtrl = TextEditingController(
+      text: '${data['descripcion'] ?? ''}',
+    );
     final TextEditingController nuevoIngredienteCtrl = TextEditingController();
     final List<String> ingredientes = List<String>.from(
       data['ingredientes'] ?? [],
     );
+    String categoriaActual = data['categoria'] ?? 'Comida';
+    String tiempoActual = data['tiempoPrep'] ?? '15 min';
+
+    const categoriasOpciones = ['Desayunos', 'Comida', 'Bebidas', 'Postres'];
+    const tiemposOpciones = ['5 min', '10 min', '15 min', '20 min'];
 
     showModalBottomSheet(
       context: context,
@@ -538,19 +750,48 @@ class _DashboardNavegacionLocalState extends State<DashboardNavegacionLocal> {
                               color: Colors.redAccent,
                             ),
                             tooltip: 'Eliminar Platillo',
-                            onPressed: () {
-                              FirebaseFirestore.instance
-                                  .collection('Menu_Platillos')
-                                  .doc(doc.id)
-                                  .delete();
-                              Navigator.pop(ctx);
-                            },
+                            onPressed:
+                                () => _confirmarEliminarPlatillo(
+                                  ctx,
+                                  doc.id,
+                                  data['nombre'] ?? 'Platillo',
+                                ),
                           ),
                         ],
                       ),
                       const Divider(),
                       const SizedBox(height: 10),
-
+                      Text(
+                        'Categoría en el menú:',
+                        style: GoogleFonts.poppins(
+                          fontSize: 12.5,
+                          fontWeight: FontWeight.bold,
+                          color: colorTextoOscuro,
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      Wrap(
+                        spacing: 8,
+                        children:
+                            categoriasOpciones.map((cat) {
+                              final bool sel = categoriaActual == cat;
+                              return ChoiceChip(
+                                label: Text(cat),
+                                selected: sel,
+                                selectedColor: colorVerdeTese,
+                                labelStyle: GoogleFonts.poppins(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold,
+                                  color: sel ? Colors.white : colorTextoOscuro,
+                                ),
+                                onSelected:
+                                    (_) => setStateModal(
+                                      () => categoriaActual = cat,
+                                    ),
+                              );
+                            }).toList(),
+                      ),
+                      const SizedBox(height: 12),
                       Row(
                         children: [
                           Expanded(
@@ -575,7 +816,7 @@ class _DashboardNavegacionLocalState extends State<DashboardNavegacionLocal> {
                               controller: existenciasCtrl,
                               keyboardType: TextInputType.number,
                               decoration: InputDecoration(
-                                labelText: 'Stock / Existencias',
+                                labelText: 'Stock / Piezas',
                                 prefixIcon: const Icon(
                                   Icons.inventory,
                                   color: colorVerdeTese,
@@ -588,26 +829,69 @@ class _DashboardNavegacionLocalState extends State<DashboardNavegacionLocal> {
                           ),
                         ],
                       ),
-                      const SizedBox(height: 14),
-
-                      TextField(
-                        controller: puntosCtrl,
-                        keyboardType: TextInputType.number,
-                        decoration: InputDecoration(
-                          labelText: 'Puntos otorgados al alumno 🪙',
-                          prefixIcon: const Icon(
-                            Icons.stars_rounded,
-                            color: colorAmarilloTese,
+                      const SizedBox(height: 12),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: TextField(
+                              controller: puntosCtrl,
+                              keyboardType: TextInputType.number,
+                              decoration: InputDecoration(
+                                labelText: 'Puntos 🪙',
+                                prefixIcon: const Icon(
+                                  Icons.stars_rounded,
+                                  color: colorAmarilloTese,
+                                ),
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                              ),
+                            ),
                           ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: DropdownButtonFormField<String>(
+                              value:
+                                  tiemposOpciones.contains(tiempoActual)
+                                      ? tiempoActual
+                                      : '15 min',
+                              decoration: InputDecoration(
+                                labelText: 'Tiempo Prep.',
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                              ),
+                              items:
+                                  tiemposOpciones
+                                      .map(
+                                        (t) => DropdownMenuItem(
+                                          value: t,
+                                          child: Text(t),
+                                        ),
+                                      )
+                                      .toList(),
+                              onChanged:
+                                  (val) => setStateModal(
+                                    () => tiempoActual = val ?? '15 min',
+                                  ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      TextField(
+                        controller: descCtrl,
+                        maxLines: 2,
+                        decoration: InputDecoration(
+                          labelText: 'Descripción del platillo',
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
                           ),
                         ),
                       ),
-                      const SizedBox(height: 18),
-
+                      const SizedBox(height: 14),
                       Text(
-                        'Ingredientes modificables:',
+                        'Ingredientes modificables por el alumno:',
                         style: GoogleFonts.poppins(
                           fontSize: 13,
                           fontWeight: FontWeight.bold,
@@ -637,11 +921,10 @@ class _DashboardNavegacionLocalState extends State<DashboardNavegacionLocal> {
                                   size: 16,
                                   color: Colors.redAccent,
                                 ),
-                                onDeleted: () {
-                                  setStateModal(() {
-                                    ingredientes.remove(ing);
-                                  });
-                                },
+                                onDeleted:
+                                    () => setStateModal(
+                                      () => ingredientes.remove(ing),
+                                    ),
                               );
                             }).toList(),
                       ),
@@ -652,7 +935,8 @@ class _DashboardNavegacionLocalState extends State<DashboardNavegacionLocal> {
                             child: TextField(
                               controller: nuevoIngredienteCtrl,
                               decoration: InputDecoration(
-                                hintText: 'Agregar nuevo ingrediente...',
+                                hintText:
+                                    'Agregar ingrediente (ej. Crema, Queso)...',
                                 contentPadding: const EdgeInsets.symmetric(
                                   horizontal: 12,
                                   vertical: 8,
@@ -682,8 +966,7 @@ class _DashboardNavegacionLocalState extends State<DashboardNavegacionLocal> {
                           ),
                         ],
                       ),
-                      const SizedBox(height: 24),
-
+                      const SizedBox(height: 22),
                       SizedBox(
                         width: double.infinity,
                         height: 50,
@@ -712,6 +995,9 @@ class _DashboardNavegacionLocalState extends State<DashboardNavegacionLocal> {
                                   'precio': nuevoPrecio,
                                   'existencias': nuevasExistencias,
                                   'puntos': nuevosPuntos,
+                                  'categoria': categoriaActual,
+                                  'tiempoPrep': tiempoActual,
+                                  'descripcion': descCtrl.text.trim(),
                                   'ingredientes': ingredientes,
                                 });
 
@@ -876,7 +1162,7 @@ class _DashboardNavegacionLocalState extends State<DashboardNavegacionLocal> {
                 ),
                 const SizedBox(height: 16),
                 Text(
-                  'Comanda:',
+                  'Comanda a preparar:',
                   style: GoogleFonts.poppins(
                     fontSize: 13,
                     fontWeight: FontWeight.w700,
@@ -957,7 +1243,7 @@ class _DashboardNavegacionLocalState extends State<DashboardNavegacionLocal> {
                     ),
                     const Spacer(),
                     Text(
-                      'espera: ${_minutosEspera(horaLlegada)}m',
+                      'Espera: ${_minutosEspera(horaLlegada)} min',
                       style: GoogleFonts.poppins(
                         fontSize: 13,
                         fontWeight: FontWeight.w600,
@@ -1045,7 +1331,7 @@ class _DashboardNavegacionLocalState extends State<DashboardNavegacionLocal> {
                       ),
                       const SizedBox(width: 5),
                       Text(
-                        'Terminal Segura (${widget.codigoLocal})',
+                        'En línea (${widget.codigoLocal})',
                         style: GoogleFonts.poppins(
                           fontSize: 11,
                           fontWeight: FontWeight.w600,
@@ -1111,9 +1397,6 @@ class _DashboardNavegacionLocalState extends State<DashboardNavegacionLocal> {
     );
   }
 
-  // ==========================================
-  // COMANDAS EN VIVO (SOLO DE ESTA SUCURSAL) - SIN OVERFLOW
-  // ==========================================
   Widget _vistaPedidosDidi() {
     return StreamBuilder<QuerySnapshot>(
       stream:
@@ -1136,9 +1419,7 @@ class _DashboardNavegacionLocalState extends State<DashboardNavegacionLocal> {
           final bData = b.data() as Map<String, dynamic>;
           int estadoA = aData['estado'] ?? 0;
           int estadoB = bData['estado'] ?? 0;
-          if (estadoA != estadoB) {
-            return estadoA.compareTo(estadoB);
-          }
+          if (estadoA != estadoB) return estadoA.compareTo(estadoB);
           final Timestamp? tA = aData['horaLlegada'] as Timestamp?;
           final Timestamp? tB = bData['horaLlegada'] as Timestamp?;
           if (tA == null) return -1;
@@ -1210,7 +1491,7 @@ class _DashboardNavegacionLocalState extends State<DashboardNavegacionLocal> {
                               ),
                             ),
                             Text(
-                              'No hay comandas pendientes para este puesto.',
+                              'Las nuevas órdenes de alumnos aparecerán aquí al instante.',
                               style: GoogleFonts.poppins(
                                 fontSize: 13,
                                 color: colorTextoGris,
@@ -1291,7 +1572,6 @@ class _DashboardNavegacionLocalState extends State<DashboardNavegacionLocal> {
                                     crossAxisAlignment:
                                         CrossAxisAlignment.start,
                                     children: [
-                                      // FILA 1: ESTADO, TICKET Y MINUTOS
                                       Row(
                                         mainAxisAlignment:
                                             MainAxisAlignment.spaceBetween,
@@ -1356,8 +1636,6 @@ class _DashboardNavegacionLocalState extends State<DashboardNavegacionLocal> {
                                         ],
                                       ),
                                       const SizedBox(height: 10),
-
-                                      // ✨ FILA 2 (CORREGIDA): CÓDIGO DE TICKET Y PUNTOS EN EXTREMOS
                                       Row(
                                         mainAxisAlignment:
                                             MainAxisAlignment.spaceBetween,
@@ -1393,8 +1671,6 @@ class _DashboardNavegacionLocalState extends State<DashboardNavegacionLocal> {
                                         ],
                                       ),
                                       const SizedBox(height: 4),
-
-                                      // ✨ FILA 3: NOMBRE DEL ALUMNO CON RECORTE SEGURO
                                       Row(
                                         children: [
                                           const Icon(
@@ -1417,7 +1693,6 @@ class _DashboardNavegacionLocalState extends State<DashboardNavegacionLocal> {
                                         ],
                                       ),
                                       const Divider(height: 18),
-
                                       Text(
                                         data['detalle'] ?? '',
                                         maxLines: 3,
@@ -1522,9 +1797,6 @@ class _DashboardNavegacionLocalState extends State<DashboardNavegacionLocal> {
     );
   }
 
-  // ==========================================
-  // MENÚ CON WRAP FLEXIBLE - CERO OVERFLOW
-  // ==========================================
   Widget _vistaMenuDidi() {
     return StreamBuilder<QuerySnapshot>(
       stream:
@@ -1545,36 +1817,39 @@ class _DashboardNavegacionLocalState extends State<DashboardNavegacionLocal> {
           body:
               miMenu.isEmpty
                   ? Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          Icons.restaurant_menu,
-                          size: 60,
-                          color: colorVerdeTese.withValues(alpha: 0.3),
-                        ),
-                        const SizedBox(height: 12),
-                        Text(
-                          'No hay platillos registrados',
-                          style: GoogleFonts.poppins(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                            color: colorVerdeTese,
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 28),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.restaurant_menu,
+                            size: 60,
+                            color: colorVerdeTese.withValues(alpha: 0.3),
                           ),
-                        ),
-                        Text(
-                          'Presiona el botón amarillo para agregar el primer platillo de ${widget.nombreLocal}.',
-                          textAlign: TextAlign.center,
-                          style: GoogleFonts.poppins(
-                            fontSize: 12.5,
-                            color: colorTextoGris,
+                          const SizedBox(height: 12),
+                          Text(
+                            'No hay platillos registrados',
+                            style: GoogleFonts.poppins(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              color: colorVerdeTese,
+                            ),
                           ),
-                        ),
-                      ],
+                          Text(
+                            'Presiona el botón amarillo de abajo para publicar el primer platillo de ${widget.nombreLocal}.',
+                            textAlign: TextAlign.center,
+                            style: GoogleFonts.poppins(
+                              fontSize: 12.5,
+                              color: colorTextoGris,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   )
                   : ListView.builder(
-                    padding: const EdgeInsets.all(14),
+                    padding: const EdgeInsets.fromLTRB(14, 14, 14, 85),
                     itemCount: miMenu.length,
                     itemBuilder: (context, index) {
                       final platillo = miMenu[index];
@@ -1584,6 +1859,7 @@ class _DashboardNavegacionLocalState extends State<DashboardNavegacionLocal> {
                       final int existencias = data['existencias'] ?? 0;
                       final bool agotado = existencias == 0;
                       final String nombre = data['nombre'] ?? 'Sin nombre';
+                      final String categoria = data['categoria'] ?? 'Comida';
                       final dynamic precio = data['precio'] ?? 0;
                       final double calif =
                           (data['calificacion'] ?? 0.0).toDouble();
@@ -1608,8 +1884,8 @@ class _DashboardNavegacionLocalState extends State<DashboardNavegacionLocal> {
                           child: Row(
                             children: [
                               Container(
-                                width: 48,
-                                height: 48,
+                                width: 50,
+                                height: 50,
                                 decoration: BoxDecoration(
                                   color:
                                       agotado
@@ -1684,7 +1960,6 @@ class _DashboardNavegacionLocalState extends State<DashboardNavegacionLocal> {
                                         ],
                                       ),
                                       const SizedBox(height: 3),
-                                      // ✨ WRAP FLEXIBLE: Si el precio es grande, se adapta sin overflow
                                       Wrap(
                                         crossAxisAlignment:
                                             WrapCrossAlignment.center,
@@ -1697,6 +1972,27 @@ class _DashboardNavegacionLocalState extends State<DashboardNavegacionLocal> {
                                               color: colorExito,
                                               fontWeight: FontWeight.bold,
                                               fontSize: 14,
+                                            ),
+                                          ),
+                                          Container(
+                                            padding: const EdgeInsets.symmetric(
+                                              horizontal: 6,
+                                              vertical: 1,
+                                            ),
+                                            decoration: BoxDecoration(
+                                              color: colorVerdeTese.withValues(
+                                                alpha: 0.1,
+                                              ),
+                                              borderRadius:
+                                                  BorderRadius.circular(6),
+                                            ),
+                                            child: Text(
+                                              categoria,
+                                              style: GoogleFonts.poppins(
+                                                fontSize: 10,
+                                                fontWeight: FontWeight.w600,
+                                                color: colorVerdeTese,
+                                              ),
                                             ),
                                           ),
                                           Container(
@@ -1720,32 +2016,12 @@ class _DashboardNavegacionLocalState extends State<DashboardNavegacionLocal> {
                                             ),
                                           ),
                                           if (calif > 0)
-                                            Row(
-                                              mainAxisSize: MainAxisSize.min,
-                                              children: [
-                                                const Icon(
-                                                  Icons.star_rounded,
-                                                  size: 14,
-                                                  color: colorAmarilloTese,
-                                                ),
-                                                const SizedBox(width: 2),
-                                                Text(
-                                                  '${calif.toStringAsFixed(1)} ★',
-                                                  style: GoogleFonts.poppins(
-                                                    fontSize: 11.5,
-                                                    fontWeight: FontWeight.w600,
-                                                    color: colorTextoOscuro,
-                                                  ),
-                                                ),
-                                              ],
-                                            )
-                                          else
                                             Text(
-                                              'Nuevo ✨',
+                                              '⭐ ${calif.toStringAsFixed(1)}',
                                               style: GoogleFonts.poppins(
-                                                fontSize: 10.5,
-                                                fontWeight: FontWeight.bold,
-                                                color: colorExito,
+                                                fontSize: 11,
+                                                fontWeight: FontWeight.w600,
+                                                color: colorTextoOscuro,
                                               ),
                                             ),
                                         ],
@@ -1828,7 +2104,13 @@ class _DashboardNavegacionLocalState extends State<DashboardNavegacionLocal> {
           );
         }
 
-        final resenasDocs = List<DocumentSnapshot>.from(snapshot.data!.docs);
+        final resenasDocs =
+            List<DocumentSnapshot>.from(snapshot.data!.docs).where((doc) {
+              final d = doc.data() as Map<String, dynamic>;
+              final String? localResena = d['local'] as String?;
+              return localResena == null || localResena == widget.nombreLocal;
+            }).toList();
+
         resenasDocs.sort((a, b) {
           final aData = a.data() as Map<String, dynamic>;
           final bData = b.data() as Map<String, dynamic>;
@@ -1841,32 +2123,35 @@ class _DashboardNavegacionLocalState extends State<DashboardNavegacionLocal> {
 
         if (resenasDocs.isEmpty) {
           return Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(
-                  Icons.rate_review_outlined,
-                  size: 70,
-                  color: colorVerdeTese.withValues(alpha: 0.3),
-                ),
-                const SizedBox(height: 12),
-                Text(
-                  'Sin opiniones todavía',
-                  style: GoogleFonts.poppins(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: colorVerdeTese,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 28),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    Icons.rate_review_outlined,
+                    size: 70,
+                    color: colorVerdeTese.withValues(alpha: 0.3),
                   ),
-                ),
-                Text(
-                  'Cuando los alumnos califiquen la comida, verás sus opiniones aquí.',
-                  style: GoogleFonts.poppins(
-                    fontSize: 13,
-                    color: colorTextoGris,
+                  const SizedBox(height: 12),
+                  Text(
+                    'Sin opiniones todavía',
+                    style: GoogleFonts.poppins(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: colorVerdeTese,
+                    ),
                   ),
-                  textAlign: TextAlign.center,
-                ),
-              ],
+                  Text(
+                    'Cuando los alumnos califiquen sus pedidos, verás sus comentarios y estrellas aquí.',
+                    style: GoogleFonts.poppins(
+                      fontSize: 13,
+                      color: colorTextoGris,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                ],
+              ),
             ),
           );
         }
@@ -1983,7 +2268,7 @@ class _DashboardNavegacionLocalState extends State<DashboardNavegacionLocal> {
 }
 
 // ==========================================================
-// 3. AGREGAR PLATILLO VINCULADO AL LOCAL ESPECÍFICO
+// 3. AGREGAR PLATILLO CON CATEGORÍA, TIEMPO Y DESCRIPCIÓN
 // ==========================================================
 class AgregarPlatilloScreen extends StatefulWidget {
   final String nombreLocal;
@@ -1997,10 +2282,22 @@ class _AgregarPlatilloScreenState extends State<AgregarPlatilloScreen> {
   final TextEditingController _nombreCtrl = TextEditingController();
   final TextEditingController _precioCtrl = TextEditingController();
   final TextEditingController _existenciasCtrl = TextEditingController(
-    text: '10',
+    text: '15',
   );
   final TextEditingController _puntosCtrl = TextEditingController(text: '15');
+  final TextEditingController _descCtrl = TextEditingController();
   final TextEditingController _ingredienteCtrl = TextEditingController();
+
+  String _categoriaElegida = 'Comida';
+  String _tiempoPrepElegido = '15 min';
+  final List<String> _categorias = const [
+    'Desayunos',
+    'Comida',
+    'Bebidas',
+    'Postres',
+  ];
+  final List<String> _tiempos = const ['5 min', '10 min', '15 min', '20 min'];
+
   final List<String> _ingredientesPersonalizados = [];
   final List<String> _fotosBase64 = [];
   final ImagePicker _picker = ImagePicker();
@@ -2013,6 +2310,7 @@ class _AgregarPlatilloScreenState extends State<AgregarPlatilloScreen> {
     _precioCtrl.dispose();
     _existenciasCtrl.dispose();
     _puntosCtrl.dispose();
+    _descCtrl.dispose();
     _ingredienteCtrl.dispose();
     super.dispose();
   }
@@ -2038,11 +2336,11 @@ class _AgregarPlatilloScreenState extends State<AgregarPlatilloScreen> {
       if (imagen != null) {
         final bytes = await imagen.readAsBytes();
         final String base64String = base64Encode(bytes);
-        setState(() {
-          _fotosBase64.add(base64String);
-        });
+        if (!mounted) return;
+        setState(() => _fotosBase64.add(base64String));
       }
     } catch (_) {
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('No se pudo cargar la imagen.')),
       );
@@ -2091,23 +2389,39 @@ class _AgregarPlatilloScreenState extends State<AgregarPlatilloScreen> {
     );
   }
 
-  void _guardarPlatillo() async {
-    if (_nombreCtrl.text.isEmpty || _precioCtrl.text.isEmpty) {
+  Future<void> _guardarPlatillo() async {
+    final String nombre = _nombreCtrl.text.trim();
+    final double? precio = double.tryParse(_precioCtrl.text.trim());
+
+    if (nombre.isEmpty || precio == null || precio <= 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Ingresa un nombre y un precio válido para el platillo.',
+          ),
+          backgroundColor: Colors.redAccent,
+        ),
+      );
       return;
     }
+
     setState(() => _estaCargando = true);
 
     try {
-      final int stockFinal = int.tryParse(_existenciasCtrl.text) ?? 10;
+      final int stockFinal = int.tryParse(_existenciasCtrl.text) ?? 15;
       final int puntosFinales = int.tryParse(_puntosCtrl.text) ?? 15;
+      final String descFinal =
+          _descCtrl.text.trim().isEmpty
+              ? 'Platillo preparado al momento en ${widget.nombreLocal}.'
+              : _descCtrl.text.trim();
 
       await FirebaseFirestore.instance.collection('Menu_Platillos').add({
-        'nombre': _nombreCtrl.text,
-        'precio': double.parse(_precioCtrl.text),
+        'nombre': nombre,
+        'precio': precio,
         'local': widget.nombreLocal,
-        'categoria': 'Comida',
-        'descripcion': 'Platillo preparado al momento en ${widget.nombreLocal}',
-        'tiempoPrep': '15 min',
+        'categoria': _categoriaElegida,
+        'descripcion': descFinal,
+        'tiempoPrep': _tiempoPrepElegido,
         'calificacion': 0.0,
         'numCalificaciones': 0,
         'popular': true,
@@ -2117,24 +2431,31 @@ class _AgregarPlatilloScreenState extends State<AgregarPlatilloScreen> {
         'puntos': puntosFinales,
       });
 
-      if (mounted) {
-        Navigator.pop(context);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('¡Platillo agregado a ${widget.nombreLocal}! ☁️🍔'),
-            backgroundColor: colorExito,
-          ),
-        );
-      }
+      if (!mounted) return;
+      Navigator.pop(context);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('¡"$nombre" publicado en ${widget.nombreLocal}! ☁️🍔'),
+          backgroundColor: colorExito,
+        ),
+      );
     } catch (e) {
+      if (!mounted) return;
       setState(() => _estaCargando = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Error al guardar el platillo.'),
+          backgroundColor: Colors.redAccent,
+        ),
+      );
     }
   }
 
   void _agregarIngrediente(String valor) {
-    if (valor.isNotEmpty && !_ingredientesPersonalizados.contains(valor)) {
+    final limpio = valor.trim();
+    if (limpio.isNotEmpty && !_ingredientesPersonalizados.contains(limpio)) {
       setState(() {
-        _ingredientesPersonalizados.add(valor);
+        _ingredientesPersonalizados.add(limpio);
         _ingredienteCtrl.clear();
       });
     }
@@ -2159,11 +2480,11 @@ class _AgregarPlatilloScreenState extends State<AgregarPlatilloScreen> {
       backgroundColor: colorFondoCrema,
       appBar: AppBar(
         title: Text(
-          'Nuevo Platillo en ${widget.nombreLocal}',
+          'Nuevo Platillo • ${widget.nombreLocal}',
           style: GoogleFonts.poppins(
             color: colorVerdeTese,
             fontWeight: FontWeight.bold,
-            fontSize: 16,
+            fontSize: 15.5,
           ),
         ),
         backgroundColor: Colors.white,
@@ -2178,9 +2499,10 @@ class _AgregarPlatilloScreenState extends State<AgregarPlatilloScreen> {
         ),
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(22.0),
+        padding: const EdgeInsets.all(20.0),
         child: Column(
           children: [
+            // FOTOS
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
@@ -2232,7 +2554,7 @@ class _AgregarPlatilloScreenState extends State<AgregarPlatilloScreen> {
                     GestureDetector(
                       onTap: _mostrarOpcionesFoto,
                       child: Container(
-                        height: 110,
+                        height: 105,
                         width: double.infinity,
                         decoration: BoxDecoration(
                           color: colorVerdeTese.withValues(alpha: 0.04),
@@ -2246,12 +2568,12 @@ class _AgregarPlatilloScreenState extends State<AgregarPlatilloScreen> {
                           children: [
                             Icon(
                               Icons.camera_alt_outlined,
-                              size: 36,
+                              size: 34,
                               color: colorVerdeTese.withValues(alpha: 0.7),
                             ),
                             const SizedBox(height: 6),
                             Text(
-                              'Toca para tomar foto de la comida',
+                              'Toca para tomar foto o elegir de galería',
                               style: GoogleFonts.poppins(
                                 fontSize: 12.5,
                                 color: colorTextoGris,
@@ -2322,8 +2644,9 @@ class _AgregarPlatilloScreenState extends State<AgregarPlatilloScreen> {
                 ],
               ),
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 18),
 
+            // DATOS DEL PLATILLO + CATEGORÍA
             Container(
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
@@ -2338,6 +2661,7 @@ class _AgregarPlatilloScreenState extends State<AgregarPlatilloScreen> {
                 ],
               ),
               child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   TextField(
                     controller: _nombreCtrl,
@@ -2345,6 +2669,36 @@ class _AgregarPlatilloScreenState extends State<AgregarPlatilloScreen> {
                       'Nombre del Platillo',
                       Icons.restaurant,
                     ),
+                  ),
+                  const SizedBox(height: 14),
+                  Text(
+                    'Categoría en el catálogo:',
+                    style: GoogleFonts.poppins(
+                      fontSize: 13,
+                      fontWeight: FontWeight.bold,
+                      color: colorTextoOscuro,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 8,
+                    children:
+                        _categorias.map((cat) {
+                          final bool sel = _categoriaElegida == cat;
+                          return ChoiceChip(
+                            label: Text(cat),
+                            selected: sel,
+                            selectedColor: colorVerdeTese,
+                            backgroundColor: colorFondoCrema,
+                            labelStyle: GoogleFonts.poppins(
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                              color: sel ? Colors.white : colorTextoOscuro,
+                            ),
+                            onSelected:
+                                (_) => setState(() => _categoriaElegida = cat),
+                          );
+                        }).toList(),
                   ),
                   const SizedBox(height: 14),
                   Row(
@@ -2373,29 +2727,67 @@ class _AgregarPlatilloScreenState extends State<AgregarPlatilloScreen> {
                     ],
                   ),
                   const SizedBox(height: 14),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          controller: _puntosCtrl,
+                          keyboardType: TextInputType.number,
+                          decoration: InputDecoration(
+                            labelText: 'Puntos 🪙',
+                            prefixIcon: const Icon(
+                              Icons.stars_rounded,
+                              color: colorAmarilloTese,
+                            ),
+                            filled: true,
+                            fillColor: colorFondoCrema,
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(15),
+                              borderSide: BorderSide.none,
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: DropdownButtonFormField<String>(
+                          value: _tiempoPrepElegido,
+                          decoration: _decoracionCampo(
+                            'Tiempo',
+                            Icons.schedule,
+                          ),
+                          items:
+                              _tiempos
+                                  .map(
+                                    (t) => DropdownMenuItem(
+                                      value: t,
+                                      child: Text(t),
+                                    ),
+                                  )
+                                  .toList(),
+                          onChanged:
+                              (val) => setState(
+                                () => _tiempoPrepElegido = val ?? '15 min',
+                              ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 14),
                   TextField(
-                    controller: _puntosCtrl,
-                    keyboardType: TextInputType.number,
-                    decoration: InputDecoration(
-                      labelText: 'Puntos que otorga al alumno 🪙',
-                      hintText: 'Ej. 15, 50, 300...',
-                      prefixIcon: const Icon(
-                        Icons.stars_rounded,
-                        color: colorAmarilloTese,
-                      ),
-                      filled: true,
-                      fillColor: colorFondoCrema,
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(15),
-                        borderSide: BorderSide.none,
-                      ),
+                    controller: _descCtrl,
+                    maxLines: 2,
+                    decoration: _decoracionCampo(
+                      'Descripción breve (opcional)',
+                      Icons.notes,
                     ),
                   ),
                 ],
               ),
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 18),
 
+            // INGREDIENTES PERSONALIZABLES
             Container(
               width: double.infinity,
               padding: const EdgeInsets.all(20),
@@ -2414,11 +2806,19 @@ class _AgregarPlatilloScreenState extends State<AgregarPlatilloScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Ingredientes personalizables',
+                    'Ingredientes que el alumno puede quitar o pedir extra',
                     style: GoogleFonts.poppins(
-                      fontSize: 14,
+                      fontSize: 13.5,
                       fontWeight: FontWeight.bold,
                       color: colorTextoOscuro,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Opcional: Agrega ingredientes como Cebolla, Crema, Queso, Salsa...',
+                    style: GoogleFonts.poppins(
+                      fontSize: 11.5,
+                      color: colorTextoGris,
                     ),
                   ),
                   const SizedBox(height: 10),
@@ -2429,7 +2829,7 @@ class _AgregarPlatilloScreenState extends State<AgregarPlatilloScreen> {
                           controller: _ingredienteCtrl,
                           onSubmitted: _agregarIngrediente,
                           decoration: InputDecoration(
-                            hintText: 'Ej. Queso, Cebolla...',
+                            hintText: 'Ej. Queso, Cebolla, Salsa verde...',
                             filled: true,
                             fillColor: colorFondoCrema,
                             border: OutlineInputBorder(
@@ -2494,11 +2894,11 @@ class _AgregarPlatilloScreenState extends State<AgregarPlatilloScreen> {
                 ],
               ),
             ),
-            const SizedBox(height: 26),
+            const SizedBox(height: 24),
             SizedBox(
               width: double.infinity,
-              height: 52,
-              child: ElevatedButton(
+              height: 54,
+              child: ElevatedButton.icon(
                 style: ElevatedButton.styleFrom(
                   backgroundColor: colorAmarilloTese,
                   shape: RoundedRectangleBorder(
@@ -2506,13 +2906,22 @@ class _AgregarPlatilloScreenState extends State<AgregarPlatilloScreen> {
                   ),
                 ),
                 onPressed: _estaCargando ? null : _guardarPlatillo,
-                child:
+                icon: const Icon(
+                  Icons.cloud_upload_outlined,
+                  color: colorVerdeOscuro,
+                ),
+                label:
                     _estaCargando
-                        ? const CircularProgressIndicator(
-                          color: colorVerdeOscuro,
+                        ? const SizedBox(
+                          height: 22,
+                          width: 22,
+                          child: CircularProgressIndicator(
+                            color: colorVerdeOscuro,
+                            strokeWidth: 2.5,
+                          ),
                         )
                         : Text(
-                          'Publicar Platillo',
+                          'Publicar Platillo en el Menú',
                           style: GoogleFonts.poppins(
                             color: colorVerdeOscuro,
                             fontSize: 16,

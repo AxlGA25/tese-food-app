@@ -14,6 +14,7 @@ import 'modelos.dart';
 import 'pantalla_perfil.dart';
 import 'pantalla_pedido.dart';
 import 'pantalla_detalle_platillo.dart';
+import 'pantalla_gachapon.dart';
 import 'servicio_notificaciones.dart';
 
 const Map<String, Color> colorPorCategoria = {
@@ -29,9 +30,273 @@ Color acentoDeCategoria(String categoria) =>
 Color colorTextoSobreAcento(Color fondo) =>
     fondo == colorVerdeTese ? Colors.white : colorVerdeOscuro;
 
+void mostrarMiniTutorialTese(BuildContext context) {
+  int paginaActual = 0;
+  final PageController pageCtrl = PageController();
+  final List<Map<String, dynamic>> pasos = [
+    {
+      'skin': catalogoPatos[1],
+      'titulo': '1. Elige tu Kiosko favorito 🏪',
+      'desc':
+          'Selecciona entre Cafetería Central, Kiosko Sistemas o Biblioteca. ¡Ves en vivo cuántos platillos quedan disponibles!',
+      'tip': 'Tip: Cada orden se pide a un mismo kiosko para que salga rápido.',
+      'color': colorVerdeTese,
+    },
+    {
+      'skin': catalogoPatos[4],
+      'titulo': '2. Personaliza a tu gusto 🍔',
+      'desc':
+          '¿Sin cebolla o con extra queso? Toca cualquier platillo y presiona sus ingredientes para cambiarlos entre Normal, Sin o Extra.',
+      'tip':
+          'Tip: Tus alergias configuradas en Perfil se avisan automático al chef.',
+      'color': colorAmarilloTese,
+    },
+    {
+      'skin': catalogoPatos[6],
+      'titulo': '3. Espera el ¡CUAC! sin filas 🦆',
+      'desc':
+          'Quédate en tu salón o en el pasto. Cuando el chef cocine y cuando tu orden esté lista en ventanilla, tu celular sonará ¡CUAC!',
+      'tip':
+          'Tip: Pagas directo en ventanilla (efectivo o tarjeta) al recoger.',
+      'color': colorExito,
+    },
+    {
+      'skin': catalogoPatos[13],
+      'titulo': '4. Gana Puntos y Patitos 🥚',
+      'desc':
+          'Cada compra entregada te da puntos 🪙. Úsalos en tu Perfil para abrir Huevos en el Gachapón y coleccionar los 15 Patitos TESE.',
+      'tip': 'Tip: ¡Toca tu foto en Mi Perfil para equiparte cualquier patito!',
+      'color': const Color(0xFFA06BFF),
+    },
+  ];
+
+  showDialog(
+    context: context,
+    builder:
+        (ctx) => StatefulBuilder(
+          builder: (contextModal, setStateModal) {
+            final paso = pasos[paginaActual];
+            final bool esUltimo = paginaActual == pasos.length - 1;
+            return Dialog(
+              backgroundColor: Colors.transparent,
+              insetPadding: const EdgeInsets.symmetric(horizontal: 20),
+              child: Container(
+                padding: const EdgeInsets.all(22),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(28),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.2),
+                      blurRadius: 24,
+                      offset: const Offset(0, 10),
+                    ),
+                  ],
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 4,
+                          ),
+                          decoration: BoxDecoration(
+                            color: colorVerdeTese.withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Text(
+                            'Guía Rápida • ${paginaActual + 1}/${pasos.length}',
+                            style: GoogleFonts.poppins(
+                              fontSize: 11.5,
+                              fontWeight: FontWeight.bold,
+                              color: colorVerdeTese,
+                            ),
+                          ),
+                        ),
+                        IconButton(
+                          visualDensity: VisualDensity.compact,
+                          icon: const Icon(Icons.close, color: colorTextoGris),
+                          onPressed: () => Navigator.pop(ctx),
+                        ),
+                      ],
+                    ),
+                    SizedBox(
+                      height: 290,
+                      child: PageView.builder(
+                        controller: pageCtrl,
+                        itemCount: pasos.length,
+                        onPageChanged: (i) {
+                          HapticFeedback.selectionClick();
+                          setStateModal(() => paginaActual = i);
+                        },
+                        itemBuilder: (_, index) {
+                          final item = pasos[index];
+                          return Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.all(10),
+                                decoration: BoxDecoration(
+                                  color: colorFondoCrema,
+                                  shape: BoxShape.circle,
+                                  border: Border.all(
+                                    color: (item['color'] as Color).withValues(
+                                      alpha: 0.5,
+                                    ),
+                                    width: 2,
+                                  ),
+                                ),
+                                child: PatoVista(
+                                  skin: item['skin'] as PatoSkin,
+                                  tamano: 86,
+                                ),
+                              ),
+                              const SizedBox(height: 14),
+                              Text(
+                                item['titulo'],
+                                textAlign: TextAlign.center,
+                                style: GoogleFonts.poppins(
+                                  fontSize: 17.5,
+                                  fontWeight: FontWeight.bold,
+                                  color: colorTextoOscuro,
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              Text(
+                                item['desc'],
+                                textAlign: TextAlign.center,
+                                style: GoogleFonts.poppins(
+                                  fontSize: 12.8,
+                                  color: colorTextoGris,
+                                  height: 1.4,
+                                ),
+                              ),
+                              const SizedBox(height: 12),
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                  vertical: 7,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: colorFondoCrema,
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: Text(
+                                  item['tip'],
+                                  textAlign: TextAlign.center,
+                                  style: GoogleFonts.poppins(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w600,
+                                    color: colorVerdeTese,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          );
+                        },
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: List.generate(
+                        pasos.length,
+                        (i) => AnimatedContainer(
+                          duration: const Duration(milliseconds: 250),
+                          margin: const EdgeInsets.symmetric(horizontal: 4),
+                          width: paginaActual == i ? 22 : 8,
+                          height: 8,
+                          decoration: BoxDecoration(
+                            color:
+                                paginaActual == i
+                                    ? (paso['color'] as Color)
+                                    : Colors.grey[300],
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 18),
+                    Row(
+                      children: [
+                        if (paginaActual > 0) ...[
+                          Expanded(
+                            child: OutlinedButton(
+                              style: OutlinedButton.styleFrom(
+                                minimumSize: const Size(0, 48),
+                                side: BorderSide(color: Colors.grey.shade300),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(14),
+                                ),
+                              ),
+                              onPressed:
+                                  () => pageCtrl.previousPage(
+                                    duration: const Duration(milliseconds: 300),
+                                    curve: Curves.easeOut,
+                                  ),
+                              child: Text(
+                                'Anterior',
+                                style: GoogleFonts.poppins(
+                                  color: colorTextoGris,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                        ],
+                        Expanded(
+                          flex: 2,
+                          child: ElevatedButton(
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor:
+                                  esUltimo ? colorAmarilloTese : colorVerdeTese,
+                              minimumSize: const Size(0, 48),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(14),
+                              ),
+                            ),
+                            onPressed: () {
+                              HapticFeedback.selectionClick();
+                              if (!esUltimo) {
+                                pageCtrl.nextPage(
+                                  duration: const Duration(milliseconds: 300),
+                                  curve: Curves.easeOut,
+                                );
+                              } else {
+                                Navigator.pop(ctx);
+                              }
+                            },
+                            child: Text(
+                              esUltimo
+                                  ? '¡Entendido, a comer! 😋'
+                                  : 'Siguiente ➔',
+                              style: GoogleFonts.poppins(
+                                color:
+                                    esUltimo ? colorVerdeOscuro : Colors.white,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 14,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        ),
+  );
+}
+
 class NavegacionEstudiante extends StatefulWidget {
   const NavegacionEstudiante({super.key});
-
   @override
   State<NavegacionEstudiante> createState() => _NavegacionEstudianteState();
 }
@@ -46,6 +311,7 @@ class _NavegacionEstudianteState extends State<NavegacionEstudiante> {
     super.initState();
     ServicioNotificaciones.inicializar();
     _iniciarVigilanteDePedidos();
+    _verificarBienvenidaInicial();
   }
 
   @override
@@ -54,18 +320,35 @@ class _NavegacionEstudianteState extends State<NavegacionEstudiante> {
     super.dispose();
   }
 
-  // ==========================================================
-  // 🦆 VIGILANTE AISLADO POR UID (SOLO TUS PROPIOS PEDIDOS)
-  // ==========================================================
+  Future<void> _verificarBienvenidaInicial() async {
+    final User? user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+    try {
+      final doc =
+          await FirebaseFirestore.instance
+              .collection('Usuarios_Perfil')
+              .doc(user.uid)
+              .get();
+      final data = doc.data() ?? {};
+      if (data['tutorialVisto'] != true && mounted) {
+        await FirebaseFirestore.instance
+            .collection('Usuarios_Perfil')
+            .doc(user.uid)
+            .set({'tutorialVisto': true}, SetOptions(merge: true));
+        Future.delayed(const Duration(milliseconds: 600), () {
+          if (mounted) mostrarMiniTutorialTese(context);
+        });
+      }
+    } catch (_) {}
+  }
+
   void _iniciarVigilanteDePedidos() {
     final User? user = FirebaseAuth.instance.currentUser;
-    if (user == null) {
-      return;
-    }
+    if (user == null) return;
 
     _pedidosSub = FirebaseFirestore.instance
         .collection('Pedidos')
-        .where('idAlumno', isEqualTo: user.uid) // 🔒 Estricto por cuenta
+        .where('idAlumno', isEqualTo: user.uid)
         .snapshots()
         .listen((snapshot) {
           for (var change in snapshot.docChanges) {
@@ -83,10 +366,8 @@ class _NavegacionEstudianteState extends State<NavegacionEstudiante> {
                 ServicioNotificaciones.mostrarNotificacion(
                   id: 1,
                   titulo: '🍳 ¡Tu pedido está en preparación!',
-                  cuerpo:
-                      'Kiosko Sistemas ya comenzó a cocinar tu orden $idPedido.',
+                  cuerpo: '$local ya comenzó a cocinar tu orden $idPedido.',
                 );
-
                 _lanzarAlertaCuac(
                   titulo: '🍳 ¡Están cocinando tu orden!',
                   mensaje:
@@ -96,14 +377,12 @@ class _NavegacionEstudianteState extends State<NavegacionEstudiante> {
                 );
               } else if (estado == 2) {
                 ServicioNotificaciones.cancelarMonitoreo();
-
                 ServicioNotificaciones.mostrarNotificacion(
                   id: 2,
                   titulo: '🦆 ¡CUAC! Tu comida está lista',
                   cuerpo:
                       'Pasa a recoger tu orden $idPedido a la ventanilla de $local.',
                 );
-
                 _lanzarAlertaCuac(
                   titulo: '🦆 ¡CUAC! ¡Tu comida está lista!',
                   mensaje:
@@ -125,8 +404,8 @@ class _NavegacionEstudianteState extends State<NavegacionEstudiante> {
     required String codigoPedido,
     required bool esListo,
   }) {
+    if (!mounted) return;
     HapticFeedback.heavyImpact();
-
     try {
       reproductorGlobal.play(AssetSource('cuac.mp3'), volume: 1.0);
     } catch (_) {
@@ -210,16 +489,92 @@ class _NavegacionEstudianteState extends State<NavegacionEstudiante> {
   }
 
   void _actualizarCarrito(Platillo p) {
-    setState(() {
-      carritoGlobal.add(p);
-    });
+    if (carritoGlobal.isNotEmpty && carritoGlobal.first.local != p.local) {
+      final String localActual = carritoGlobal.first.local;
+      showDialog(
+        context: context,
+        builder:
+            (ctx) => AlertDialog(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(22),
+              ),
+              title: Row(
+                children: [
+                  const Icon(
+                    Icons.storefront,
+                    color: colorAmarilloTese,
+                    size: 26,
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      '¿Cambiar de Kiosko?',
+                      style: GoogleFonts.poppins(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 17,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              content: Text(
+                'En tu carrito tienes alimentos de "$localActual".\n\nPara que tu orden se cocine sin confusiones, cada pedido es por kiosko. ¿Quieres vaciar tu carrito actual y pedir "${p.nombre}" en ${p.local}?',
+                style: GoogleFonts.poppins(
+                  fontSize: 13,
+                  color: colorTextoOscuro,
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(ctx),
+                  child: Text(
+                    'Conservar actual',
+                    style: GoogleFonts.poppins(
+                      color: colorTextoGris,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: colorVerdeTese,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  onPressed: () {
+                    Navigator.pop(ctx);
+                    setState(() {
+                      carritoGlobal
+                        ..clear()
+                        ..add(p);
+                    });
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(
+                          '¡Listo! Iniciaste un nuevo carrito en ${p.local} 😋',
+                        ),
+                        backgroundColor: colorExito,
+                      ),
+                    );
+                  },
+                  child: Text(
+                    'Sí, cambiar',
+                    style: GoogleFonts.poppins(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+      );
+      return;
+    }
+    setState(() => carritoGlobal.add(p));
   }
 
-  void _limpiarCarrito() {
-    setState(() {
-      carritoGlobal.clear();
-    });
-  }
+  void _limpiarCarrito() => setState(() => carritoGlobal.clear());
 
   @override
   Widget build(BuildContext context) {
@@ -227,10 +582,17 @@ class _NavegacionEstudianteState extends State<NavegacionEstudiante> {
       CatalogoEstudianteScreen(
         carrito: carritoGlobal,
         onAgregar: _actualizarCarrito,
+        onIrAPedidos: () => setState(() => _indiceActual = 1),
+        onIrAPerfil: () => setState(() => _indiceActual = 2),
       ),
       const MisPedidosScreen(),
       const PerfilEstudianteScreen(),
     ];
+
+    final double totalCarrito = carritoGlobal.fold(
+      0,
+      (sum, item) => sum + item.precio,
+    );
 
     return Scaffold(
       backgroundColor: colorFondoCrema,
@@ -239,18 +601,17 @@ class _NavegacionEstudianteState extends State<NavegacionEstudiante> {
         duration: const Duration(milliseconds: 280),
         switchInCurve: Curves.easeOutCubic,
         switchOutCurve: Curves.easeInCubic,
-        transitionBuilder: (child, animation) {
-          return FadeTransition(
-            opacity: animation,
-            child: SlideTransition(
-              position: Tween<Offset>(
-                begin: const Offset(0.04, 0),
-                end: Offset.zero,
-              ).animate(animation),
-              child: child,
+        transitionBuilder:
+            (child, animation) => FadeTransition(
+              opacity: animation,
+              child: SlideTransition(
+                position: Tween<Offset>(
+                  begin: const Offset(0.04, 0),
+                  end: Offset.zero,
+                ).animate(animation),
+                child: child,
+              ),
             ),
-          );
-        },
         child: KeyedSubtree(
           key: ValueKey<int>(_indiceActual),
           child: pantallas[_indiceActual],
@@ -283,47 +644,49 @@ class _NavegacionEstudianteState extends State<NavegacionEstudiante> {
         ],
         onTap: (index) {
           HapticFeedback.selectionClick();
-          setState(() {
-            _indiceActual = index;
-          });
+          setState(() => _indiceActual = index);
         },
       ),
       floatingActionButton:
-          _indiceActual == 0
-              ? FloatingActionButton.extended(
-                backgroundColor: colorAmarilloTese,
-                elevation: 6,
-                onPressed: () async {
-                  if (carritoGlobal.isEmpty) {
-                    return;
-                  }
-                  HapticFeedback.lightImpact();
-
-                  await Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder:
-                          (context) => CarritoScreen(
-                            carrito: carritoGlobal,
-                            onVaciar: _limpiarCarrito,
-                          ),
+          (_indiceActual == 0 && carritoGlobal.isNotEmpty)
+              ? ZoomIn(
+                child: FloatingActionButton.extended(
+                  backgroundColor: colorAmarilloTese,
+                  elevation: 8,
+                  onPressed: () async {
+                    HapticFeedback.lightImpact();
+                    await Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder:
+                            (context) => CarritoScreen(
+                              carrito: carritoGlobal,
+                              onVaciar: _limpiarCarrito,
+                            ),
+                      ),
+                    );
+                    if (mounted) setState(() {});
+                  },
+                  icon: Badge(
+                    label: Text(
+                      carritoGlobal.length.toString(),
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
-                  );
-                },
-                icon: Badge(
-                  isLabelVisible: carritoGlobal.isNotEmpty,
-                  label: Text(
-                    carritoGlobal.length.toString(),
-                    style: const TextStyle(color: Colors.white),
+                    backgroundColor: colorExito,
+                    child: const Icon(
+                      Icons.shopping_bag_rounded,
+                      color: colorVerdeOscuro,
+                    ),
                   ),
-                  backgroundColor: colorExito,
-                  child: const Icon(Icons.shopping_cart, color: Colors.white),
-                ),
-                label: Text(
-                  'Ver Pedido',
-                  style: GoogleFonts.poppins(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
+                  label: Text(
+                    'Ver Pedido • \$${totalCarrito.toStringAsFixed(0)}',
+                    style: GoogleFonts.poppins(
+                      color: colorVerdeOscuro,
+                      fontWeight: FontWeight.w800,
+                    ),
                   ),
                 ),
               )
@@ -332,13 +695,10 @@ class _NavegacionEstudianteState extends State<NavegacionEstudiante> {
   }
 }
 
-// ==========================================================
-// 📦 MIS PEDIDOS: AISLADO AL 100% POR CUENTA DE ALUMNO
-// ==========================================================
 class MisPedidosScreen extends StatelessWidget {
   const MisPedidosScreen({super.key});
 
-  void _eliminarPedido(BuildContext context, String docId) {
+  void _ocultarPedidoDeHistorial(BuildContext context, String docId) {
     showDialog(
       context: context,
       builder:
@@ -347,11 +707,11 @@ class MisPedidosScreen extends StatelessWidget {
               borderRadius: BorderRadius.circular(20),
             ),
             title: Text(
-              '¿Eliminar pedido?',
+              '¿Quitar del historial?',
               style: GoogleFonts.poppins(fontWeight: FontWeight.bold),
             ),
             content: Text(
-              'Este pedido se quitará de tu historial permanentemente.',
+              'Se limpiará de esta vista, pero conservarás intactos los puntos 🪙 y tu rango ganados con esta compra.',
               style: GoogleFonts.poppins(fontSize: 13.5, color: colorTextoGris),
             ),
             actions: [
@@ -361,7 +721,7 @@ class MisPedidosScreen extends StatelessWidget {
               ),
               ElevatedButton(
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.redAccent,
+                  backgroundColor: colorVerdeTese,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
@@ -371,10 +731,10 @@ class MisPedidosScreen extends StatelessWidget {
                   FirebaseFirestore.instance
                       .collection('Pedidos')
                       .doc(docId)
-                      .delete();
+                      .update({'ocultoParaAlumno': true});
                 },
                 child: const Text(
-                  'Eliminar',
+                  'Limpiar de la lista',
                   style: TextStyle(color: Colors.white),
                 ),
               ),
@@ -428,7 +788,6 @@ class MisPedidosScreen extends StatelessWidget {
           ),
           Expanded(
             child: StreamBuilder<QuerySnapshot>(
-              // 🔒 FILTRO ESTRICTO: Solo trae pedidos creados por ESTA cuenta
               stream:
                   FirebaseFirestore.instance
                       .collection('Pedidos')
@@ -441,52 +800,67 @@ class MisPedidosScreen extends StatelessWidget {
                   );
                 }
 
-                if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                final todosDocs = snapshot.data?.docs ?? [];
+                final historial =
+                    todosDocs
+                        .where(
+                          (d) =>
+                              (d.data()
+                                  as Map<
+                                    String,
+                                    dynamic
+                                  >)['ocultoParaAlumno'] !=
+                              true,
+                        )
+                        .toList();
+
+                if (historial.isEmpty) {
                   return Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Image.asset('assets/esperandoPedido.png', height: 150),
-                        const SizedBox(height: 20),
-                        Text(
-                          'No tienes pedidos activos',
-                          style: GoogleFonts.poppins(
-                            fontSize: 18,
-                            fontWeight: FontWeight.w600,
-                            color: colorTextoGris,
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 32),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Image.asset(
+                            'assets/esperandoPedido.png',
+                            height: 150,
                           ),
-                        ),
-                        Text(
-                          'Tus órdenes aparecerán aquí en cuanto pidas.',
-                          style: GoogleFonts.poppins(
-                            fontSize: 13,
-                            color: colorTextoGris,
+                          const SizedBox(height: 20),
+                          Text(
+                            'No tienes pedidos en lista',
+                            style: GoogleFonts.poppins(
+                              fontSize: 18,
+                              fontWeight: FontWeight.w700,
+                              color: colorTextoOscuro,
+                            ),
                           ),
-                        ),
-                      ],
+                          const SizedBox(height: 6),
+                          Text(
+                            'Explora el menú, personaliza tu antojo y recógelo en ventanilla sin hacer fila.',
+                            textAlign: TextAlign.center,
+                            style: GoogleFonts.poppins(
+                              fontSize: 13,
+                              color: colorTextoGris,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   );
                 }
 
-                final historial = List<DocumentSnapshot>.from(
-                  snapshot.data!.docs,
-                );
                 historial.sort((a, b) {
                   final aData = a.data() as Map<String, dynamic>;
                   final bData = b.data() as Map<String, dynamic>;
                   final Timestamp? tA = aData['horaLlegada'] as Timestamp?;
                   final Timestamp? tB = bData['horaLlegada'] as Timestamp?;
-                  if (tA == null) {
-                    return -1;
-                  }
-                  if (tB == null) {
-                    return 1;
-                  }
+                  if (tA == null) return -1;
+                  if (tB == null) return 1;
                   return tB.compareTo(tA);
                 });
 
                 return ListView.builder(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 90),
                   itemCount: historial.length,
                   itemBuilder: (context, index) {
                     final pedido = historial[index];
@@ -498,6 +872,7 @@ class MisPedidosScreen extends StatelessWidget {
                     String detalle = data['detalle'] ?? '';
                     String metodoPago = data['metodoPago'] ?? 'Efectivo';
                     double total = (data['total'] ?? 0).toDouble();
+                    int puntos = data['puntosGanados'] ?? 10;
                     bool yaCalificado = data['calificado'] ?? false;
 
                     Color colorEstado = Colors.grey[400]!;
@@ -605,16 +980,18 @@ class MisPedidosScreen extends StatelessWidget {
                                           if (estadoReal >= 3) ...[
                                             const SizedBox(width: 4),
                                             IconButton(
+                                              tooltip: 'Limpiar de la vista',
                                               icon: const Icon(
                                                 Icons.delete_outline,
                                                 color: Colors.redAccent,
                                                 size: 20,
                                               ),
                                               onPressed:
-                                                  () => _eliminarPedido(
-                                                    context,
-                                                    pedido.id,
-                                                  ),
+                                                  () =>
+                                                      _ocultarPedidoDeHistorial(
+                                                        context,
+                                                        pedido.id,
+                                                      ),
                                             ),
                                           ],
                                         ],
@@ -622,7 +999,6 @@ class MisPedidosScreen extends StatelessWidget {
                                     ],
                                   ),
                                   const SizedBox(height: 8),
-
                                   Row(
                                     children: [
                                       const Icon(
@@ -641,10 +1017,31 @@ class MisPedidosScreen extends StatelessWidget {
                                           ),
                                         ),
                                       ),
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 8,
+                                          vertical: 2,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color: colorAmarilloTese.withValues(
+                                            alpha: 0.2,
+                                          ),
+                                          borderRadius: BorderRadius.circular(
+                                            8,
+                                          ),
+                                        ),
+                                        child: Text(
+                                          '🪙 +$puntos pts',
+                                          style: GoogleFonts.poppins(
+                                            fontSize: 11,
+                                            fontWeight: FontWeight.bold,
+                                            color: colorVerdeOscuro,
+                                          ),
+                                        ),
+                                      ),
                                     ],
                                   ),
                                   const SizedBox(height: 10),
-
                                   Container(
                                     width: double.infinity,
                                     padding: const EdgeInsets.all(10),
@@ -664,7 +1061,6 @@ class MisPedidosScreen extends StatelessWidget {
                                     ),
                                   ),
                                   const SizedBox(height: 12),
-
                                   Row(
                                     mainAxisAlignment:
                                         MainAxisAlignment.spaceBetween,
@@ -712,17 +1108,16 @@ class MisPedidosScreen extends StatelessWidget {
                                             fontSize: 12.5,
                                           ),
                                         ),
-                                        onPressed: () {
-                                          Navigator.push(
-                                            context,
-                                            MaterialPageRoute(
-                                              builder:
-                                                  (context) => PantallaResena(
-                                                    codigoPedido: idPedido,
-                                                  ),
+                                        onPressed:
+                                            () => Navigator.push(
+                                              context,
+                                              MaterialPageRoute(
+                                                builder:
+                                                    (context) => PantallaResena(
+                                                      codigoPedido: idPedido,
+                                                    ),
+                                              ),
                                             ),
-                                          );
-                                        },
                                       ),
                                     ),
                                   ],
@@ -769,16 +1164,18 @@ class MisPedidosScreen extends StatelessWidget {
   }
 }
 
-// ==========================================================
-// CATÁLOGO DE ESTUDIANTES
-// ==========================================================
 class CatalogoEstudianteScreen extends StatefulWidget {
   final List<Platillo> carrito;
   final Function(Platillo) onAgregar;
+  final VoidCallback? onIrAPedidos;
+  final VoidCallback? onIrAPerfil;
+
   const CatalogoEstudianteScreen({
     super.key,
     required this.carrito,
     required this.onAgregar,
+    this.onIrAPedidos,
+    this.onIrAPerfil,
   });
 
   @override
@@ -804,6 +1201,13 @@ class _CatalogoEstudianteScreenState extends State<CatalogoEstudianteScreen> {
   String _localSeleccionado = 'Todos';
   final TextEditingController _busquedaCtrl = TextEditingController();
   String _terminoBusqueda = '';
+
+  String _saludoSegunHora() {
+    final hora = DateTime.now().hour;
+    if (hora < 12) return '¡Buenos días';
+    if (hora < 19) return '¡Buenas tardes';
+    return '¡Buenas noches';
+  }
 
   List<Platillo> _filtrarLista(List<Platillo> menuDisponibles) {
     return menuDisponibles.where((p) {
@@ -855,13 +1259,16 @@ class _CatalogoEstudianteScreenState extends State<CatalogoEstudianteScreen> {
             ),
       ),
     );
-    if (agregado == true) {
+    if (agregado == true && mounted) {
       _mostrarAlertaExito(platillo.nombre);
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final User? user = FirebaseAuth.instance.currentUser;
+    final String uid = user?.uid ?? 'anonimo';
+
     return Scaffold(
       body: Container(
         decoration: const BoxDecoration(
@@ -869,7 +1276,7 @@ class _CatalogoEstudianteScreenState extends State<CatalogoEstudianteScreen> {
             colors: [colorVerdeTese, colorFondoCrema],
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            stops: [0.0, 0.4],
+            stops: [0.0, 0.38],
           ),
         ),
         child: SafeArea(
@@ -877,7 +1284,7 @@ class _CatalogoEstudianteScreenState extends State<CatalogoEstudianteScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Container(
-                padding: const EdgeInsets.only(bottom: 20),
+                padding: const EdgeInsets.only(bottom: 18),
                 decoration: BoxDecoration(
                   color: colorVerdeTese,
                   borderRadius: const BorderRadius.vertical(
@@ -895,28 +1302,142 @@ class _CatalogoEstudianteScreenState extends State<CatalogoEstudianteScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Padding(
-                      padding: const EdgeInsets.fromLTRB(20, 16, 20, 4),
-                      child: Text(
-                        '¿Dónde comeremos hoy?',
-                        style: GoogleFonts.poppins(
-                          fontSize: 25,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
-                        ),
-                      ),
-                    ),
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(20, 0, 20, 14),
-                      child: Text(
-                        'Selecciona tu kiosco favorito',
-                        style: GoogleFonts.poppins(
-                          fontSize: 13.5,
-                          color: Colors.white.withValues(alpha: 0.85),
-                        ),
+                      padding: const EdgeInsets.fromLTRB(20, 12, 16, 10),
+                      child: StreamBuilder<DocumentSnapshot>(
+                        stream:
+                            FirebaseFirestore.instance
+                                .collection('Usuarios')
+                                .doc(uid)
+                                .snapshots(),
+                        builder: (context, userSnap) {
+                          final uData =
+                              userSnap.data?.data() as Map<String, dynamic>? ??
+                              {};
+                          final String nombreCompleto =
+                              uData['nombre_completo'] ??
+                              (user?.displayName ?? 'Estudiante');
+                          final String primerNombre =
+                              nombreCompleto.split(' ').first;
+
+                          return Row(
+                            children: [
+                              StreamBuilder<DocumentSnapshot>(
+                                stream:
+                                    FirebaseFirestore.instance
+                                        .collection('Usuarios_Perfil')
+                                        .doc(uid)
+                                        .snapshots(),
+                                builder: (context, pSnap) {
+                                  final pData =
+                                      pSnap.data?.data()
+                                          as Map<String, dynamic>? ??
+                                      {};
+                                  final String patoId =
+                                      pData['patoEquipadoId'] ?? 'estudiante';
+                                  final PatoSkin skin = catalogoPatos
+                                      .firstWhere(
+                                        (s) => s.id == patoId,
+                                        orElse: () => catalogoPatos[1],
+                                      );
+                                  return GestureDetector(
+                                    onTap: widget.onIrAPerfil,
+                                    child: Container(
+                                      padding: const EdgeInsets.all(2),
+                                      decoration: BoxDecoration(
+                                        shape: BoxShape.circle,
+                                        border: Border.all(
+                                          color: colorAmarilloTese,
+                                          width: 2,
+                                        ),
+                                      ),
+                                      child: CircleAvatar(
+                                        radius: 22,
+                                        backgroundColor: colorVerdeOscuro,
+                                        child: ClipOval(
+                                          child: PatoVista(
+                                            skin: skin,
+                                            tamano: 38,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  );
+                                },
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      '${_saludoSegunHora()}, $primerNombre! 👋',
+                                      style: GoogleFonts.poppins(
+                                        fontSize: 18,
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.white,
+                                      ),
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                    Text(
+                                      '¿Dónde comeremos hoy sin hacer fila?',
+                                      style: GoogleFonts.poppins(
+                                        fontSize: 12,
+                                        color: Colors.white.withValues(
+                                          alpha: 0.85,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              InkWell(
+                                borderRadius: BorderRadius.circular(20),
+                                onTap: () {
+                                  HapticFeedback.selectionClick();
+                                  mostrarMiniTutorialTese(context);
+                                },
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 10,
+                                    vertical: 6,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white.withValues(alpha: 0.16),
+                                    borderRadius: BorderRadius.circular(18),
+                                    border: Border.all(
+                                      color: Colors.white.withValues(
+                                        alpha: 0.3,
+                                      ),
+                                    ),
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      const Icon(
+                                        Icons.help_outline_rounded,
+                                        color: colorAmarilloTese,
+                                        size: 16,
+                                      ),
+                                      const SizedBox(width: 4),
+                                      Text(
+                                        'Guía',
+                                        style: GoogleFonts.poppins(
+                                          fontSize: 11.5,
+                                          fontWeight: FontWeight.bold,
+                                          color: Colors.white,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ],
+                          );
+                        },
                       ),
                     ),
                     SizedBox(
-                      height: 90,
+                      height: 86,
                       child: ListView.separated(
                         scrollDirection: Axis.horizontal,
                         padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -964,9 +1485,9 @@ class _CatalogoEstudianteScreenState extends State<CatalogoEstudianteScreen> {
                                         seleccionada
                                             ? colorVerdeOscuro
                                             : colorVerdeTese,
-                                    size: 28,
+                                    size: 26,
                                   ),
-                                  const SizedBox(height: 6),
+                                  const SizedBox(height: 5),
                                   Text(
                                     local,
                                     textAlign: TextAlign.center,
@@ -991,7 +1512,95 @@ class _CatalogoEstudianteScreenState extends State<CatalogoEstudianteScreen> {
                   ],
                 ),
               ),
-              const SizedBox(height: 16),
+              StreamBuilder<QuerySnapshot>(
+                stream:
+                    FirebaseFirestore.instance
+                        .collection('Pedidos')
+                        .where('idAlumno', isEqualTo: uid)
+                        .snapshots(),
+                builder: (context, pedSnap) {
+                  if (!pedSnap.hasData) return const SizedBox.shrink();
+                  final activos =
+                      pedSnap.data!.docs
+                          .where(
+                            (d) =>
+                                (((d.data() as Map)['estado'] ?? 0) as int) < 3,
+                          )
+                          .toList();
+                  if (activos.isEmpty) return const SizedBox.shrink();
+
+                  final docActivo = activos.first;
+                  final data = docActivo.data() as Map<String, dynamic>;
+                  final int estado = data['estado'] ?? 0;
+                  final String codigo = data['idPedido'] ?? docActivo.id;
+                  final String local = data['local'] ?? 'Kiosko';
+
+                  final String textoBanner =
+                      estado == 0
+                          ? '⏳ Tu orden $codigo fue enviada a $local'
+                          : (estado == 1
+                              ? '🍳 ¡Están cocinando tu orden $codigo en $local!'
+                              : '🦆 ¡CUAC! Tu orden $codigo está LISTA en $local');
+                  final Color colorBanner =
+                      estado == 2 ? colorExito : colorAmarilloTese;
+
+                  return Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(16),
+                      onTap:
+                          () => Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder:
+                                  (_) => SalaEsperaScreen(codigoPedido: codigo),
+                            ),
+                          ),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 14,
+                          vertical: 10,
+                        ),
+                        decoration: BoxDecoration(
+                          color: colorBanner,
+                          borderRadius: BorderRadius.circular(16),
+                          boxShadow: [
+                            BoxShadow(
+                              color: colorBanner.withValues(alpha: 0.35),
+                              blurRadius: 8,
+                              offset: const Offset(0, 3),
+                            ),
+                          ],
+                        ),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                textoBanner,
+                                style: GoogleFonts.poppins(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold,
+                                  color:
+                                      estado == 2
+                                          ? Colors.white
+                                          : colorVerdeOscuro,
+                                ),
+                              ),
+                            ),
+                            Icon(
+                              Icons.arrow_forward_ios,
+                              size: 14,
+                              color:
+                                  estado == 2 ? Colors.white : colorVerdeOscuro,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  );
+                },
+              ),
+              const SizedBox(height: 12),
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 20),
                 child: TextField(
@@ -1003,10 +1612,10 @@ class _CatalogoEstudianteScreenState extends State<CatalogoEstudianteScreen> {
                     color: colorTextoOscuro,
                   ),
                   decoration: InputDecoration(
-                    hintText: 'Busca tu antojo...',
+                    hintText: 'Busca chilaquiles, tortas, café...',
                     hintStyle: GoogleFonts.poppins(
                       color: colorTextoGris,
-                      fontSize: 14,
+                      fontSize: 13.5,
                     ),
                     prefixIcon: const Icon(Icons.search, color: colorVerdeTese),
                     suffixIcon:
@@ -1025,6 +1634,7 @@ class _CatalogoEstudianteScreenState extends State<CatalogoEstudianteScreen> {
                             ),
                     filled: true,
                     fillColor: Colors.white,
+                    contentPadding: const EdgeInsets.symmetric(vertical: 12),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(16),
                       borderSide: BorderSide.none,
@@ -1032,9 +1642,9 @@ class _CatalogoEstudianteScreenState extends State<CatalogoEstudianteScreen> {
                   ),
                 ),
               ),
-              const SizedBox(height: 14),
+              const SizedBox(height: 12),
               SizedBox(
-                height: 40,
+                height: 38,
                 child: ListView.separated(
                   scrollDirection: Axis.horizontal,
                   padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -1079,7 +1689,7 @@ class _CatalogoEstudianteScreenState extends State<CatalogoEstudianteScreen> {
                   },
                 ),
               ),
-              const SizedBox(height: 14),
+              const SizedBox(height: 12),
               Expanded(
                 child: StreamBuilder<QuerySnapshot>(
                   stream:
@@ -1106,13 +1716,13 @@ class _CatalogoEstudianteScreenState extends State<CatalogoEstudianteScreen> {
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
                             Icon(
-                              Icons.search_off,
+                              Icons.restaurant_menu,
                               size: 52,
                               color: colorTextoGris.withValues(alpha: 0.5),
                             ),
                             const SizedBox(height: 10),
                             Text(
-                              'El menú está vacío',
+                              'El menú está vacío por ahora',
                               style: GoogleFonts.poppins(
                                 color: colorTextoGris,
                                 fontWeight: FontWeight.w600,
@@ -1143,10 +1753,27 @@ class _CatalogoEstudianteScreenState extends State<CatalogoEstudianteScreen> {
                             ),
                             const SizedBox(height: 10),
                             Text(
-                              'No encontramos nada aquí',
+                              'No encontramos platillos con ese filtro',
                               style: GoogleFonts.poppins(
                                 color: colorTextoGris,
                                 fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            TextButton(
+                              onPressed: () {
+                                _busquedaCtrl.clear();
+                                setState(() {
+                                  _terminoBusqueda = '';
+                                  _categoriaSeleccionada = 'Todos';
+                                  _localSeleccionado = 'Todos';
+                                });
+                              },
+                              child: Text(
+                                'Ver todo el menú',
+                                style: GoogleFonts.poppins(
+                                  color: colorVerdeTese,
+                                  fontWeight: FontWeight.bold,
+                                ),
                               ),
                             ),
                           ],
@@ -1155,15 +1782,18 @@ class _CatalogoEstudianteScreenState extends State<CatalogoEstudianteScreen> {
                     }
 
                     return ListView.builder(
-                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 90),
+                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 95),
                       itemCount: platillosFiltrados.length,
                       itemBuilder: (context, index) {
                         final platillo = platillosFiltrados[index];
                         final acento = acentoDeCategoria(platillo.categoria);
                         final bool agotado = platillo.existencias <= 0;
+                        final bool pocasPiezas =
+                            platillo.existencias > 0 &&
+                            platillo.existencias <= 5;
 
                         return FadeInUp(
-                          delay: Duration(milliseconds: 60 * index),
+                          delay: Duration(milliseconds: 50 * index),
                           child: GestureDetector(
                             onTap: () => _abrirDetalle(platillo),
                             child: Container(
@@ -1188,8 +1818,8 @@ class _CatalogoEstudianteScreenState extends State<CatalogoEstudianteScreen> {
                                     clipBehavior: Clip.none,
                                     children: [
                                       Container(
-                                        width: 58,
-                                        height: 58,
+                                        width: 62,
+                                        height: 62,
                                         decoration: BoxDecoration(
                                           color:
                                               agotado
@@ -1213,8 +1843,8 @@ class _CatalogoEstudianteScreenState extends State<CatalogoEstudianteScreen> {
                                                     base64Decode(
                                                       platillo.fotos.first,
                                                     ),
-                                                    width: 58,
-                                                    height: 58,
+                                                    width: 62,
+                                                    height: 62,
                                                     fit: BoxFit.cover,
                                                     errorBuilder:
                                                         (_, __, ___) => Center(
@@ -1313,36 +1943,8 @@ class _CatalogoEstudianteScreenState extends State<CatalogoEstudianteScreen> {
                                                   ),
                                                 ),
                                               ),
-                                            ],
-                                          ],
-                                        ),
-                                        const SizedBox(height: 3),
-                                        Text(
-                                          platillo.local,
-                                          style: GoogleFonts.poppins(
-                                            fontSize: 12.5,
-                                            color: colorTextoGris,
-                                          ),
-                                        ),
-                                        const SizedBox(height: 5),
-                                        Row(
-                                          children: [
-                                            if (platillo.calificacion > 0) ...[
-                                              const Icon(
-                                                Icons.star_rounded,
-                                                size: 15,
-                                                color: colorAmarilloTese,
-                                              ),
-                                              const SizedBox(width: 2),
-                                              Text(
-                                                '${platillo.calificacion.toStringAsFixed(1)} ★',
-                                                style: GoogleFonts.poppins(
-                                                  fontSize: 12,
-                                                  fontWeight: FontWeight.bold,
-                                                  color: colorTextoOscuro,
-                                                ),
-                                              ),
-                                            ] else ...[
+                                            ] else if (pocasPiezas) ...[
+                                              const SizedBox(width: 6),
                                               Container(
                                                 padding:
                                                     const EdgeInsets.symmetric(
@@ -1350,46 +1952,42 @@ class _CatalogoEstudianteScreenState extends State<CatalogoEstudianteScreen> {
                                                       vertical: 2,
                                                     ),
                                                 decoration: BoxDecoration(
-                                                  color: colorExito.withValues(
-                                                    alpha: 0.12,
-                                                  ),
+                                                  color: Colors.orange
+                                                      .withValues(alpha: 0.15),
                                                   borderRadius:
                                                       BorderRadius.circular(6),
                                                 ),
                                                 child: Text(
-                                                  'Nuevo ✨',
+                                                  'Quedan ${platillo.existencias}',
                                                   style: GoogleFonts.poppins(
-                                                    fontSize: 11,
+                                                    fontSize: 10,
                                                     fontWeight: FontWeight.bold,
-                                                    color: colorExito,
+                                                    color: Colors.deepOrange,
                                                   ),
                                                 ),
                                               ),
                                             ],
-                                            const SizedBox(width: 8),
-                                            const Icon(
-                                              Icons.schedule,
-                                              size: 12,
-                                              color: colorTextoGris,
-                                            ),
-                                            const SizedBox(width: 2),
-                                            Text(
-                                              platillo.tiempoPrep,
-                                              style: GoogleFonts.poppins(
-                                                fontSize: 11.5,
-                                                color: colorTextoGris,
-                                              ),
-                                            ),
                                           ],
                                         ),
-                                        const SizedBox(height: 6),
-                                        Row(
+                                        const SizedBox(height: 2),
+                                        Text(
+                                          platillo.local,
+                                          style: GoogleFonts.poppins(
+                                            fontSize: 12,
+                                            color: colorTextoGris,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 5),
+                                        Wrap(
+                                          crossAxisAlignment:
+                                              WrapCrossAlignment.center,
+                                          spacing: 8,
                                           children: [
                                             Container(
                                               padding:
                                                   const EdgeInsets.symmetric(
                                                     horizontal: 10,
-                                                    vertical: 3,
+                                                    vertical: 2,
                                                   ),
                                               decoration: BoxDecoration(
                                                 color: acento.withValues(
@@ -1407,15 +2005,23 @@ class _CatalogoEstudianteScreenState extends State<CatalogoEstudianteScreen> {
                                                 ),
                                               ),
                                             ),
-                                            const SizedBox(width: 8),
                                             Text(
                                               '🪙 +${platillo.puntos} pts',
                                               style: GoogleFonts.poppins(
                                                 fontSize: 11,
                                                 fontWeight: FontWeight.bold,
-                                                color: colorAmarilloTese,
+                                                color: colorVerdeTese,
                                               ),
                                             ),
+                                            if (platillo.calificacion > 0)
+                                              Text(
+                                                '⭐ ${platillo.calificacion.toStringAsFixed(1)}',
+                                                style: GoogleFonts.poppins(
+                                                  fontSize: 11.5,
+                                                  fontWeight: FontWeight.bold,
+                                                  color: colorTextoOscuro,
+                                                ),
+                                              ),
                                           ],
                                         ),
                                       ],
