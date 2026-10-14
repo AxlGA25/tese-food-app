@@ -1,67 +1,82 @@
+<div align="center">
+
 # 🦆🍔 TESE Hambreados
 
-Aplicación multiplataforma diseñada para optimizar los tiempos de receso de los estudiantes del Tecnológico de Estudios Superiores de Ecatepec, permitiendo realizar pedidos anticipados a la cafetería escolar para evitar filas y agilizar la entrega de alimentos.
+**Plataforma móvil multi-sucursal en tiempo real para pedidos anticipados, terminales de cocina (KDS) y gamificación estudiantil en el Tecnológico de Estudios Superiores de Ecatepec (TESE).**
+
+[![Versión Oficial](https://img.shields.io/badge/Release-v1.0.0--Official-00A650?style=for-the-badge&logo=github)](https://github.com/AxlGA25/tese-food-app/releases)
+[![Flutter](https://img.shields.io/badge/Flutter-3.7+-02569B?style=for-the-badge&logo=flutter&logoColor=white)](https://flutter.dev)
+[![Dart](https://img.shields.io/badge/Dart-3.7+-0175C2?style=for-the-badge&logo=dart&logoColor=white)](https://dart.dev)
+[![Firebase](https://img.shields.io/badge/Firebase-Realtime_Cloud-FFCA28?style=for-the-badge&logo=firebase&logoColor=black)](https://firebase.google.com)
+
+*«Sin filas, más receso para ti.»*
+
+</div>
 
 ---
 
-## 🚀 Características Principales
+## 📖 Descripción del Proyecto
 
-**🧑‍🎓 Módulo Estudiante:**
-* **Splash Screen Premium:** Animaciones de entrada fluidas y diseño "Glass Waves".
-* **Menú Digital en Tiempo Real:** Catálogo interactivo con promociones en formato carrusel.
-* **Carrito de Compras Inteligente:** Sumatoria en tiempo real, función *Swipe-to-Delete* y selección de método de pago (Efectivo/Terminal).
-* **Seguimiento Animado:** Sala de espera inmersiva con cambio de estados dinámicos (Recibido -> En Preparación -> Listo) acompañados de la mascota oficial.
+**TESE Hambreados** nace para erradicar las largas filas durante el receso en las cafeterías y kioskos del **Tecnológico de Estudios Superiores de Ecatepec**. Permite a la comunidad estudiantil, docente y administrativa explorar el menú real de cada sucursal del campus, personalizar ingredientes, alertar sobre alergias médicas y recibir una notificación sonora (**¡CUAC!**) en cuanto su orden está lista para recoger en ventanilla.
 
-**🏪 Módulo Cafetería (Administrativo):**
-* **Acceso Seguro:** Login rápido mediante Código Único (PIN) para agilizar la entrada de los empleados.
-* **Dashboard de Comandas:** Tarjetas interactivas con el detalle completo del pedido, notas del cliente y método de pago.
-* **Gestión de Estados:** Flujo de preparación con actualización visual instantánea.
-* **Gestión de Menú:** Panel para dar de alta nuevos platillos o marcarlos como "Agotados".
+Paralelamente, dota al personal de cada cafetería de una **Terminal de Cocina (KDS - Kitchen Display System)** aislada por sucursal para gestionar comandas en vivo, controlar su inventario y consultar la reputación de sus platillos.
+
+---
+
+## 🚀 Características Principales (v1.0.0)
+
+### 🧑‍🎓 1. Módulo Estudiante
+- **Bienvenida Minimalista Pastel (`FondoOndasPremium`):** Animaciones multicapa a 60 FPS con ondas orgánicas, filetes dorados y cápsulas flotantes de alimentos.
+- **Autenticación Universal e Institucional:** Inicio de sesión y registro con cualquier correo electrónico válido o mediante **Google Sign-In**, con recuperación de contraseña por correo (`sendPasswordResetEmail`) y catálogo completo de carreras del TESE.
+- **Guía Rápida Interactiva (Onboarding):** Mini-tutorial deslizable de 4 pasos protagonizado por el Patito TESE para guiar a los usuarios de nuevo ingreso.
+- **Catálogo Multi-Sucursal en Tiempo Real:** Filtrado instantáneo por local (*Cafetería Central, Kiosko Sistemas, Kiosko Biblioteca*), categoría (*Desayunos, Comida, Bebidas, Postres*) y buscador dinámico con indicadores de stock en vivo.
+- **Personalización de Ingredientes y Alergias:** Selección interactiva por ingrediente (*Normal ➔ Sin ➔ Extra*) e inyección automática de alertas médicas/alergias configuradas en el perfil del alumno.
+- **Carrito Inteligente (`_GrupoCarrito`):** Agrupación automática de platillos idénticos con controles `[-]` y `[+]` topados al stock real, función *Swipe-to-Delete* y candado preventivo anti-mezcla de sucursales.
+- **Seguimiento en Segundo Plano y Alerta ¡CUAC!:** Servicio nativo de monitoreo (`ongoing: true`) con vibración háptica, confeti y efecto de sonido (`cuac.mp3`) cuando la orden entra a cocina y cuando está lista para recoger.
+
+### 🦆 2. Multiverso Gachapón HD y Gamificación
+- **Sistema de Puntos y Rangos Estudiantiles:** Cada compra entregada acredita puntos 🪙 que hacen subir de rango al alumno (*Novato del Receso 🍪 ➔ Comelón Frecuente 🍟 ➔ Hambreado VIP 🥇*).
+- **32 Skins Vectoriales HD (`CustomPainter`):** Dibujadas 100% mediante código con volumen 3D-Kawaii, pedestal holográfico y animaciones vivas (respiración, aleteo y parpadeo automático), divididas en **4 Universos**:
+  - **🎓 Carreras TESE:** *Ing. en Computación, Mecatrónica, Aeronáutica, Industrial, Química/Bioquímica, Gestión, Estudiante y Master Chef.*
+  - **🎸 Anime & Ídolos:** *Pato Insulini Piloto, Bocchi-Pato Guitarrista (con Les Paul), Pato Hechicero Infinito (Gojo), Pato Súper Saiyajin, Streamer Pro RGB, Shinobi y Hechicero Supremo.*
+  - **🕷️ Héroes & Cómics:** *Spidey-Pato, Iron-Pato Mark LXXXV (con Reactor Arc), Venom-Pato, Bati-Pato, Wolverine X, Dead-Pato y Hulk-Pato.*
+  - **✨ Míticos & Clásicos:** *Emperador Dorado VIP, Diamante Celestial, Cósmico Nebulosa, Chroma RGB, Lo-Fi Beats, Matcha Latte, Frappe Rosa, Fachero, Capitán Pirata y Clásico.*
+- **Inspección Holográfica y Armario de Avatar:** Vista detallada en alta definición desde la colección y equipamiento directo del patito favorito como foto de perfil.
+
+### 👨‍🍳 3. Módulo Cafetería / Terminal de Cocina (KDS)
+- **Seguridad de Doble Factor por Sucursal:** Acceso protegido mediante Código de Sucursal + PIN Maestro de 6 dígitos con bloqueo anti-fuerza bruta tras 3 intentos fallidos.
+- **Tutorial Interactivo de Cocina:** Guía visual paso a paso integrada en la terminal para capacitar rápidamente al personal del kiosko.
+- **Comandas Aisladas en Tiempo Real:** Cada sucursal recibe, cocina y entrega exclusivamente sus propios pedidos con filtros rápidos (*Todos, Nuevos, En Cocina, Listos*), cronómetro de espera y alerta visual de alergias.
+- **Control de Existencias y Fotografía:** Alta, edición y baja de platillos con captura de hasta **3 fotografías reales** (cámara o galería en Base64), ajuste rápido de stock `[-]` / `[+]` y bloqueo automático de agotados.
+- **Reputación Exclusiva por Sucursal:** Panel de reseñas y promedio de estrellas filtrado estrictamente por los platillos pertenecientes a cada kiosko.
 
 ---
 
 ## 🛠️ Stack Tecnológico
 
-**Frontend & UI/UX:**
-* Framework: **Flutter (iOS & Android)**
-* Lenguaje: **Dart**
-* Librerías UI: `animate_do` (Animaciones), `google_fonts` (Tipografías), `google_nav_bar` (Navegación), `carousel_slider` (Promociones).
-
-**PROXIMO!! Backend & Base de Datos (Fase de Integración):**
-* **Firebase** (Authentication, Cloud Firestore, Storage)
-
-**Herramientas & Control de Versiones:**
-* **Git / GitHub** (Desarrollo bajo filosofía de control de versiones semántico).
-* **Krita** (Diseño de assets y mascota oficial de la app).
+| Capa | Tecnologías e Implementación |
+| :--- | :--- |
+| **Framework & Lenguaje** | Flutter SDK `^3.7.2` • Dart (Arquitectura reactiva multiplataforma Android / iOS) |
+| **Backend & Cloud (BaaS)** | **Firebase Authentication** (Email/Password & Google Sign-In) • **Cloud Firestore** (Streams NoSQL en tiempo real) |
+| **UI, Animaciones & Gráficos** | `CustomPainter` (Gráficos vectoriales 2D/3D-Kawaii y ondas Bézier) • `animate_do` • `google_fonts` (Poppins) • `curved_navigation_bar` • `confetti` • `awesome_snackbar_content` |
+| **Hardware & Nativos** | `flutter_local_notifications` (Canales de alta prioridad y servicio persistente) • `audioplayers` (`cuac.mp3` / `exito.mp3`) • `image_picker` (Cámara y Galería) • `HapticFeedback` |
+| **Diseño & Versionado** | Krita (Diseño de mascota oficial y assets propios) • Git & GitHub (Versionado Semántico) |
 
 ---
 
-## 👥 Equipo de Desarrollo
+## 📂 Estructura de Directorios (`lib/`)
 
-* **Axel Guerrero Alonso**
-* **Dana Patricia Calderón García**
-
----
-
-## 📦 Historial de Versiones (Changelog)
-El proyecto se desarrolla de manera progresiva y modular.
-
-* **`v0.8.0`** - Diseño Premium (Splash Screen, Mesh Gradient y UI/UX avanzada).
-* **`v0.7.0`** - Integración de Identidad Visual (Mascotas en módulo de Cafetería).
-* **`v0.6.0`** - Ventanas modales para detalle de pedidos en tiempo real.
-* **`v0.5.0`** - Selección de métodos de pago (Efectivo / Tarjeta).
-* **`v0.4.1`** - Dashboard Administrativo: Gestión de Menú (BottomNavigationBar).
-* **`v0.4.0`** - Formulario de registro estudiantil validado.
-* **`v0.2.2`** - Generador de códigos de orden y sala de espera dinámica.
-* **`v0.1.0`** - Estructura base, mockups de login y enrutamiento principal.
-* **`v0.0.3`** - Fix: Resolución de entorno Java/Gradle para compilación en Android.
-
----
-
-## ⚙️ Cómo ejecutar este proyecto localmente
-
-1. **Requisitos previos:** Tener instalado Flutter y **Java 17 (JDK)**.
-2. Clonar este repositorio: `git clone [URL_DEL_REPO]`
-3. Entrar a la carpeta del proyecto: `cd tese-food-app`
-4. Instalar dependencias: `flutter pub get`
-5. Ejecutar en emulador o dispositivo físico: `flutter run`
+```text
+lib/
+├── main.dart                        # Inicialización de Firebase Core, tema global y punto de entrada
+├── colores.dart                     # Paleta institucional TESE, tonos pastel y tokens de diseño
+├── modelos.dart                     # Modelo de datos Platillo y serialización con Cloud Firestore
+├── pantalla_inicio.dart             # Splash Screen persistente, ondas animadas multicapa y selección de rol
+├── pantalla_login.dart              # Login, Registro abierto, Google Auth y recuperación de contraseña
+├── pantalla_menu.dart               # Catálogo estudiantil, Guía Interactiva, vigilante de órdenes y Mis Pedidos
+├── pantalla_detalle_platillo.dart   # Galería de fotos, personalización de ingredientes y control de stock
+├── pantalla_pedido.dart             # Carrito agrupado, confirmación, Sala de Espera en vivo y Reseñas
+├── pantalla_perfil.dart             # Credencial TESE, alergias, estadísticas, rangos y selector de avatar
+├── pantalla_gachapon.dart           # Motor gráfico de 32 Patitos, máquina de cápsulas, ruleta e inspección HD
+├── cafeteria.dart                   # Login Local 2FA, KDS de comandas, inventario y reseñas por sucursal
+└── servicio_notificaciones.dart     # Configuración de notificaciones nativas Android y monitoreo activo
