@@ -37,7 +37,7 @@ Paralelamente, dota al personal de cada cafetería de una **Terminal de Cocina (
 ### 🦆 2. Multiverso Gachapón HD y Gamificación
 - **Sistema de Puntos y Rangos Estudiantiles:** Cada compra entregada acredita puntos 🪙 que hacen subir de rango al alumno (*Novato del Receso 🍪 ➔ Comelón Frecuente 🍟 ➔ Hambreado VIP 🥇*).
 - **32 Skins Vectoriales HD (`CustomPainter`):** Dibujadas 100% mediante código con volumen 3D-Kawaii, pedestal holográfico y animaciones vivas (respiración, aleteo y parpadeo automático), divididas en **4 Universos**:
-  - **🎓 Carreras TESE:** *Ing. en Computación, Mecatrónica, Aeronáutica, Industrial, Química/Bioquímica, Gestión, Estudiante y Master Chef.*
+  - **🎓 Carreras TESE:** *Ing. en sistemas, Mecatrónica, Aeronáutica, Industrial, Química/Bioquímica, Gestión, Estudiante y Master Chef.*
   - **🎸 Anime & Ídolos:** *Pato Insulini Piloto, Bocchi-Pato Guitarrista (con Les Paul), Pato Hechicero Infinito (Gojo), Pato Súper Saiyajin, Streamer Pro RGB, Shinobi y Hechicero Supremo.*
   - **🕷️ Héroes & Cómics:** *Spidey-Pato, Iron-Pato Mark LXXXV (con Reactor Arc), Venom-Pato, Bati-Pato, Wolverine X, Dead-Pato y Hulk-Pato.*
   - **✨ Míticos & Clásicos:** *Emperador Dorado VIP, Diamante Celestial, Cósmico Nebulosa, Chroma RGB, Lo-Fi Beats, Matcha Latte, Frappe Rosa, Fachero, Capitán Pirata y Clásico.*
