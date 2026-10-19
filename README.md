@@ -60,7 +60,7 @@ Paralelamente, dota al personal de cada cafetería de una **Terminal de Cocina (
 | **Backend & Cloud (BaaS)** | **Firebase Authentication** (Email/Password & Google Sign-In) • **Cloud Firestore** (Streams NoSQL en tiempo real) |
 | **UI, Animaciones & Gráficos** | `CustomPainter` (Gráficos vectoriales 2D/3D-Kawaii y ondas Bézier) • `animate_do` • `google_fonts` (Poppins) • `curved_navigation_bar` • `confetti` • `awesome_snackbar_content` |
 | **Hardware & Nativos** | `flutter_local_notifications` (Canales de alta prioridad y servicio persistente) • `audioplayers` (`cuac.mp3` / `exito.mp3`) • `image_picker` (Cámara y Galería) • `HapticFeedback` |
-| **Diseño & Versionado** | Krita (Diseño de mascota oficial y assets propios) • Git & GitHub (Versionado Semántico) |
+| **Diseño & Versionado** | coreldraw (Diseño de mascota oficial y assets propios) • Git & GitHub (Versionado Semántico) |
 
 ---
 
