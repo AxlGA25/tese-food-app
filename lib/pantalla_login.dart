@@ -1,3 +1,5 @@
+import 'dart:convert';
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -5,6 +7,7 @@ import 'package:animate_do/animate_do.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+import 'package:image_picker/image_picker.dart';
 import 'colores.dart';
 import 'pantalla_menu.dart';
 
@@ -23,6 +26,17 @@ const List<String> kCarrerasTese = [
   'Lic. en Contaduría Pública',
   'Otra Área / Administrativo',
 ];
+
+Future<bool> verificarConexionInternet() async {
+  try {
+    final result = await InternetAddress.lookup(
+      'google.com',
+    ).timeout(const Duration(seconds: 4));
+    return result.isNotEmpty && result[0].rawAddress.isNotEmpty;
+  } catch (_) {
+    return false;
+  }
+}
 
 class LoginEstudianteScreen extends StatefulWidget {
   const LoginEstudianteScreen({super.key});
@@ -52,7 +66,6 @@ class _LoginEstudianteScreenState extends State<LoginEstudianteScreen> {
     );
   }
 
-  // 🔑 RECUPERACIÓN DE CONTRASEÑA CON CUALQUIER CORREO
   void _mostrarModalRecuperarPassword() {
     final TextEditingController recupCtrl = TextEditingController(
       text: _correoCtrl.text.trim(),
@@ -150,13 +163,21 @@ class _LoginEstudianteScreenState extends State<LoginEstudianteScreen> {
                                 return;
                               }
                               setStateDialog(() => enviando = true);
+                              if (!await verificarConexionInternet()) {
+                                setStateDialog(() => enviando = false);
+                                _mostrarAlerta(
+                                  '📡 Sin conexión a Internet. Conéctate a una red.',
+                                );
+                                return;
+                              }
                               try {
                                 await FirebaseAuth.instance
-                                    .sendPasswordResetEmail(email: correo);
+                                    .sendPasswordResetEmail(email: correo)
+                                    .timeout(const Duration(seconds: 10));
                                 if (!ctx.mounted) return;
                                 Navigator.pop(ctx);
                                 _mostrarMensajeExito(
-                                  '¡Listo! Revisa tu bandeja de entrada o spam en $correo para cambiar tu contraseña. 📩',
+                                  '¡Listo! Revisa tu bandeja de entrada o spam en $correo 📩',
                                 );
                               } on FirebaseAuthException catch (e) {
                                 setStateDialog(() => enviando = false);
@@ -201,7 +222,6 @@ class _LoginEstudianteScreenState extends State<LoginEstudianteScreen> {
     );
   }
 
-  // 🔒 VENTANA OBLIGATORIA: Si entra con Google pide matrícula y carrera
   void _mostrarModalObligatorioGoogle(User user, bool yaTeniaPerfil) {
     final TextEditingController matriculaCtrl = TextEditingController();
     String carreraElegida = kCarrerasTese[0];
@@ -240,7 +260,7 @@ class _LoginEstudianteScreenState extends State<LoginEstudianteScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Para entregarte tus pedidos en ventanilla sin confusiones, registra tu matrícula y carrera:',
+                          'Para entregarte tus pedidos en ventanilla sin confusiones, registra tu matrícula y carrera (quedarán fijas en tu credencial):',
                           style: GoogleFonts.poppins(
                             fontSize: 12.5,
                             color: colorTextoGris,
@@ -339,6 +359,14 @@ class _LoginEstudianteScreenState extends State<LoginEstudianteScreen> {
 
                                 setStateDialog(() => guardandoDatos = true);
 
+                                if (!await verificarConexionInternet()) {
+                                  setStateDialog(() => guardandoDatos = false);
+                                  _mostrarAlerta(
+                                    '📡 Sin conexión a Internet. Conéctate a una red.',
+                                  );
+                                  return;
+                                }
+
                                 await FirebaseFirestore.instance
                                     .collection('Usuarios')
                                     .doc(user.uid)
@@ -362,6 +390,7 @@ class _LoginEstudianteScreenState extends State<LoginEstudianteScreen> {
                                       .doc(user.uid)
                                       .set({
                                         'patoEquipadoId': 'estudiante',
+                                        'usarFotoReal': false,
                                         'coleccionPatos': {'estudiante': 1},
                                         'puntosGastadosEnGachapon': 0,
                                       }, SetOptions(merge: true));
@@ -404,9 +433,16 @@ class _LoginEstudianteScreenState extends State<LoginEstudianteScreen> {
     );
   }
 
-  // 🌐 LOGIN CON GOOGLE
   Future<void> _iniciarSesionConGoogle() async {
     setState(() => _estaCargando = true);
+    if (!await verificarConexionInternet()) {
+      setState(() => _estaCargando = false);
+      _mostrarAlerta(
+        '📡 Sin conexión a Internet. Conéctate a una red Wi-Fi o datos móviles.',
+      );
+      return;
+    }
+
     try {
       final GoogleSignIn googleSignIn = GoogleSignIn();
       final GoogleSignInAccount? googleUser = await googleSignIn.signIn();
@@ -424,7 +460,8 @@ class _LoginEstudianteScreenState extends State<LoginEstudianteScreen> {
       );
 
       final UserCredential userCredential = await FirebaseAuth.instance
-          .signInWithCredential(credential);
+          .signInWithCredential(credential)
+          .timeout(const Duration(seconds: 15));
       final User? user = userCredential.user;
 
       if (user != null) {
@@ -460,7 +497,9 @@ class _LoginEstudianteScreenState extends State<LoginEstudianteScreen> {
         }
       }
     } catch (e) {
-      _mostrarAlerta('Error al iniciar sesión con Google.');
+      _mostrarAlerta(
+        'Error al iniciar sesión con Google. Verifica tu conexión.',
+      );
     } finally {
       if (mounted) setState(() => _estaCargando = false);
     }
@@ -485,11 +524,18 @@ class _LoginEstudianteScreenState extends State<LoginEstudianteScreen> {
     setState(() => _estaCargando = true);
     HapticFeedback.lightImpact();
 
-    try {
-      await FirebaseAuth.instance.signInWithEmailAndPassword(
-        email: correo,
-        password: password,
+    if (!await verificarConexionInternet()) {
+      setState(() => _estaCargando = false);
+      _mostrarAlerta(
+        '📡 No tienes conexión a Internet. Conéctate a una red para iniciar sesión.',
       );
+      return;
+    }
+
+    try {
+      await FirebaseAuth.instance
+          .signInWithEmailAndPassword(email: correo, password: password)
+          .timeout(const Duration(seconds: 12));
 
       if (!mounted) return;
       Navigator.pushReplacement(
@@ -504,11 +550,13 @@ class _LoginEstudianteScreenState extends State<LoginEstudianteScreen> {
       } else if (e.code == 'wrong-password' || e.code == 'invalid-credential') {
         mensaje = 'Correo o contraseña incorrectos.';
       } else if (e.code == 'network-request-failed') {
-        mensaje = 'Revisa tu conexión a internet.';
+        mensaje = '📡 Sin conexión estable a Internet. Intenta de nuevo.';
       }
       _mostrarAlerta(mensaje);
     } catch (_) {
-      _mostrarAlerta('Ocurrió un error inesperado.');
+      _mostrarAlerta(
+        '📡 Tiempo de espera agotado. Verifica tu conexión a Internet.',
+      );
     } finally {
       if (mounted) setState(() => _estaCargando = false);
     }
@@ -560,7 +608,6 @@ class _LoginEstudianteScreenState extends State<LoginEstudianteScreen> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              // 🔀 INTERRUPTOR SUPERIOR MUY VISIBLE: INICIAR SESIÓN | REGISTRARSE
               Container(
                 padding: const EdgeInsets.all(5),
                 decoration: BoxDecoration(
@@ -626,7 +673,6 @@ class _LoginEstudianteScreenState extends State<LoginEstudianteScreen> {
                 ),
               ),
               const SizedBox(height: 18),
-
               FadeInDown(
                 child: Text(
                   '¡Hola de nuevo! 👋',
@@ -654,8 +700,6 @@ class _LoginEstudianteScreenState extends State<LoginEstudianteScreen> {
                 ),
               ),
               const SizedBox(height: 16),
-
-              // CAJA PRINCIPAL DE LOGIN
               Container(
                 padding: const EdgeInsets.all(22),
                 decoration: BoxDecoration(
@@ -825,8 +869,6 @@ class _LoginEstudianteScreenState extends State<LoginEstudianteScreen> {
                 ),
               ),
               const SizedBox(height: 18),
-
-              // 🌟 TARJETA DESTACADA PARA REGISTRARSE (NO OCULTA)
               FadeInUp(
                 child: Container(
                   width: double.infinity,
@@ -862,7 +904,7 @@ class _LoginEstudianteScreenState extends State<LoginEstudianteScreen> {
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        'Regístrate en 1 minuto con cualquier correo y recibe tu primer Patito Estudiante gratis.',
+                        'Regístrate en 1 minuto, sube tu foto o usa tu Patito Estudiante gratis.',
                         textAlign: TextAlign.center,
                         style: GoogleFonts.poppins(
                           fontSize: 12,
@@ -909,9 +951,9 @@ class _LoginEstudianteScreenState extends State<LoginEstudianteScreen> {
   }
 }
 
-// ==========================================
-// 3. REGISTRO ABIERTO A CUALQUIER CORREO
-// ==========================================
+// ==========================================================
+// REGISTRO CON SELECTOR DE FOTO DE PERFIL + VALIDACIÓN RED
+// ==========================================================
 class RegistroEstudianteScreen extends StatefulWidget {
   const RegistroEstudianteScreen({super.key});
 
@@ -932,6 +974,9 @@ class _RegistroEstudianteScreenState extends State<RegistroEstudianteScreen> {
   final List<String> opcionesRol = ['Estudiante', 'Maestro', 'Directivo'];
   String areaSeleccionada = kCarrerasTese[0];
 
+  String? _fotoBase64;
+  final ImagePicker _picker = ImagePicker();
+
   bool _estaCargando = false;
   bool _ocultarPass = true;
 
@@ -946,6 +991,109 @@ class _RegistroEstudianteScreenState extends State<RegistroEstudianteScreen> {
     super.dispose();
   }
 
+  Future<void> _tomarOSubirFoto(ImageSource source) async {
+    try {
+      final XFile? img = await _picker.pickImage(
+        source: source,
+        maxWidth: 450,
+        maxHeight: 450,
+        imageQuality: 60,
+      );
+      if (img != null) {
+        final bytes = await img.readAsBytes();
+        if (!mounted) return;
+        setState(() => _fotoBase64 = base64Encode(bytes));
+      }
+    } catch (_) {
+      _mostrarAlerta('No se pudo cargar la imagen.');
+    }
+  }
+
+  void _mostrarOpcionesFotoRegistro() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
+      ),
+      builder:
+          (ctx) => SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 12),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    'Foto para tu Credencial TESE',
+                    style: GoogleFonts.poppins(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                      color: colorTextoOscuro,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  ListTile(
+                    leading: const CircleAvatar(
+                      backgroundColor: colorFondoCrema,
+                      child: Icon(
+                        Icons.camera_alt_rounded,
+                        color: colorVerdeTese,
+                      ),
+                    ),
+                    title: Text(
+                      'Tomarme una foto ahora',
+                      style: GoogleFonts.poppins(fontWeight: FontWeight.w600),
+                    ),
+                    onTap: () {
+                      Navigator.pop(ctx);
+                      _tomarOSubirFoto(ImageSource.camera);
+                    },
+                  ),
+                  ListTile(
+                    leading: const CircleAvatar(
+                      backgroundColor: colorFondoCrema,
+                      child: Icon(
+                        Icons.photo_library_rounded,
+                        color: colorVerdeTese,
+                      ),
+                    ),
+                    title: Text(
+                      'Elegir de mi galería',
+                      style: GoogleFonts.poppins(fontWeight: FontWeight.w600),
+                    ),
+                    onTap: () {
+                      Navigator.pop(ctx);
+                      _tomarOSubirFoto(ImageSource.gallery);
+                    },
+                  ),
+                  if (_fotoBase64 != null)
+                    ListTile(
+                      leading: const CircleAvatar(
+                        backgroundColor: Color(0xFFFFEBEE),
+                        child: Icon(
+                          Icons.delete_outline,
+                          color: Colors.redAccent,
+                        ),
+                      ),
+                      title: Text(
+                        'Quitar foto (Usar Avatar de Patito 🦆)',
+                        style: GoogleFonts.poppins(
+                          fontWeight: FontWeight.w600,
+                          color: Colors.redAccent,
+                        ),
+                      ),
+                      onTap: () {
+                        Navigator.pop(ctx);
+                        setState(() => _fotoBase64 = null);
+                      },
+                    ),
+                ],
+              ),
+            ),
+          ),
+    );
+  }
+
   Future<void> _registrarUsuario() async {
     final nombre = _nombreCtrl.text.trim();
     final matricula = _matriculaCtrl.text.trim();
@@ -955,7 +1103,7 @@ class _RegistroEstudianteScreenState extends State<RegistroEstudianteScreen> {
     final confirmPass = _confirmPassCtrl.text.trim();
 
     if (nombre.isEmpty || matricula.isEmpty || correo.isEmpty || pass.isEmpty) {
-      _mostrarAlerta('Por favor completa los campos obligatorios.');
+      _mostrarAlerta('Por favor completa todos los campos obligatorios.');
       return;
     }
 
@@ -977,9 +1125,18 @@ class _RegistroEstudianteScreenState extends State<RegistroEstudianteScreen> {
     setState(() => _estaCargando = true);
     HapticFeedback.mediumImpact();
 
+    if (!await verificarConexionInternet()) {
+      setState(() => _estaCargando = false);
+      _mostrarAlerta(
+        '📡 No tienes conexión a Internet. Conéctate a una red para crear tu cuenta.',
+      );
+      return;
+    }
+
     try {
       final UserCredential credencial = await FirebaseAuth.instance
-          .createUserWithEmailAndPassword(email: correo, password: pass);
+          .createUserWithEmailAndPassword(email: correo, password: pass)
+          .timeout(const Duration(seconds: 12));
 
       final User? user = credencial.user;
 
@@ -1000,6 +1157,7 @@ class _RegistroEstudianteScreenState extends State<RegistroEstudianteScreen> {
               'carrera_area': areaSeleccionada,
               'correo': correo,
               'telefono': telefono,
+              'fotoBase64': _fotoBase64 ?? '',
               'fecha_registro': FieldValue.serverTimestamp(),
               'alergia': 'Sin restricciones alimentarias 😋',
               'puntos': 0,
@@ -1010,6 +1168,7 @@ class _RegistroEstudianteScreenState extends State<RegistroEstudianteScreen> {
             .doc(user.uid)
             .set({
               'patoEquipadoId': 'estudiante',
+              'usarFotoReal': _fotoBase64 != null && _fotoBase64!.isNotEmpty,
               'coleccionPatos': {'estudiante': 1},
               'puntosGastadosEnGachapon': 0,
             });
@@ -1029,7 +1188,9 @@ class _RegistroEstudianteScreenState extends State<RegistroEstudianteScreen> {
       }
       _mostrarAlerta(msg);
     } catch (e) {
-      _mostrarAlerta('Error inesperado al registrar.');
+      _mostrarAlerta(
+        '📡 Error de red al registrar. Verifica tu conexión a Internet.',
+      );
     } finally {
       if (mounted) setState(() => _estaCargando = false);
     }
@@ -1133,7 +1294,9 @@ class _RegistroEstudianteScreenState extends State<RegistroEstudianteScreen> {
   @override
   Widget build(BuildContext context) {
     String labelId =
-        rolSeleccionado == 'Estudiante' ? 'Matrícula' : 'No. de Empleado';
+        rolSeleccionado == 'Estudiante'
+            ? 'Matrícula (Quedará fija)'
+            : 'No. de Empleado (Quedará fijo)';
     IconData iconId =
         rolSeleccionado == 'Estudiante'
             ? Icons.badge_outlined
@@ -1164,6 +1327,76 @@ class _RegistroEstudianteScreenState extends State<RegistroEstudianteScreen> {
         padding: const EdgeInsets.all(22.0),
         child: Column(
           children: [
+            // 📸 SELECTOR DE FOTO DE PERFIL OPCIONAL EN REGISTRO
+            GestureDetector(
+              onTap: _mostrarOpcionesFotoRegistro,
+              child: Column(
+                children: [
+                  Stack(
+                    alignment: Alignment.bottomRight,
+                    children: [
+                      Container(
+                        width: 98,
+                        height: 98,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: Colors.white,
+                          border: Border.all(color: colorVerdeTese, width: 3),
+                          boxShadow: [
+                            BoxShadow(
+                              color: colorVerdeTese.withValues(alpha: 0.15),
+                              blurRadius: 12,
+                              offset: const Offset(0, 4),
+                            ),
+                          ],
+                        ),
+                        child: ClipOval(
+                          child:
+                              _fotoBase64 != null
+                                  ? Image.memory(
+                                    base64Decode(_fotoBase64!),
+                                    fit: BoxFit.cover,
+                                  )
+                                  : Padding(
+                                    padding: const EdgeInsets.all(12.0),
+                                    child: Image.asset(
+                                      'assets/patito_login.png',
+                                      fit: BoxFit.contain,
+                                    ),
+                                  ),
+                        ),
+                      ),
+                      Container(
+                        padding: const EdgeInsets.all(7),
+                        decoration: BoxDecoration(
+                          color: colorAmarilloTese,
+                          shape: BoxShape.circle,
+                          border: Border.all(color: Colors.white, width: 2),
+                        ),
+                        child: const Icon(
+                          Icons.camera_alt_rounded,
+                          size: 18,
+                          color: colorVerdeOscuro,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    _fotoBase64 != null
+                        ? 'Foto lista (Toca para cambiar)'
+                        : 'Toca para subir tu foto (Opcional)',
+                    style: GoogleFonts.poppins(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: colorVerdeTese,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+
             Container(
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
@@ -1213,7 +1446,7 @@ class _RegistroEstudianteScreenState extends State<RegistroEstudianteScreen> {
                   DropdownButtonFormField<String>(
                     isExpanded: true,
                     decoration: _decoracionCampo(
-                      'Carrera / División',
+                      'Carrera / División (Quedará fija)',
                       Icons.school_outlined,
                     ),
                     value: areaSeleccionada,

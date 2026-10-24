@@ -1,50 +1,45 @@
+import 'dart:convert';
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:animate_do/animate_do.dart';
-import 'package:confetti/confetti.dart';
-import 'package:audioplayers/audioplayers.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:confetti/confetti.dart';
+import 'package:image_picker/image_picker.dart';
 import 'colores.dart';
 import 'modelos.dart';
-
-final AudioPlayer reproductorGlobal = AudioPlayer();
+import 'pantalla_login.dart';
+import 'pantalla_gachapon.dart';
+import 'servicio_notificaciones.dart';
 
 class _GrupoCarrito {
-  final Platillo platillo;
-  final int cantidad;
-  final String clave;
+  final Platillo platilloBase;
+  final List<int> indicesOriginales;
+  int get cantidad => indicesOriginales.length;
+  double get subtotal => platilloBase.precio * cantidad;
 
-  const _GrupoCarrito({
-    required this.platillo,
-    required this.cantidad,
-    required this.clave,
-  });
+  _GrupoCarrito({required this.platilloBase, required this.indicesOriginales});
 }
 
+// ==========================================================
+// 1. PANTALLA DE REVISIÓN DE CARRITO Y ENVÍO DE PEDIDO
+// ==========================================================
 class CarritoScreen extends StatefulWidget {
   final List<Platillo> carrito;
-  final VoidCallback onVaciar;
-  const CarritoScreen({
-    super.key,
-    required this.carrito,
-    required this.onVaciar,
-  });
+  const CarritoScreen({super.key, required this.carrito});
 
   @override
   State<CarritoScreen> createState() => _CarritoScreenState();
 }
 
 class _CarritoScreenState extends State<CarritoScreen> {
-  final User? _usuarioAuth = FirebaseAuth.instance.currentUser;
-  String _nombreAlumno = 'Estudiante TESE';
-  String _alergiaAlumno = 'Sin restricciones alimentarias 😋';
-
-  String metodoPago = 'Efectivo';
+  String metodoPagoSeleccionado = 'Efectivo en ventanilla 💵';
   final TextEditingController _notasCtrl = TextEditingController();
-  bool _estaCargando = false;
+  bool _enviandoPedido = false;
+  String _alergiaPerfil = 'Sin restricciones alimentarias 😋';
+  String _nombreEstudiante = 'Estudiante TESE';
 
   @override
   void initState() {
@@ -53,23 +48,23 @@ class _CarritoScreenState extends State<CarritoScreen> {
   }
 
   Future<void> _cargarDatosAlumno() async {
-    if (_usuarioAuth != null) {
-      try {
-        final doc =
-            await FirebaseFirestore.instance
-                .collection('Usuarios')
-                .doc(_usuarioAuth.uid)
-                .get();
-        if (doc.exists && mounted) {
-          final data = doc.data() as Map<String, dynamic>;
-          setState(() {
-            _nombreAlumno = data['nombre_completo'] ?? 'Estudiante TESE';
-            _alergiaAlumno =
-                data['alergia'] ?? 'Sin restricciones alimentarias 😋';
-          });
-        }
-      } catch (_) {}
-    }
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+    _nombreEstudiante = user.displayName ?? 'Estudiante TESE';
+    try {
+      final doc =
+          await FirebaseFirestore.instance
+              .collection('Usuarios')
+              .doc(user.uid)
+              .get();
+      if (doc.exists && mounted) {
+        final d = doc.data()!;
+        setState(() {
+          _nombreEstudiante = d['nombre_completo'] ?? _nombreEstudiante;
+          _alergiaPerfil = d['alergia'] ?? 'Sin restricciones alimentarias 😋';
+        });
+      }
+    } catch (_) {}
   }
 
   @override
@@ -78,1498 +73,644 @@ class _CarritoScreenState extends State<CarritoScreen> {
     super.dispose();
   }
 
-  String _clavePlatillo(Platillo p) => '${p.id}|${p.personalizacion.join(',')}';
-
   List<_GrupoCarrito> _agruparCarrito() {
-    final Map<String, List<Platillo>> mapa = {};
-    for (final p in widget.carrito) {
-      final k = _clavePlatillo(p);
-      mapa.putIfAbsent(k, () => []).add(p);
+    final Map<String, _GrupoCarrito> mapa = {};
+    for (int i = 0; i < widget.carrito.length; i++) {
+      final p = widget.carrito[i];
+      final clave = '${p.id}__${p.nombre}__${p.personalizacion.join(',')}';
+      if (!mapa.containsKey(clave)) {
+        mapa[clave] = _GrupoCarrito(platilloBase: p, indicesOriginales: [i]);
+      } else {
+        mapa[clave]!.indicesOriginales.add(i);
+      }
     }
-    return mapa.entries
-        .map(
-          (e) => _GrupoCarrito(
-            platillo: e.value.first,
-            cantidad: e.value.length,
-            clave: e.key,
-          ),
-        )
-        .toList();
+    return mapa.values.toList();
   }
 
-  void _incrementarGrupo(_GrupoCarrito grupo) {
-    final int stockMax =
-        grupo.platillo.existencias > 0 ? grupo.platillo.existencias : 99;
-    if (grupo.cantidad >= stockMax) {
+  double get _totalPagar =>
+      widget.carrito.fold(0.0, (acc, item) => acc + item.precio);
+
+  int get _puntosTotales =>
+      widget.carrito.fold(0, (acc, item) => acc + item.puntos);
+
+  void _incrementarPlatillo(_GrupoCarrito grupo) {
+    final totalDeEseIdEnCarrito =
+        widget.carrito.where((p) => p.id == grupo.platilloBase.id).length;
+
+    if (totalDeEseIdEnCarrito >= grupo.platilloBase.existencias) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            'Solo hay $stockMax disponibles de ${grupo.platillo.nombre}.',
+            'Stock máximo alcanzado (${grupo.platilloBase.existencias} disponibles).',
           ),
+          backgroundColor: Colors.orange.shade800,
+          behavior: SnackBarBehavior.floating,
         ),
       );
       return;
     }
     HapticFeedback.selectionClick();
-    setState(() => widget.carrito.add(grupo.platillo));
+    setState(() {
+      widget.carrito.add(grupo.platilloBase);
+    });
   }
 
-  void _decrementarGrupo(_GrupoCarrito grupo) {
+  void _decrementarPlatillo(_GrupoCarrito grupo) {
     HapticFeedback.selectionClick();
-    final idx = widget.carrito.indexWhere(
-      (p) => _clavePlatillo(p) == grupo.clave,
-    );
-    if (idx != -1) {
-      setState(() => widget.carrito.removeAt(idx));
+    setState(() {
+      widget.carrito.removeAt(grupo.indicesOriginales.last);
+    });
+  }
+
+  Future<void> _confirmarYEnviarPedido() async {
+    if (widget.carrito.isEmpty || _enviandoPedido) return;
+
+    setState(() => _enviandoPedido = true);
+    HapticFeedback.mediumImpact();
+
+    final bool hayRed = await verificarConexionInternet();
+    if (!hayRed) {
+      if (mounted) {
+        setState(() => _enviandoPedido = false);
+        _mostrarAlertaError(
+          '📡 No tienes conexión a Internet. Conéctate a una red Wi-Fi o activa tus datos móviles para enviar tu pedido.',
+        );
+      }
+      return;
+    }
+
+    final String sucursalDestino = widget.carrito.first.local;
+
+    try {
+      final snapLocal = await FirebaseFirestore.instance
+          .collection('Locales_Seguridad')
+          .where('nombre', isEqualTo: sucursalDestino)
+          .get()
+          .timeout(const Duration(seconds: 6));
+
+      if (snapLocal.docs.isNotEmpty) {
+        final datosLocal = snapLocal.docs.first.data();
+        final bool abierto = datosLocal['abierto'] ?? true;
+        if (!abierto) {
+          if (mounted) {
+            setState(() => _enviandoPedido = false);
+            _mostrarAlertaError(
+              '🔒 Lo sentimos, $sucursalDestino acaba de cerrar su recepción de pedidos por hoy.',
+            );
+          }
+          return;
+        }
+      }
+
+      final grupos = _agruparCarrito();
+      final List<String> lineasDetalle = [];
+      final List<String> platillosIds = [];
+      final List<String> platillosNombres = [];
+      final Map<String, int> cantidadesPorPlatillo = {};
+
+      for (final g in grupos) {
+        final String extraPers =
+            g.platilloBase.personalizacion.isNotEmpty
+                ? ' (${g.platilloBase.personalizacion.join(', ')})'
+                : '';
+        lineasDetalle.add('${g.cantidad}x ${g.platilloBase.nombre}$extraPers');
+        if (!platillosIds.contains(g.platilloBase.id)) {
+          platillosIds.add(g.platilloBase.id);
+          platillosNombres.add(g.platilloBase.nombre);
+        }
+        cantidadesPorPlatillo[g.platilloBase.id] =
+            (cantidadesPorPlatillo[g.platilloBase.id] ?? 0) + g.cantidad;
+      }
+
+      final List<String> notasFinales = [];
+      if (!_alergiaPerfil.startsWith('Sin restricciones')) {
+        notasFinales.add('ALERTA ALERGIA: $_alergiaPerfil');
+      }
+      if (_notasCtrl.text.trim().isNotEmpty) {
+        notasFinales.add(_notasCtrl.text.trim());
+      }
+      final String textoNotas =
+          notasFinales.isEmpty
+              ? 'Sin notas adicionales'
+              : notasFinales.join(' | ');
+
+      final String codigoOrden = '#TESE-${10000 + Random().nextInt(89999)}';
+      final String uid = FirebaseAuth.instance.currentUser?.uid ?? 'anonimo';
+      final double totalFinal = _totalPagar;
+      final int puntosFinales = _puntosTotales;
+
+      final docRef = await FirebaseFirestore.instance
+          .collection('Pedidos')
+          .add({
+            'idPedido': codigoOrden,
+            'idAlumno': uid,
+            'alumno': _nombreEstudiante,
+            'local': sucursalDestino,
+            'detalle': lineasDetalle.join('\n'),
+            'notas': textoNotas,
+            'metodoPago': metodoPagoSeleccionado,
+            'total': totalFinal,
+            'puntosGanados': puntosFinales,
+            'estado': 0,
+            'ocultoParaAlumno': false,
+            'platillosIds': platillosIds,
+            'platillosNombres': platillosNombres,
+            'cantidadesPorPlatillo': cantidadesPorPlatillo,
+            'horaLlegada': FieldValue.serverTimestamp(),
+          })
+          .timeout(const Duration(seconds: 10));
+
+      for (final entry in cantidadesPorPlatillo.entries) {
+        if (entry.key.isNotEmpty) {
+          await FirebaseFirestore.instance
+              .collection('Menu_Platillos')
+              .doc(entry.key)
+              .update({'existencias': FieldValue.increment(-entry.value)})
+              .catchError((_) {});
+        }
+      }
+
+      // 1️⃣ AL CONFIRMAR EL PEDIDO: Suena 'sonidos/exito.mp3' y sale notificación
+      await ServicioNotificaciones.mostrarNotificacionOrden(
+        id: docRef.id.hashCode,
+        titulo: '✅ ¡Pedido $codigoOrden confirmado!',
+        cuerpo:
+            'Tu orden fue enviada a $sucursalDestino. Sonará un ¡CUAC! cuando entre a cocina.',
+        enCurso: true,
+        esPedidoListo: false,
+        sonido: 'sonidos/exito.mp3',
+      );
+
+      if (!mounted) return;
+      widget.carrito.clear();
+
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder:
+              (_) => SalaEsperaPedidoScreen(
+                pedidoDocId: docRef.id,
+                codigoInicial: codigoOrden,
+              ),
+        ),
+      );
+    } catch (e) {
+      if (mounted) {
+        setState(() => _enviandoPedido = false);
+        _mostrarAlertaError(
+          '📡 Tu conexión a Internet es inestable y no se pudo confirmar el pedido. Intenta nuevamente.',
+        );
+      }
     }
   }
 
-  void _eliminarGrupoCompleto(_GrupoCarrito grupo) {
-    HapticFeedback.mediumImpact();
-    setState(
-      () => widget.carrito.removeWhere((p) => _clavePlatillo(p) == grupo.clave),
+  void _mostrarAlertaError(String msg) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(msg, style: GoogleFonts.poppins(fontSize: 12.5)),
+        backgroundColor: Colors.redAccent,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+      ),
     );
   }
 
-  void _mostrarConfirmacion(double total) {
-    HapticFeedback.heavyImpact();
-    final String localDestino =
-        widget.carrito.isNotEmpty
-            ? widget.carrito.first.local
-            : 'Cafetería Central';
-    final int puntosTotales = widget.carrito.fold<int>(
-      0,
-      (acumulado, p) => acumulado + p.puntos,
-    );
+  @override
+  Widget build(BuildContext context) {
     final grupos = _agruparCarrito();
+    final String sucursal =
+        widget.carrito.isNotEmpty ? widget.carrito.first.local : 'Cafetería';
 
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.transparent,
-      isScrollControlled: true,
-      builder:
-          (ctxModal) => StatefulBuilder(
-            builder: (contextModal, setStateModal) {
-              return Container(
-                padding: EdgeInsets.only(
-                  bottom: MediaQuery.of(contextModal).viewInsets.bottom + 24,
-                  top: 24,
-                  left: 24,
-                  right: 24,
-                ),
-                decoration: const BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.only(
-                    topLeft: Radius.circular(30),
-                    topRight: Radius.circular(30),
-                  ),
-                ),
+    return Scaffold(
+      backgroundColor: colorFondoCrema,
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(
+            Icons.arrow_back_ios_new_rounded,
+            color: colorVerdeTese,
+            size: 20,
+          ),
+          onPressed: () => Navigator.pop(context),
+        ),
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Confirmar tu Pedido 🛒',
+              style: GoogleFonts.poppins(
+                color: colorVerdeTese,
+                fontWeight: FontWeight.w900,
+                fontSize: 18,
+              ),
+            ),
+            Text(
+              'Sucursal: $sucursal',
+              style: GoogleFonts.poppins(
+                color: colorTextoGris,
+                fontWeight: FontWeight.w600,
+                fontSize: 11.5,
+              ),
+            ),
+          ],
+        ),
+      ),
+      body:
+          widget.carrito.isEmpty
+              ? Center(
                 child: Column(
-                  mainAxisSize: MainAxisSize.min,
+                  mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Center(
-                      child: Container(
-                        width: 50,
-                        height: 5,
-                        decoration: BoxDecoration(
-                          color: Colors.grey[300],
-                          borderRadius: BorderRadius.circular(10),
-                        ),
+                    Container(
+                      padding: const EdgeInsets.all(24),
+                      decoration: const BoxDecoration(
+                        color: Color(0xFFE8F5E9),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(
+                        Icons.shopping_bag_outlined,
+                        size: 60,
+                        color: colorVerdeTese,
                       ),
                     ),
-                    const SizedBox(height: 18),
-                    const Icon(
-                      Icons.storefront,
-                      size: 50,
-                      color: colorVerdeTese,
-                    ),
-                    const SizedBox(height: 12),
+                    const SizedBox(height: 14),
                     Text(
-                      'Confirmar tu Orden',
+                      'Tu carrito está vacío',
                       style: GoogleFonts.poppins(
-                        fontSize: 22,
+                        fontSize: 18,
                         fontWeight: FontWeight.bold,
                         color: colorTextoOscuro,
                       ),
                     ),
                     const SizedBox(height: 6),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 6,
-                      ),
-                      decoration: BoxDecoration(
-                        color: colorVerdeTese.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Text(
-                        '📍 Recogerás en: $localDestino',
-                        style: GoogleFonts.poppins(
-                          fontSize: 13,
-                          fontWeight: FontWeight.bold,
-                          color: colorVerdeTese,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 10,
-                        vertical: 4,
-                      ),
-                      decoration: BoxDecoration(
-                        color: colorAmarilloTese.withValues(alpha: 0.2),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Text(
-                        '🪙 Ganarás: +$puntosTotales pts al recoger',
-                        style: GoogleFonts.poppins(
-                          fontSize: 12.5,
-                          fontWeight: FontWeight.bold,
-                          color: colorVerdeOscuro,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 10),
                     Text(
-                      'Total a pagar: \$${total.toStringAsFixed(2)}\nPagarás con $metodoPago directo en ventanilla.',
-                      textAlign: TextAlign.center,
+                      'Agrega tus platillos favoritos del menú para pedir.',
                       style: GoogleFonts.poppins(
+                        fontSize: 12.5,
                         color: colorTextoGris,
-                        fontSize: 13,
                       ),
                     ),
-                    const SizedBox(height: 24),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: OutlinedButton(
-                            style: OutlinedButton.styleFrom(
-                              padding: const EdgeInsets.symmetric(vertical: 15),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(14),
-                              ),
-                              side: BorderSide(color: Colors.grey[300]!),
-                            ),
-                            onPressed:
-                                _estaCargando
-                                    ? null
-                                    : () => Navigator.pop(ctxModal),
-                            child: Text(
-                              'Revisar',
-                              style: GoogleFonts.poppins(
-                                color: colorTextoGris,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ),
+                    const SizedBox(height: 18),
+                    ElevatedButton.icon(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: colorVerdeTese,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 24,
+                          vertical: 12,
                         ),
-                        const SizedBox(width: 14),
-                        Expanded(
-                          flex: 2,
-                          child: ElevatedButton.icon(
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: colorExito,
-                              padding: const EdgeInsets.symmetric(vertical: 15),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(14),
-                              ),
-                            ),
-                            icon:
-                                _estaCargando
-                                    ? const SizedBox.shrink()
-                                    : const Icon(
-                                      Icons.check_circle_outline,
-                                      color: Colors.white,
-                                      size: 20,
-                                    ),
-                            onPressed:
-                                _estaCargando
-                                    ? null
-                                    : () async {
-                                      HapticFeedback.heavyImpact();
-                                      setStateModal(() => _estaCargando = true);
-
-                                      try {
-                                        String codigoUnico =
-                                            '#TESE-${Random().nextInt(90000) + 10000}';
-
-                                        String detallesCocina = grupos
-                                            .map((g) {
-                                              String personalizacion =
-                                                  g
-                                                          .platillo
-                                                          .personalizacion
-                                                          .isNotEmpty
-                                                      ? '\n  • ${g.platillo.personalizacion.join('\n  • ')}'
-                                                      : '';
-                                              return '${g.cantidad}x ${g.platillo.nombre}$personalizacion';
-                                            })
-                                            .join('\n\n');
-
-                                        String notasAdicionales =
-                                            _notasCtrl.text.trim();
-
-                                        if (_alergiaAlumno !=
-                                            'Sin restricciones alimentarias 😋') {
-                                          if (notasAdicionales.isNotEmpty) {
-                                            notasAdicionales +=
-                                                ' | ALERGIA: $_alergiaAlumno';
-                                          } else {
-                                            notasAdicionales =
-                                                'ALERGIA: $_alergiaAlumno';
-                                          }
-                                        }
-
-                                        if (notasAdicionales.isNotEmpty) {
-                                          detallesCocina +=
-                                              '\n\nNOTAS: $notasAdicionales';
-                                        }
-
-                                        final Map<String, String>
-                                        unicosParaResena = {};
-                                        for (var p in widget.carrito) {
-                                          unicosParaResena[p.id] = p.nombre;
-                                        }
-                                        List<Map<String, dynamic>>
-                                        itemsParaResena =
-                                            unicosParaResena.entries
-                                                .map(
-                                                  (e) => {
-                                                    'id': e.key,
-                                                    'nombre': e.value,
-                                                  },
-                                                )
-                                                .toList();
-
-                                        await FirebaseFirestore.instance
-                                            .collection('Pedidos')
-                                            .doc(codigoUnico)
-                                            .set({
-                                              'idPedido': codigoUnico,
-                                              'alumno': _nombreAlumno,
-                                              'idAlumno':
-                                                  _usuarioAuth?.uid ??
-                                                  'anonimo',
-                                              'local': localDestino,
-                                              'detalle': detallesCocina,
-                                              'metodoPago': metodoPago,
-                                              'notas': notasAdicionales,
-                                              'total': total,
-                                              'estado': 0,
-                                              'calificado': false,
-                                              'items': itemsParaResena,
-                                              'puntosGanados': puntosTotales,
-                                              'puntosAcreditados': false,
-                                              'horaLlegada':
-                                                  FieldValue.serverTimestamp(),
-                                            });
-
-                                        for (var g in grupos) {
-                                          FirebaseFirestore.instance
-                                              .collection('Menu_Platillos')
-                                              .doc(g.platillo.id)
-                                              .update({
-                                                'existencias':
-                                                    FieldValue.increment(
-                                                      -g.cantidad,
-                                                    ),
-                                              });
-                                        }
-
-                                        try {
-                                          reproductorGlobal.play(
-                                            AssetSource('exito.mp3'),
-                                            volume: 1.0,
-                                          );
-                                        } catch (_) {}
-
-                                        if (!ctxModal.mounted) return;
-                                        Navigator.pop(ctxModal);
-                                        widget.onVaciar();
-
-                                        if (!mounted) return;
-                                        Navigator.pushReplacement(
-                                          context,
-                                          MaterialPageRoute(
-                                            builder:
-                                                (context) =>
-                                                    PantallaPedidoExitoso(
-                                                      codigoPedido: codigoUnico,
-                                                      total: total,
-                                                      local: localDestino,
-                                                    ),
-                                          ),
-                                        );
-                                      } catch (e) {
-                                        setStateModal(
-                                          () => _estaCargando = false,
-                                        );
-                                      }
-                                    },
-                            label:
-                                _estaCargando
-                                    ? const SizedBox(
-                                      height: 20,
-                                      width: 20,
-                                      child: CircularProgressIndicator(
-                                        color: Colors.white,
-                                        strokeWidth: 2,
-                                      ),
-                                    )
-                                    : Text(
-                                      '¡Enviar a Cocina!',
-                                      style: GoogleFonts.poppins(
-                                        color: Colors.white,
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 15.5,
-                                      ),
-                                    ),
-                          ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
                         ),
-                      ],
+                      ),
+                      onPressed: () => Navigator.pop(context),
+                      icon: const Icon(
+                        Icons.restaurant_menu_rounded,
+                        color: Colors.white,
+                        size: 18,
+                      ),
+                      label: Text(
+                        'Explorar Menú',
+                        style: GoogleFonts.poppins(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
                     ),
                   ],
                 ),
-              );
-            },
-          ),
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final double total = widget.carrito.fold(
-      0,
-      (acumulado, item) => acumulado + item.precio,
-    );
-    final int puntosTotales = widget.carrito.fold<int>(
-      0,
-      (acumulado, item) => acumulado + item.puntos,
-    );
-    final grupos = _agruparCarrito();
-    final bool tieneAlergia =
-        _alergiaAlumno != 'Sin restricciones alimentarias 😋';
-
-    return Scaffold(
-      backgroundColor: colorFondoCrema,
-      appBar: AppBar(
-        title: Text(
-          'Tu Orden (${widget.carrito.length})',
-          style: GoogleFonts.poppins(
-            color: Colors.white,
-            fontWeight: FontWeight.bold,
-            fontSize: 18,
-          ),
-        ),
-        backgroundColor: colorVerdeTese,
-        iconTheme: const IconThemeData(color: Colors.white),
-        actions: [
-          if (widget.carrito.isNotEmpty)
-            IconButton(
-              tooltip: 'Vaciar carrito',
-              icon: const Icon(
-                Icons.delete_sweep_outlined,
-                color: Colors.white,
-              ),
-              onPressed: () {
-                HapticFeedback.mediumImpact();
-                setState(() => widget.carrito.clear());
-                widget.onVaciar();
-              },
-            ),
-        ],
-      ),
-      body: Column(
-        children: [
-          Expanded(
-            child:
-                grupos.isEmpty
-                    ? Center(
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 32),
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(
-                              Icons.shopping_basket_outlined,
-                              size: 76,
-                              color: colorTextoGris.withValues(alpha: 0.5),
-                            ),
-                            const SizedBox(height: 14),
-                            Text(
-                              'Tu carrito está vacío',
-                              style: GoogleFonts.poppins(
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                                color: colorTextoOscuro,
-                              ),
-                            ),
-                            const SizedBox(height: 6),
-                            Text(
-                              'Regresa al menú para elegir tus alimentos favoritos.',
-                              textAlign: TextAlign.center,
-                              style: GoogleFonts.poppins(
-                                fontSize: 13,
-                                color: colorTextoGris,
-                              ),
-                            ),
-                            const SizedBox(height: 18),
-                            OutlinedButton.icon(
-                              style: OutlinedButton.styleFrom(
-                                foregroundColor: colorVerdeTese,
-                                side: const BorderSide(color: colorVerdeTese),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(14),
-                                ),
-                              ),
-                              onPressed: () => Navigator.pop(context),
-                              icon: const Icon(Icons.arrow_back, size: 18),
-                              label: Text(
-                                'Ir al Menú',
-                                style: GoogleFonts.poppins(
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    )
-                    : ListView.builder(
-                      padding: const EdgeInsets.symmetric(vertical: 10),
-                      itemCount: grupos.length,
-                      itemBuilder: (context, index) {
-                        final grupo = grupos[index];
-                        final item = grupo.platillo;
-                        final double subtotal = item.precio * grupo.cantidad;
-
-                        return Dismissible(
-                          key: ValueKey(grupo.clave),
-                          direction: DismissDirection.endToStart,
-                          onDismissed: (_) => _eliminarGrupoCompleto(grupo),
-                          background: Container(
-                            margin: const EdgeInsets.symmetric(
-                              horizontal: 16,
-                              vertical: 6,
-                            ),
-                            decoration: BoxDecoration(
-                              color: Colors.red[400],
-                              borderRadius: BorderRadius.circular(18),
-                            ),
-                            alignment: Alignment.centerRight,
-                            padding: const EdgeInsets.symmetric(horizontal: 20),
-                            child: const Icon(
-                              Icons.delete_outline,
-                              color: Colors.white,
-                              size: 26,
-                            ),
-                          ),
-                          child: Container(
-                            margin: const EdgeInsets.symmetric(
-                              horizontal: 16,
-                              vertical: 6,
-                            ),
-                            padding: const EdgeInsets.all(14),
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(18),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: colorVerdeTese.withValues(alpha: 0.06),
-                                  blurRadius: 10,
-                                  offset: const Offset(0, 4),
-                                ),
-                              ],
-                            ),
-                            child: Row(
-                              children: [
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        item.nombre,
-                                        style: GoogleFonts.poppins(
-                                          fontWeight: FontWeight.bold,
-                                          fontSize: 15,
-                                          color: colorTextoOscuro,
-                                        ),
-                                      ),
-                                      const SizedBox(height: 2),
-                                      Row(
-                                        children: [
-                                          Text(
-                                            '📍 ${item.local}',
-                                            style: GoogleFonts.poppins(
-                                              fontSize: 11.5,
-                                              color: colorVerdeTese,
-                                              fontWeight: FontWeight.w600,
-                                            ),
-                                          ),
-                                          const SizedBox(width: 8),
-                                          Text(
-                                            '🪙 +${item.puntos * grupo.cantidad} pts',
-                                            style: GoogleFonts.poppins(
-                                              fontSize: 11,
-                                              color: colorAmarilloTese,
-                                              fontWeight: FontWeight.bold,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                      if (item.personalizacion.isNotEmpty) ...[
-                                        const SizedBox(height: 4),
-                                        Container(
-                                          padding: const EdgeInsets.symmetric(
-                                            horizontal: 8,
-                                            vertical: 3,
-                                          ),
-                                          decoration: BoxDecoration(
-                                            color: Colors.redAccent.withValues(
-                                              alpha: 0.08,
-                                            ),
-                                            borderRadius: BorderRadius.circular(
-                                              8,
-                                            ),
-                                          ),
-                                          child: Text(
-                                            item.personalizacion.join(' • '),
-                                            style: GoogleFonts.poppins(
-                                              fontSize: 11,
-                                              color: Colors.redAccent,
-                                              fontWeight: FontWeight.bold,
-                                            ),
-                                          ),
-                                        ),
-                                      ],
-                                      const SizedBox(height: 6),
-                                      Text(
-                                        '\$${subtotal.toStringAsFixed(2)}',
-                                        style: GoogleFonts.poppins(
-                                          fontSize: 15.5,
-                                          color: colorVerdeTese,
-                                          fontWeight: FontWeight.w900,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                                // Controles interactivos [-] cantidad [+]
-                                Container(
-                                  decoration: BoxDecoration(
-                                    color: colorFondoCrema,
-                                    borderRadius: BorderRadius.circular(14),
-                                    border: Border.all(
-                                      color: colorVerdeTese.withValues(
-                                        alpha: 0.15,
-                                      ),
-                                    ),
-                                  ),
-                                  child: Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      IconButton(
-                                        visualDensity: VisualDensity.compact,
-                                        icon: Icon(
-                                          grupo.cantidad == 1
-                                              ? Icons.delete_outline
-                                              : Icons.remove,
-                                          size: 18,
-                                          color:
-                                              grupo.cantidad == 1
-                                                  ? Colors.redAccent
-                                                  : colorTextoOscuro,
-                                        ),
-                                        onPressed:
-                                            () => _decrementarGrupo(grupo),
-                                      ),
-                                      Text(
-                                        '${grupo.cantidad}',
-                                        style: GoogleFonts.poppins(
-                                          fontWeight: FontWeight.bold,
-                                          fontSize: 14,
-                                          color: colorTextoOscuro,
-                                        ),
-                                      ),
-                                      IconButton(
-                                        visualDensity: VisualDensity.compact,
-                                        icon: const Icon(
-                                          Icons.add,
-                                          size: 18,
-                                          color: colorVerdeTese,
-                                        ),
-                                        onPressed:
-                                            () => _incrementarGrupo(grupo),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        );
-                      },
-                    ),
-          ),
-          if (widget.carrito.isNotEmpty)
-            FadeInUp(
-              child: Container(
-                padding: const EdgeInsets.fromLTRB(22, 18, 22, 20),
-                decoration: const BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.only(
-                    topLeft: Radius.circular(30),
-                    topRight: Radius.circular(30),
-                  ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black12,
-                      blurRadius: 10,
-                      offset: Offset(0, -5),
-                    ),
-                  ],
-                ),
-                child: SafeArea(
-                  top: false,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      if (tieneAlergia) ...[
-                        Container(
+              )
+              : SingleChildScrollView(
+                padding: const EdgeInsets.fromLTRB(20, 8, 20, 28),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    if (!_alergiaPerfil.startsWith('Sin restricciones'))
+                      FadeInDown(
+                        duration: const Duration(milliseconds: 220),
+                        child: Container(
                           width: double.infinity,
-                          margin: const EdgeInsets.only(bottom: 10),
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 8,
-                          ),
+                          margin: const EdgeInsets.only(bottom: 14),
+                          padding: const EdgeInsets.all(14),
                           decoration: BoxDecoration(
-                            color: colorAmarilloTese.withValues(alpha: 0.15),
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(
-                              color: colorAmarilloTese.withValues(alpha: 0.5),
-                            ),
+                            color: const Color(0xFFFFF8E1),
+                            borderRadius: BorderRadius.circular(18),
+                            border: Border.all(color: const Color(0xFFFFD54F)),
                           ),
                           child: Row(
                             children: [
-                              const Icon(
-                                Icons.health_and_safety,
-                                size: 18,
-                                color: colorVerdeTese,
+                              Container(
+                                padding: const EdgeInsets.all(8),
+                                decoration: BoxDecoration(
+                                  color: Colors.orange.withValues(alpha: 0.15),
+                                  shape: BoxShape.circle,
+                                ),
+                                child: const Icon(
+                                  Icons.medical_information_rounded,
+                                  color: Colors.orange,
+                                  size: 20,
+                                ),
                               ),
-                              const SizedBox(width: 8),
+                              const SizedBox(width: 10),
                               Expanded(
                                 child: Text(
-                                  'Se notificará a cocina: $_alergiaAlumno',
+                                  'Nota médica activa: $_alergiaPerfil',
                                   style: GoogleFonts.poppins(
-                                    fontSize: 11.5,
+                                    fontSize: 12,
                                     fontWeight: FontWeight.bold,
-                                    color: colorTextoOscuro,
+                                    color: Colors.brown.shade800,
                                   ),
                                 ),
                               ),
                             ],
                           ),
                         ),
-                      ],
-                      TextField(
+                      ),
+                    Text(
+                      'Resumen de Platillos (${widget.carrito.length})',
+                      style: GoogleFonts.poppins(
+                        fontWeight: FontWeight.w800,
+                        fontSize: 14.5,
+                        color: colorTextoOscuro,
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    ...grupos.map((g) {
+                      return Container(
+                        margin: const EdgeInsets.only(bottom: 10),
+                        padding: const EdgeInsets.all(14),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(color: Colors.grey.shade100),
+                          boxShadow: [
+                            BoxShadow(
+                              color: colorVerdeTese.withValues(alpha: 0.05),
+                              blurRadius: 10,
+                              offset: const Offset(0, 4),
+                            ),
+                          ],
+                        ),
+                        child: Row(
+                          children: [
+                            Container(
+                              width: 46,
+                              height: 46,
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFE8F5E9),
+                                borderRadius: BorderRadius.circular(14),
+                              ),
+                              child: const Icon(
+                                Icons.fastfood_rounded,
+                                color: colorVerdeTese,
+                                size: 22,
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    g.platilloBase.nombre,
+                                    style: GoogleFonts.poppins(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 14,
+                                      color: colorTextoOscuro,
+                                    ),
+                                  ),
+                                  if (g.platilloBase.personalizacion.isNotEmpty)
+                                    Padding(
+                                      padding: const EdgeInsets.only(top: 2),
+                                      child: Text(
+                                        g.platilloBase.personalizacion.join(
+                                          ' • ',
+                                        ),
+                                        style: GoogleFonts.poppins(
+                                          fontSize: 11,
+                                          color: colorTextoGris,
+                                          fontStyle: FontStyle.italic,
+                                        ),
+                                      ),
+                                    ),
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    '\$${g.platilloBase.precio.toStringAsFixed(0)} c/u  •  Subtotal: \$${g.subtotal.toStringAsFixed(0)}',
+                                    style: GoogleFonts.poppins(
+                                      fontSize: 12,
+                                      color: colorVerdeTese,
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            Container(
+                              decoration: BoxDecoration(
+                                color: colorFondoCrema,
+                                borderRadius: BorderRadius.circular(14),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  IconButton(
+                                    visualDensity: VisualDensity.compact,
+                                    onPressed: () => _decrementarPlatillo(g),
+                                    icon: const Icon(
+                                      Icons.remove_rounded,
+                                      color: Colors.redAccent,
+                                      size: 18,
+                                    ),
+                                  ),
+                                  Text(
+                                    '${g.cantidad}',
+                                    style: GoogleFonts.poppins(
+                                      fontWeight: FontWeight.w900,
+                                      fontSize: 14,
+                                      color: colorTextoOscuro,
+                                    ),
+                                  ),
+                                  IconButton(
+                                    visualDensity: VisualDensity.compact,
+                                    onPressed: () => _incrementarPlatillo(g),
+                                    icon: const Icon(
+                                      Icons.add_rounded,
+                                      color: colorVerdeTese,
+                                      size: 18,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    }),
+                    const SizedBox(height: 12),
+                    Text(
+                      'Instrucciones extra para el chef (Opcional)',
+                      style: GoogleFonts.poppins(
+                        fontWeight: FontWeight.w800,
+                        fontSize: 13.5,
+                        color: colorTextoOscuro,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Container(
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(18),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.03),
+                            blurRadius: 8,
+                            offset: const Offset(0, 3),
+                          ),
+                        ],
+                      ),
+                      child: TextField(
                         controller: _notasCtrl,
                         decoration: InputDecoration(
-                          hintText:
-                              'Notas para el chef (ej. bien doradito, poca sal...)',
+                          hintText: 'Ej. Salsa aparte, servilletas extra...',
                           hintStyle: GoogleFonts.poppins(
                             fontSize: 12.5,
                             color: colorTextoGris,
                           ),
                           prefixIcon: const Icon(
-                            Icons.edit_note,
-                            color: colorAmarilloTese,
+                            Icons.edit_note_rounded,
+                            color: colorVerdeTese,
                           ),
-                          filled: true,
-                          fillColor: colorFondoCrema,
+                          border: InputBorder.none,
                           contentPadding: const EdgeInsets.symmetric(
-                            vertical: 12,
-                            horizontal: 12,
-                          ),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            borderSide: BorderSide.none,
+                            horizontal: 14,
+                            vertical: 14,
                           ),
                         ),
-                      ),
-                      const SizedBox(height: 14),
-                      Text(
-                        '¿Cómo pagarás al recoger en ventanilla?',
-                        style: GoogleFonts.poppins(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 13.5,
-                          color: colorTextoOscuro,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: InkWell(
-                              borderRadius: BorderRadius.circular(14),
-                              onTap: () {
-                                HapticFeedback.selectionClick();
-                                setState(() => metodoPago = 'Efectivo');
-                              },
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(
-                                  vertical: 10,
-                                ),
-                                decoration: BoxDecoration(
-                                  color:
-                                      metodoPago == 'Efectivo'
-                                          ? colorVerdeTese.withValues(
-                                            alpha: 0.1,
-                                          )
-                                          : colorFondoCrema,
-                                  border: Border.all(
-                                    color:
-                                        metodoPago == 'Efectivo'
-                                            ? colorVerdeTese
-                                            : Colors.transparent,
-                                    width: 1.4,
-                                  ),
-                                  borderRadius: BorderRadius.circular(14),
-                                ),
-                                child: Row(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Icon(
-                                      Icons.payments_outlined,
-                                      size: 20,
-                                      color:
-                                          metodoPago == 'Efectivo'
-                                              ? colorVerdeTese
-                                              : colorTextoGris,
-                                    ),
-                                    const SizedBox(width: 6),
-                                    Text(
-                                      'Efectivo',
-                                      style: GoogleFonts.poppins(
-                                        color:
-                                            metodoPago == 'Efectivo'
-                                                ? colorVerdeTese
-                                                : colorTextoGris,
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 13,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: InkWell(
-                              borderRadius: BorderRadius.circular(14),
-                              onTap: () {
-                                HapticFeedback.selectionClick();
-                                setState(
-                                  () => metodoPago = 'Terminal Bancaria',
-                                );
-                              },
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(
-                                  vertical: 10,
-                                ),
-                                decoration: BoxDecoration(
-                                  color:
-                                      metodoPago == 'Terminal Bancaria'
-                                          ? colorVerdeTese.withValues(
-                                            alpha: 0.1,
-                                          )
-                                          : colorFondoCrema,
-                                  border: Border.all(
-                                    color:
-                                        metodoPago == 'Terminal Bancaria'
-                                            ? colorVerdeTese
-                                            : Colors.transparent,
-                                    width: 1.4,
-                                  ),
-                                  borderRadius: BorderRadius.circular(14),
-                                ),
-                                child: Row(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Icon(
-                                      Icons.credit_card_outlined,
-                                      size: 20,
-                                      color:
-                                          metodoPago == 'Terminal Bancaria'
-                                              ? colorVerdeTese
-                                              : colorTextoGris,
-                                    ),
-                                    const SizedBox(width: 6),
-                                    Text(
-                                      'Tarjeta',
-                                      style: GoogleFonts.poppins(
-                                        color:
-                                            metodoPago == 'Terminal Bancaria'
-                                                ? colorVerdeTese
-                                                : colorTextoGris,
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 13,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                      const Divider(height: 24),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'Total de tu orden:',
-                                style: GoogleFonts.poppins(
-                                  fontSize: 13,
-                                  color: colorTextoGris,
-                                ),
-                              ),
-                              Text(
-                                '🪙 Ganarás +$puntosTotales puntos',
-                                style: GoogleFonts.poppins(
-                                  fontSize: 11.5,
-                                  fontWeight: FontWeight.bold,
-                                  color: colorVerdeTese,
-                                ),
-                              ),
-                            ],
-                          ),
-                          Text(
-                            '\$${total.toStringAsFixed(2)}',
-                            style: GoogleFonts.poppins(
-                              fontSize: 24,
-                              fontWeight: FontWeight.w900,
-                              color: colorVerdeTese,
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 14),
-                      SizedBox(
-                        width: double.infinity,
-                        child: ElevatedButton.icon(
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: colorAmarilloTese,
-                            elevation: 4,
-                            minimumSize: const Size(double.infinity, 54),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(15),
-                            ),
-                          ),
-                          onPressed: () => _mostrarConfirmacion(total),
-                          icon: const Icon(
-                            Icons.send_rounded,
-                            color: colorVerdeOscuro,
-                            size: 20,
-                          ),
-                          label: Text(
-                            'Confirmar Pedido',
-                            style: GoogleFonts.poppins(
-                              color: colorVerdeOscuro,
-                              fontSize: 17,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-        ],
-      ),
-    );
-  }
-}
-
-class PantallaPedidoExitoso extends StatelessWidget {
-  final String codigoPedido;
-  final double total;
-  final String local;
-  const PantallaPedidoExitoso({
-    super.key,
-    required this.codigoPedido,
-    required this.total,
-    required this.local,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: colorFondoCrema,
-      body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 26.0),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const Spacer(),
-              BounceInDown(
-                child: Image.asset(
-                  'assets/patito_listo.png',
-                  height: 170,
-                  fit: BoxFit.contain,
-                ),
-              ),
-              const SizedBox(height: 20),
-              FadeInUp(
-                child: Text(
-                  '¡Pedido Enviado! 🦆',
-                  style: GoogleFonts.poppins(
-                    fontSize: 26,
-                    fontWeight: FontWeight.w900,
-                    color: colorVerdeTese,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 6),
-              FadeInUp(
-                delay: const Duration(milliseconds: 150),
-                child: Text(
-                  'Tu orden ya llegó a la pantalla de cocina. Te avisaremos con un ¡CUAC! cuando esté lista.',
-                  textAlign: TextAlign.center,
-                  style: GoogleFonts.poppins(
-                    fontSize: 13.5,
-                    color: colorTextoGris,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 18),
-              FadeInUp(
-                delay: const Duration(milliseconds: 300),
-                child: Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(18),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(
-                      color: colorVerdeTese.withValues(alpha: 0.2),
-                    ),
-                  ),
-                  child: Column(
-                    children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text(
-                            codigoPedido,
-                            style: GoogleFonts.poppins(
-                              fontSize: 20,
-                              fontWeight: FontWeight.bold,
-                              color: colorVerdeTese,
-                            ),
-                          ),
-                          Text(
-                            '\$${total.toStringAsFixed(2)}',
-                            style: GoogleFonts.poppins(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                              color: colorTextoOscuro,
-                            ),
-                          ),
-                        ],
-                      ),
-                      const Divider(height: 20),
-                      Row(
-                        children: [
-                          const Icon(
-                            Icons.location_on,
-                            color: Colors.redAccent,
-                            size: 20,
-                          ),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: Text(
-                              'Recoger en: $local',
-                              style: GoogleFonts.poppins(
-                                fontSize: 14,
-                                fontWeight: FontWeight.bold,
-                                color: colorTextoOscuro,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              const Spacer(),
-              FadeInUp(
-                delay: const Duration(milliseconds: 400),
-                child: SizedBox(
-                  width: double.infinity,
-                  height: 54,
-                  child: ElevatedButton.icon(
-                    icon: const Icon(Icons.radar_rounded, color: Colors.white),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: colorVerdeTese,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(15),
-                      ),
-                    ),
-                    onPressed: () {
-                      Navigator.pushReplacement(
-                        context,
-                        MaterialPageRoute(
-                          builder:
-                              (context) =>
-                                  SalaEsperaScreen(codigoPedido: codigoPedido),
-                        ),
-                      );
-                    },
-                    label: Text(
-                      'Ver Seguimiento en Vivo',
-                      style: GoogleFonts.poppins(
-                        color: Colors.white,
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 12),
-              FadeInUp(
-                delay: const Duration(milliseconds: 500),
-                child: SizedBox(
-                  width: double.infinity,
-                  height: 52,
-                  child: OutlinedButton(
-                    style: OutlinedButton.styleFrom(
-                      side: const BorderSide(color: colorVerdeTese, width: 1.5),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(15),
-                      ),
-                    ),
-                    onPressed: () => Navigator.pop(context),
-                    child: Text(
-                      'Volver al Menú',
-                      style: GoogleFonts.poppins(
-                        color: colorVerdeTese,
-                        fontSize: 15,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 20),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class SalaEsperaScreen extends StatefulWidget {
-  final String codigoPedido;
-  const SalaEsperaScreen({super.key, required this.codigoPedido});
-
-  @override
-  State<SalaEsperaScreen> createState() => _SalaEsperaScreenState();
-}
-
-class _SalaEsperaScreenState extends State<SalaEsperaScreen> {
-  late final ConfettiController _confettiController;
-  int _ultimoEstadoLeido = -1;
-
-  @override
-  void initState() {
-    super.initState();
-    _confettiController = ConfettiController(
-      duration: const Duration(seconds: 2),
-    );
-  }
-
-  @override
-  void dispose() {
-    _confettiController.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return StreamBuilder<DocumentSnapshot>(
-      stream:
-          FirebaseFirestore.instance
-              .collection('Pedidos')
-              .doc(widget.codigoPedido)
-              .snapshots(),
-      builder: (context, snapshot) {
-        if (!snapshot.hasData || !snapshot.data!.exists) {
-          return const Scaffold(
-            backgroundColor: colorFondoCrema,
-            body: Center(
-              child: CircularProgressIndicator(color: colorVerdeTese),
-            ),
-          );
-        }
-
-        final data = snapshot.data!.data() as Map<String, dynamic>? ?? {};
-        int estadoActual = data['estado'] ?? 0;
-        String local = data['local'] ?? 'Cafetería Central';
-        String detalle = data['detalle'] ?? '';
-        String metodoPago = data['metodoPago'] ?? 'Efectivo';
-        double total = (data['total'] ?? 0).toDouble();
-        int puntos = data['puntosGanados'] ?? 10;
-        bool yaCalificado = data['calificado'] ?? false;
-
-        if (estadoActual == 2 && _ultimoEstadoLeido != 2) {
-          _confettiController.play();
-          _ultimoEstadoLeido = 2;
-        }
-
-        Color colorEstado;
-        String tituloEstado;
-        String subtituloEstado;
-        String patitoAsset;
-
-        if (estadoActual == 0) {
-          colorEstado = Colors.grey[700]!;
-          tituloEstado = 'Confirmando en cocina';
-          subtituloEstado = 'El kiosko recibió tu orden y está por comenzar.';
-          patitoAsset = 'assets/patito_recibido.png';
-        } else if (estadoActual == 1) {
-          colorEstado = colorAmarilloTese;
-          tituloEstado = '¡Cocinando tus alimentos!';
-          subtituloEstado = 'El chef ya está preparando tu comida al momento.';
-          patitoAsset = 'assets/patito_chef.png';
-        } else if (estadoActual == 2) {
-          colorEstado = colorExito;
-          tituloEstado = '¡Listo para recoger!';
-          subtituloEstado =
-              'Acude a la ventanilla de $local y muestra este ticket.';
-          patitoAsset = 'assets/patito_listo.png';
-        } else {
-          colorEstado = colorVerdeTese;
-          tituloEstado = '¡Pedido Entregado!';
-          subtituloEstado =
-              '¡Buen provecho! Ganaste +$puntos puntos 🪙 con esta compra.';
-          patitoAsset = 'assets/disfrutaTuComida.png';
-        }
-
-        return Scaffold(
-          backgroundColor: colorFondoCrema,
-          appBar: AppBar(
-            title: Text(
-              'Seguimiento en Vivo',
-              style: GoogleFonts.poppins(
-                color: colorVerdeTese,
-                fontWeight: FontWeight.bold,
-                fontSize: 18,
-              ),
-            ),
-            backgroundColor: Colors.white,
-            elevation: 0,
-            leading: IconButton(
-              icon: const Icon(
-                Icons.arrow_back_ios_new,
-                color: colorVerdeTese,
-                size: 20,
-              ),
-              onPressed: () => Navigator.pop(context),
-            ),
-          ),
-          body: Stack(
-            children: [
-              SingleChildScrollView(
-                padding: const EdgeInsets.all(20),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.all(20),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(24),
-                        border: Border.all(
-                          color: colorEstado.withValues(alpha: 0.35),
-                          width: 1.5,
-                        ),
-                        boxShadow: [
-                          BoxShadow(
-                            color: colorVerdeTese.withValues(alpha: 0.05),
-                            blurRadius: 12,
-                            offset: const Offset(0, 4),
-                          ),
-                        ],
-                      ),
-                      child: Column(
-                        children: [
-                          Image.asset(
-                            patitoAsset,
-                            height: 130,
-                            fit: BoxFit.contain,
-                          ),
-                          const SizedBox(height: 14),
-                          Text(
-                            tituloEstado,
-                            textAlign: TextAlign.center,
-                            style: GoogleFonts.poppins(
-                              fontSize: 22,
-                              fontWeight: FontWeight.w900,
-                              color: colorTextoOscuro,
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            subtituloEstado,
-                            textAlign: TextAlign.center,
-                            style: GoogleFonts.poppins(
-                              fontSize: 13,
-                              color: colorTextoGris,
-                            ),
-                          ),
-                          const SizedBox(height: 18),
-                          _BarraProgresoPedido(
-                            estadoActual: estadoActual,
-                            colorTexto: colorVerdeTese,
-                          ),
-                          if ((estadoActual == 2 || estadoActual >= 3) &&
-                              !yaCalificado) ...[
-                            const SizedBox(height: 18),
-                            SizedBox(
-                              width: double.infinity,
-                              child: ElevatedButton.icon(
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: colorAmarilloTese,
-                                  foregroundColor: colorVerdeOscuro,
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(14),
-                                  ),
-                                ),
-                                icon: const Icon(Icons.star_rounded, size: 20),
-                                label: Text(
-                                  'Calificar qué tal estuvo mi comida ⭐',
-                                  style: GoogleFonts.poppins(
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 13,
-                                  ),
-                                ),
-                                onPressed: () {
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder:
-                                          (_) => PantallaResena(
-                                            codigoPedido: widget.codigoPedido,
-                                          ),
-                                    ),
-                                  );
-                                },
-                              ),
-                            ),
-                          ],
-                        ],
                       ),
                     ),
                     const SizedBox(height: 18),
+                    Text(
+                      '¿Cómo pagarás al recoger en ventanilla?',
+                      style: GoogleFonts.poppins(
+                        fontWeight: FontWeight.w800,
+                        fontSize: 13.5,
+                        color: colorTextoOscuro,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _TarjetaMetodoPago(
+                            titulo: 'Efectivo',
+                            subtitulo: 'En ventanilla',
+                            icono: Icons.payments_outlined,
+                            seleccionado: metodoPagoSeleccionado.contains(
+                              'Efectivo',
+                            ),
+                            onTap: () {
+                              HapticFeedback.selectionClick();
+                              setState(() {
+                                metodoPagoSeleccionado =
+                                    'Efectivo en ventanilla 💵';
+                              });
+                            },
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: _TarjetaMetodoPago(
+                            titulo: 'Tarjeta',
+                            subtitulo: 'Terminal física',
+                            icono: Icons.credit_card_rounded,
+                            seleccionado: metodoPagoSeleccionado.contains(
+                              'Terminal',
+                            ),
+                            onTap: () {
+                              HapticFeedback.selectionClick();
+                              setState(() {
+                                metodoPagoSeleccionado =
+                                    'Terminal Bancaria / Tarjeta 💳';
+                              });
+                            },
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 20),
                     Container(
-                      width: double.infinity,
                       padding: const EdgeInsets.all(18),
                       decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(20),
-                        border: Border.all(
-                          color: colorVerdeTese.withValues(alpha: 0.2),
+                        gradient: const LinearGradient(
+                          colors: [Color(0xFFE8F5E9), Color(0xFFD7EFE0)],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
                         ),
-                        boxShadow: [
-                          BoxShadow(
-                            color: colorVerdeTese.withValues(alpha: 0.05),
-                            blurRadius: 10,
-                            offset: const Offset(0, 3),
-                          ),
-                        ],
+                        borderRadius: BorderRadius.circular(22),
+                        border: Border.all(
+                          color: colorVerdeTese.withValues(alpha: 0.25),
+                        ),
                       ),
                       child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                              Container(
-                                padding: const EdgeInsets.all(8),
-                                decoration: BoxDecoration(
-                                  color: Colors.redAccent.withValues(
-                                    alpha: 0.1,
+                              Row(
+                                children: [
+                                  const Icon(
+                                    Icons.stars_rounded,
+                                    color: Color(0xFFF59E0B),
+                                    size: 20,
                                   ),
-                                  shape: BoxShape.circle,
-                                ),
-                                child: const Icon(
-                                  Icons.location_on,
-                                  color: Colors.redAccent,
-                                  size: 24,
-                                ),
-                              ),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      'Punto de Entrega:',
-                                      style: GoogleFonts.poppins(
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.bold,
-                                        color: colorTextoGris,
-                                      ),
-                                    ),
-                                    Text(
-                                      local,
-                                      style: GoogleFonts.poppins(
-                                        fontSize: 17,
-                                        fontWeight: FontWeight.w900,
-                                        color: colorTextoOscuro,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 10),
-                          Container(
-                            width: double.infinity,
-                            padding: const EdgeInsets.all(10),
-                            decoration: BoxDecoration(
-                              color: colorFondoCrema,
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: Row(
-                              children: [
-                                const Icon(
-                                  Icons.info_outline,
-                                  size: 16,
-                                  color: colorTextoGris,
-                                ),
-                                const SizedBox(width: 8),
-                                Expanded(
-                                  child: Text(
-                                    'Muestra este código en ventanilla para recoger sin fila.',
+                                  const SizedBox(width: 6),
+                                  Text(
+                                    'Puntos para el Gachapón:',
                                     style: GoogleFonts.poppins(
-                                      fontSize: 12,
+                                      fontSize: 12.5,
+                                      fontWeight: FontWeight.w600,
                                       color: colorTextoOscuro,
                                     ),
                                   ),
+                                ],
+                              ),
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 10,
+                                  vertical: 3,
                                 ),
-                              ],
-                            ),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFFFF3C4),
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                                child: Text(
+                                  '+$_puntosTotales pts 🪙',
+                                  style: GoogleFonts.poppins(
+                                    fontSize: 12.5,
+                                    fontWeight: FontWeight.w900,
+                                    color: const Color(0xFFB45309),
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 18),
-                    Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.all(20),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(20),
-                        boxShadow: [
-                          BoxShadow(
-                            color: colorVerdeTese.withValues(alpha: 0.05),
-                            blurRadius: 10,
-                            offset: const Offset(0, 3),
+                          Divider(
+                            color: colorVerdeTese.withValues(alpha: 0.2),
+                            height: 20,
                           ),
-                        ],
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
                               Text(
-                                'Ticket Digital',
-                                style: GoogleFonts.poppins(
-                                  fontSize: 15,
-                                  fontWeight: FontWeight.bold,
-                                  color: colorTextoOscuro,
-                                ),
-                              ),
-                              Text(
-                                widget.codigoPedido,
+                                'Total a Pagar:',
                                 style: GoogleFonts.poppins(
                                   fontSize: 16,
-                                  fontWeight: FontWeight.w900,
-                                  color: colorVerdeTese,
-                                ),
-                              ),
-                            ],
-                          ),
-                          const Divider(height: 24),
-                          Text(
-                            'Artículos pedidos:',
-                            style: GoogleFonts.poppins(
-                              fontSize: 13,
-                              fontWeight: FontWeight.w600,
-                              color: colorTextoGris,
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            detalle,
-                            style: GoogleFonts.poppins(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w600,
-                              color: colorTextoOscuro,
-                              height: 1.4,
-                            ),
-                          ),
-                          const Divider(height: 24),
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Text(
-                                'Método de pago:',
-                                style: GoogleFonts.poppins(
-                                  fontSize: 13.5,
-                                  color: colorTextoGris,
-                                ),
-                              ),
-                              Text(
-                                metodoPago,
-                                style: GoogleFonts.poppins(
-                                  fontSize: 13.5,
-                                  fontWeight: FontWeight.bold,
-                                  color: colorTextoOscuro,
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 8),
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Text(
-                                'Total a liquidar:',
-                                style: GoogleFonts.poppins(
-                                  fontSize: 15,
-                                  fontWeight: FontWeight.bold,
+                                  fontWeight: FontWeight.w800,
                                   color: colorTextoOscuro,
                                 ),
                               ),
                               Text(
-                                '\$${total.toStringAsFixed(2)}',
+                                '\$${_totalPagar.toStringAsFixed(0)} MXN',
                                 style: GoogleFonts.poppins(
                                   fontSize: 22,
                                   fontWeight: FontWeight.w900,
@@ -1581,412 +722,52 @@ class _SalaEsperaScreenState extends State<SalaEsperaScreen> {
                         ],
                       ),
                     ),
-                    const SizedBox(height: 20),
-                  ],
-                ),
-              ),
-              Align(
-                alignment: Alignment.topCenter,
-                child: ConfettiWidget(
-                  confettiController: _confettiController,
-                  blastDirectionality: BlastDirectionality.explosive,
-                  shouldLoop: false,
-                  numberOfParticles: 24,
-                  gravity: 0.25,
-                  colors: const [
-                    colorAmarilloTese,
-                    colorExito,
-                    Colors.white,
-                    colorVerdeTese,
-                  ],
-                ),
-              ),
-            ],
-          ),
-        );
-      },
-    );
-  }
-}
-
-class _BarraProgresoPedido extends StatelessWidget {
-  final int estadoActual;
-  final Color colorTexto;
-  const _BarraProgresoPedido({
-    required this.estadoActual,
-    required this.colorTexto,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final etiquetas = ['Recibido', 'Preparando', '¡Listo!'];
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: Row(
-        children: List.generate(etiquetas.length * 2 - 1, (i) {
-          if (i.isOdd) {
-            final indiceSegmento = (i - 1) ~/ 2;
-            final activo = estadoActual > indiceSegmento;
-            return Expanded(
-              child: Container(
-                height: 3,
-                margin: const EdgeInsets.symmetric(horizontal: 4),
-                color: activo ? colorExito : Colors.grey[300],
-              ),
-            );
-          }
-          final indicePaso = i ~/ 2;
-          final activo = estadoActual >= indicePaso;
-          Color colorCirculo =
-              activo
-                  ? (indicePaso == 2 ? colorExito : colorVerdeTese)
-                  : Colors.grey[300]!;
-
-          return Column(
-            children: [
-              Container(
-                width: 16,
-                height: 16,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: activo ? colorCirculo : Colors.transparent,
-                  border: Border.all(color: colorCirculo, width: 2),
-                ),
-              ),
-              const SizedBox(height: 6),
-              Text(
-                etiquetas[indicePaso],
-                style: GoogleFonts.poppins(
-                  fontSize: 11,
-                  color: activo ? colorTextoOscuro : colorTextoGris,
-                  fontWeight: activo ? FontWeight.w700 : FontWeight.w400,
-                ),
-              ),
-            ],
-          );
-        }),
-      ),
-    );
-  }
-}
-
-// ==========================================================
-// ⭐️ PANTALLA RESEÑA VINCULADA AL LOCAL Y PLATILLO
-// ==========================================================
-class PantallaResena extends StatefulWidget {
-  final String codigoPedido;
-  const PantallaResena({super.key, required this.codigoPedido});
-
-  @override
-  State<PantallaResena> createState() => _PantallaResenaState();
-}
-
-class _PantallaResenaState extends State<PantallaResena> {
-  final User? _usuarioAuth = FirebaseAuth.instance.currentUser;
-  String _nombreAutor = 'Estudiante TESE';
-  String _localPedido = 'Cafetería Central';
-
-  int estrellasSeleccionadas = 0;
-  final TextEditingController _comentarioCtrl = TextEditingController();
-  bool _enviando = false;
-  bool _cargandoPedido = true;
-
-  List<Map<String, dynamic>> itemsDelPedido = [];
-  String? itemSeleccionadoId;
-  String? itemSeleccionadoNombre;
-
-  @override
-  void initState() {
-    super.initState();
-    _cargarDatos();
-  }
-
-  Future<void> _cargarDatos() async {
-    try {
-      if (_usuarioAuth != null) {
-        final userDoc =
-            await FirebaseFirestore.instance
-                .collection('Usuarios')
-                .doc(_usuarioAuth.uid)
-                .get();
-        if (userDoc.exists) {
-          _nombreAutor =
-              (userDoc.data() as Map)['nombre_completo'] ?? 'Estudiante TESE';
-        }
-      }
-
-      final doc =
-          await FirebaseFirestore.instance
-              .collection('Pedidos')
-              .doc(widget.codigoPedido)
-              .get();
-      if (doc.exists) {
-        final data = doc.data() as Map<String, dynamic>;
-        _localPedido = data['local'] ?? 'Cafetería Central';
-        final List rawItems = data['items'] ?? [];
-        if (!mounted) return;
-        setState(() {
-          itemsDelPedido =
-              rawItems.map((e) => Map<String, dynamic>.from(e)).toList();
-          if (itemsDelPedido.isNotEmpty) {
-            itemSeleccionadoId = itemsDelPedido.first['id'];
-            itemSeleccionadoNombre = itemsDelPedido.first['nombre'];
-          }
-          _cargandoPedido = false;
-        });
-      } else {
-        if (mounted) setState(() => _cargandoPedido = false);
-      }
-    } catch (_) {
-      if (mounted) setState(() => _cargandoPedido = false);
-    }
-  }
-
-  @override
-  void dispose() {
-    _comentarioCtrl.dispose();
-    super.dispose();
-  }
-
-  Future<void> _guardarResena() async {
-    if (estrellasSeleccionadas == 0 || itemSeleccionadoId == null) return;
-    setState(() => _enviando = true);
-    HapticFeedback.heavyImpact();
-
-    try {
-      await FirebaseFirestore.instance.collection('Resenas').add({
-        'codigoPedido': widget.codigoPedido,
-        'local': _localPedido,
-        'platilloId': itemSeleccionadoId,
-        'platilloNombre': itemSeleccionadoNombre ?? 'Comida',
-        'estrellas': estrellasSeleccionadas,
-        'comentario': _comentarioCtrl.text.trim(),
-        'alumno': _nombreAutor,
-        'idAlumno': _usuarioAuth?.uid ?? 'anonimo',
-        'fecha': FieldValue.serverTimestamp(),
-      });
-
-      final platilloRef = FirebaseFirestore.instance
-          .collection('Menu_Platillos')
-          .doc(itemSeleccionadoId);
-      final platilloSnap = await platilloRef.get();
-
-      if (platilloSnap.exists) {
-        final pData = platilloSnap.data() as Map<String, dynamic>;
-        double califActual = (pData['calificacion'] ?? 0.0).toDouble();
-        int totalVotos = (pData['numCalificaciones'] ?? 0) as int;
-
-        double nuevoPromedio =
-            ((califActual * totalVotos) + estrellasSeleccionadas) /
-            (totalVotos + 1);
-        nuevoPromedio = double.parse(nuevoPromedio.toStringAsFixed(1));
-
-        await platilloRef.update({
-          'calificacion': nuevoPromedio,
-          'numCalificaciones': totalVotos + 1,
-        });
-      }
-
-      await FirebaseFirestore.instance
-          .collection('Pedidos')
-          .doc(widget.codigoPedido)
-          .update({'calificado': true});
-
-      if (!mounted) return;
-      Navigator.pop(context);
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-            '¡Reseña enviada! Gracias por ayudar a mejorar la comida del TESE ⭐',
-          ),
-          backgroundColor: colorExito,
-        ),
-      );
-    } catch (e) {
-      if (mounted) setState(() => _enviando = false);
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: colorFondoCrema,
-      appBar: AppBar(
-        title: Text(
-          'Calificar Comida',
-          style: GoogleFonts.poppins(
-            color: colorVerdeTese,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        iconTheme: const IconThemeData(color: colorVerdeTese),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text(
-              'Omitir',
-              style: GoogleFonts.poppins(
-                color: colorTextoGris,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ),
-        ],
-      ),
-      body:
-          _cargandoPedido
-              ? const Center(
-                child: CircularProgressIndicator(color: colorVerdeTese),
-              )
-              : SingleChildScrollView(
-                padding: const EdgeInsets.all(24.0),
-                child: Column(
-                  children: [
-                    BounceInDown(
-                      child: Image.asset(
-                        'assets/disfrutaTuComida.png',
-                        height: 140,
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    Text(
-                      '¿Qué tal estuvo tu comida?',
-                      style: GoogleFonts.poppins(
-                        fontSize: 22,
-                        fontWeight: FontWeight.w900,
-                        color: colorVerdeTese,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      'Tu opinión actualiza las estrellas del platillo en $_localPedido',
-                      textAlign: TextAlign.center,
-                      style: GoogleFonts.poppins(
-                        fontSize: 13,
-                        color: colorTextoGris,
-                      ),
-                    ),
-                    const SizedBox(height: 20),
-                    if (itemsDelPedido.isNotEmpty) ...[
-                      Align(
-                        alignment: Alignment.centerLeft,
-                        child: Text(
-                          'Selecciona el platillo a calificar:',
-                          style: GoogleFonts.poppins(
-                            fontSize: 13,
-                            fontWeight: FontWeight.bold,
-                            color: colorTextoOscuro,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 14),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(14),
-                        ),
-                        child: DropdownButtonHideUnderline(
-                          child: DropdownButton<String>(
-                            isExpanded: true,
-                            value: itemSeleccionadoId,
-                            items:
-                                itemsDelPedido.map((item) {
-                                  return DropdownMenuItem<String>(
-                                    value: item['id'] as String,
-                                    child: Text(
-                                      item['nombre'] as String,
-                                      style: GoogleFonts.poppins(
-                                        fontSize: 14,
-                                        fontWeight: FontWeight.w600,
-                                      ),
-                                    ),
-                                  );
-                                }).toList(),
-                            onChanged: (val) {
-                              final elegido = itemsDelPedido.firstWhere(
-                                (e) => e['id'] == val,
-                              );
-                              setState(() {
-                                itemSeleccionadoId = val;
-                                itemSeleccionadoNombre = elegido['nombre'];
-                              });
-                            },
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 20),
-                    ],
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                      children: List.generate(5, (index) {
-                        return GestureDetector(
-                          onTap: () {
-                            HapticFeedback.heavyImpact();
-                            setState(() => estrellasSeleccionadas = index + 1);
-                          },
-                          child: Icon(
-                            index < estrellasSeleccionadas
-                                ? Icons.star_rounded
-                                : Icons.star_outline_rounded,
-                            color:
-                                index < estrellasSeleccionadas
-                                    ? colorAmarilloTese
-                                    : Colors.grey[300],
-                            size: 50,
-                          ),
-                        );
-                      }),
-                    ),
-                    const SizedBox(height: 24),
-                    TextField(
-                      controller: _comentarioCtrl,
-                      maxLines: 3,
-                      decoration: InputDecoration(
-                        hintText:
-                            'Cuéntanos qué tal estuvo el sabor y la porción...',
-                        hintStyle: GoogleFonts.poppins(
-                          color: colorTextoGris,
-                          fontSize: 13,
-                        ),
-                        filled: true,
-                        fillColor: Colors.white,
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(16),
-                          borderSide: BorderSide.none,
-                        ),
-                        contentPadding: const EdgeInsets.all(16),
-                      ),
-                    ),
-                    const SizedBox(height: 28),
+                    const SizedBox(height: 22),
                     SizedBox(
                       width: double.infinity,
-                      height: 52,
-                      child: ElevatedButton(
+                      height: 55,
+                      child: ElevatedButton.icon(
                         style: ElevatedButton.styleFrom(
                           backgroundColor: colorVerdeTese,
                           shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(15),
+                            borderRadius: BorderRadius.circular(18),
                           ),
+                          elevation: 3,
                         ),
                         onPressed:
-                            estrellasSeleccionadas == 0 || _enviando
-                                ? null
-                                : _guardarResena,
-                        child:
-                            _enviando
-                                ? const SizedBox(
-                                  height: 22,
-                                  width: 22,
-                                  child: CircularProgressIndicator(
-                                    color: Colors.white,
-                                    strokeWidth: 2.5,
-                                  ),
+                            _enviandoPedido ? null : _confirmarYEnviarPedido,
+                        icon:
+                            _enviandoPedido
+                                ? const SizedBox.shrink()
+                                : const Icon(
+                                  Icons.check_circle_outline_rounded,
+                                  color: Colors.white,
+                                ),
+                        label:
+                            _enviandoPedido
+                                ? Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    const SizedBox(
+                                      width: 20,
+                                      height: 20,
+                                      child: CircularProgressIndicator(
+                                        color: Colors.white,
+                                        strokeWidth: 2.5,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 12),
+                                    Text(
+                                      'Enviando tu orden a cocina...',
+                                      style: GoogleFonts.poppins(
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ],
                                 )
                                 : Text(
-                                  'Publicar Opinión',
+                                  'Confirmar Pedido 🍔',
                                   style: GoogleFonts.poppins(
                                     color: Colors.white,
                                     fontSize: 16,
@@ -1998,6 +779,1256 @@ class _PantallaResenaState extends State<PantallaResena> {
                   ],
                 ),
               ),
+    );
+  }
+}
+
+class _TarjetaMetodoPago extends StatelessWidget {
+  final String titulo;
+  final String subtitulo;
+  final IconData icono;
+  final bool seleccionado;
+  final VoidCallback onTap;
+
+  const _TarjetaMetodoPago({
+    required this.titulo,
+    required this.subtitulo,
+    required this.icono,
+    required this.seleccionado,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: seleccionado ? const Color(0xFFE8F5E9) : Colors.white,
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(
+            color: seleccionado ? colorVerdeTese : Colors.grey.shade200,
+            width: seleccionado ? 2.0 : 1.2,
+          ),
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: seleccionado ? colorVerdeTese : colorFondoCrema,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(
+                icono,
+                color: seleccionado ? Colors.white : colorVerdeTese,
+                size: 20,
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    titulo,
+                    style: GoogleFonts.poppins(
+                      fontWeight: FontWeight.w800,
+                      fontSize: 13,
+                      color: colorTextoOscuro,
+                    ),
+                  ),
+                  Text(
+                    subtitulo,
+                    style: GoogleFonts.poppins(
+                      fontSize: 10.5,
+                      color: colorTextoGris,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ==========================================================
+// 2. SALA DE ESPERA EN VIVO (CON STEPPER VISUAL DE 4 ETAPAS)
+// ==========================================================
+class SalaEsperaPedidoScreen extends StatefulWidget {
+  final String pedidoDocId;
+  final String codigoInicial;
+
+  const SalaEsperaPedidoScreen({
+    super.key,
+    required this.pedidoDocId,
+    required this.codigoInicial,
+  });
+
+  @override
+  State<SalaEsperaPedidoScreen> createState() => _SalaEsperaPedidoScreenState();
+}
+
+class _SalaEsperaPedidoScreenState extends State<SalaEsperaPedidoScreen> {
+  late final ConfettiController _confettiCtrl;
+  int _ultimoEstadoVisto = -1;
+  bool _cancelandoPorAlumno = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _confettiCtrl = ConfettiController(duration: const Duration(seconds: 3));
+  }
+
+  @override
+  void dispose() {
+    _confettiCtrl.dispose();
+    super.dispose();
+  }
+
+  // 2️⃣ CUANDO LA COCINA ACTUALIZA A "PREPARANDO" (1) O "LISTO" (2): Suena 'sonidos/cuac.mp3'
+  void _verificarEfectosEstado(int nuevoEstado, String codigo, String local) {
+    if (_ultimoEstadoVisto != -1 && _ultimoEstadoVisto != nuevoEstado) {
+      if (nuevoEstado == 1) {
+        ServicioNotificaciones.mostrarNotificacionOrden(
+          id: widget.pedidoDocId.hashCode,
+          titulo: '🦆 ¡CUAC! Tu orden $codigo se está preparando 🍳',
+          cuerpo: 'El chef de $local ya comenzó a cocinar tus alimentos.',
+          enCurso: true,
+          esPedidoListo: false,
+          sonido: 'sonidos/cuac.mp3',
+        );
+      } else if (nuevoEstado == 2) {
+        _confettiCtrl.play();
+        ServicioNotificaciones.mostrarNotificacionOrden(
+          id: widget.pedidoDocId.hashCode,
+          titulo: '🦆 ¡CUAC! ¡Tu pedido $codigo está LISTO! 🎉',
+          cuerpo: 'Pasa a la ventanilla de $local a recoger tus alimentos.',
+          enCurso: false,
+          esPedidoListo: true,
+          sonido: 'sonidos/cuac.mp3',
+        );
+      } else if (nuevoEstado == 4) {
+        HapticFeedback.vibrate();
+        ServicioNotificaciones.sonarEfecto('sonidos/exito.mp3');
+      }
+    }
+    _ultimoEstadoVisto = nuevoEstado;
+  }
+
+  Future<void> _cancelarMiOrdenComoAlumno(Map<String, dynamic> pData) async {
+    final confirmar = await showDialog<bool>(
+      context: context,
+      builder:
+          (ctx) => AlertDialog(
+            backgroundColor: Colors.white,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(22),
+            ),
+            title: Text(
+              '¿Cancelar tu pedido?',
+              style: GoogleFonts.poppins(fontWeight: FontWeight.bold),
+            ),
+            content: Text(
+              'Como la cocina aún no comienza a prepararlo, puedes cancelarlo sin costo y devolveremos los platillos al inventario.',
+              style: GoogleFonts.poppins(fontSize: 13, color: colorTextoGris),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx, false),
+                child: Text('No, esperar', style: GoogleFonts.poppins()),
+              ),
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.redAccent,
+                ),
+                onPressed: () => Navigator.pop(ctx, true),
+                child: Text(
+                  'Sí, cancelar orden',
+                  style: GoogleFonts.poppins(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ],
+          ),
+    );
+
+    if (confirmar != true) return;
+    setState(() => _cancelandoPorAlumno = true);
+
+    if (!await verificarConexionInternet()) {
+      setState(() => _cancelandoPorAlumno = false);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('📡 Sin conexión a Internet para cancelar.'),
+            backgroundColor: Colors.redAccent,
+          ),
+        );
+      }
+      return;
+    }
+
+    try {
+      await FirebaseFirestore.instance
+          .collection('Pedidos')
+          .doc(widget.pedidoDocId)
+          .update({
+            'estado': 4,
+            'canceladoPor': 'Estudiante',
+            'motivoCancelacion':
+                'Cancelado voluntariamente antes de iniciar preparación.',
+          });
+
+      final List<dynamic> ids = pData['platillosIds'] ?? [];
+      final Map<String, dynamic> cantidadesMap =
+          (pData['cantidadesPorPlatillo'] as Map<String, dynamic>?) ?? {};
+
+      for (var idPlatillo in ids) {
+        final String pid = idPlatillo.toString();
+        final int cantDevuelta = (cantidadesMap[pid] ?? 1) as int;
+        await FirebaseFirestore.instance
+            .collection('Menu_Platillos')
+            .doc(pid)
+            .update({'existencias': FieldValue.increment(cantDevuelta)})
+            .catchError((_) {});
+      }
+    } finally {
+      if (mounted) setState(() => _cancelandoPorAlumno = false);
+    }
+  }
+
+  void _abrirModalResena(Map<String, dynamic> pedidoData) {
+    int estrellas = 5;
+    bool esAnonimo = false;
+    final TextEditingController comentarioCtrl = TextEditingController();
+    String? fotoBase64;
+    bool enviandoResena = false;
+    final ImagePicker picker = ImagePicker();
+
+    final List<dynamic> ids = pedidoData['platillosIds'] ?? [];
+    final List<dynamic> nombres = pedidoData['platillosNombres'] ?? [];
+    final String primerId = ids.isNotEmpty ? ids.first.toString() : '';
+    final String primerNombre =
+        nombres.isNotEmpty ? nombres.first.toString() : 'Pedido TESE';
+    final String nombreAlumnoReal =
+        (pedidoData['alumno'] ?? 'Estudiante TESE').toString();
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+      ),
+      builder:
+          (ctx) => StatefulBuilder(
+            builder: (contextModal, setStateModal) {
+              return Padding(
+                padding: EdgeInsets.only(
+                  left: 22,
+                  right: 22,
+                  top: 20,
+                  bottom: MediaQuery.of(contextModal).viewInsets.bottom + 22,
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      'Califica tu experiencia ⭐',
+                      style: GoogleFonts.poppins(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: colorVerdeTese,
+                      ),
+                    ),
+                    Text(
+                      primerNombre,
+                      style: GoogleFonts.poppins(
+                        fontSize: 13,
+                        color: colorTextoGris,
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: List.generate(5, (index) {
+                        return IconButton(
+                          iconSize: 36,
+                          icon: Icon(
+                            index < estrellas
+                                ? Icons.star_rounded
+                                : Icons.star_border_rounded,
+                            color: colorAmarilloTese,
+                          ),
+                          onPressed:
+                              () => setStateModal(() => estrellas = index + 1),
+                        );
+                      }),
+                    ),
+                    SwitchListTile(
+                      contentPadding: EdgeInsets.zero,
+                      dense: true,
+                      activeColor: colorVerdeTese,
+                      title: Text(
+                        'Publicar opinión como Anónimo 🕵️‍♂️',
+                        style: GoogleFonts.poppins(
+                          fontSize: 12.5,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      subtitle: Text(
+                        esAnonimo
+                            ? 'Se mostrará como "Estudiante Anónimo"'
+                            : 'Se mostrará tu nombre ($nombreAlumnoReal)',
+                        style: GoogleFonts.poppins(
+                          fontSize: 11,
+                          color: colorTextoGris,
+                        ),
+                      ),
+                      value: esAnonimo,
+                      onChanged: (v) => setStateModal(() => esAnonimo = v),
+                    ),
+                    const SizedBox(height: 6),
+                    TextField(
+                      controller: comentarioCtrl,
+                      maxLines: 2,
+                      decoration: InputDecoration(
+                        hintText: '¿Qué te pareció el sabor y la rapidez?',
+                        filled: true,
+                        fillColor: colorFondoCrema,
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(14),
+                          borderSide: BorderSide.none,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    Row(
+                      children: [
+                        OutlinedButton.icon(
+                          onPressed: () async {
+                            final XFile? img = await picker.pickImage(
+                              source: ImageSource.camera,
+                              maxWidth: 500,
+                              imageQuality: 55,
+                            );
+                            if (img != null) {
+                              final b = await img.readAsBytes();
+                              setStateModal(() => fotoBase64 = base64Encode(b));
+                            }
+                          },
+                          icon: const Icon(Icons.camera_alt_outlined, size: 18),
+                          label: Text(
+                            fotoBase64 == null
+                                ? 'Subir foto'
+                                : 'Foto adjunta ✓',
+                            style: GoogleFonts.poppins(fontSize: 12),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                    SizedBox(
+                      width: double.infinity,
+                      height: 48,
+                      child: ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: colorVerdeTese,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                        ),
+                        onPressed:
+                            enviandoResena
+                                ? null
+                                : () async {
+                                  setStateModal(() => enviandoResena = true);
+                                  await FirebaseFirestore.instance
+                                      .collection('Resenas')
+                                      .add({
+                                        'codigoPedido': pedidoData['idPedido'],
+                                        'local': pedidoData['local'],
+                                        'platilloId': primerId,
+                                        'platilloNombre': primerNombre,
+                                        'alumno':
+                                            esAnonimo
+                                                ? 'Estudiante Anónimo'
+                                                : nombreAlumnoReal,
+                                        'esAnonimo': esAnonimo,
+                                        'estrellas': estrellas,
+                                        'comentario':
+                                            comentarioCtrl.text.trim().isEmpty
+                                                ? '¡Excelente servicio!'
+                                                : comentarioCtrl.text.trim(),
+                                        'fotoEvidencia': fotoBase64 ?? '',
+                                        'fecha': FieldValue.serverTimestamp(),
+                                      });
+                                  if (ctx.mounted) {
+                                    Navigator.pop(ctx);
+                                  }
+                                  if (!mounted) return;
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                      content: Text(
+                                        '¡Gracias por tu reseña! ⭐',
+                                      ),
+                                      backgroundColor: colorExito,
+                                    ),
+                                  );
+                                },
+                        child: Text(
+                          'Publicar Reseña',
+                          style: GoogleFonts.poppins(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return StreamBuilder<DocumentSnapshot>(
+      stream: FirebaseFirestore.instance
+          .collection('Pedidos')
+          .doc(widget.pedidoDocId)
+          .snapshots(includeMetadataChanges: true),
+      builder: (context, snapshot) {
+        if (!snapshot.hasData || !snapshot.data!.exists) {
+          return Scaffold(
+            backgroundColor: colorFondoCrema,
+            body: Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const CircularProgressIndicator(color: colorVerdeTese),
+                  const SizedBox(height: 14),
+                  Text(
+                    'Conectando con la terminal de cocina...',
+                    style: GoogleFonts.poppins(color: colorTextoGris),
+                  ),
+                ],
+              ),
+            ),
+          );
+        }
+
+        final docSnap = snapshot.data!;
+        final bool pendienteDeSubir = docSnap.metadata.hasPendingWrites;
+        final data = docSnap.data() as Map<String, dynamic>;
+        final int estado = data['estado'] ?? 0;
+        final String codigo = data['idPedido'] ?? widget.codigoInicial;
+        final String local = data['local'] ?? 'Cafetería TESE';
+        final String detalle = data['detalle'] ?? '';
+        final String metodoPago = data['metodoPago'] ?? 'Efectivo';
+        final int puntosGanados = (data['puntosGanados'] ?? 10) as int;
+        final double total = (data['total'] ?? 0.0).toDouble();
+        final String motivoCancelacion =
+            (data['motivoCancelacion'] ?? 'Sin existencias suficientes.')
+                .toString();
+        final String canceladoPor =
+            (data['canceladoPor'] ?? 'Cafetería').toString();
+        final int compensacionPts = (data['compensacionPts'] ?? 0) as int;
+
+        _verificarEfectosEstado(estado, codigo, local);
+
+        if (estado == 4) {
+          final PatoSkin patoTriste = catalogoPatos.firstWhere(
+            (p) => p.id == 'rockstar_rosa',
+            orElse: () => catalogoPatos.first,
+          );
+
+          return Scaffold(
+            backgroundColor: const Color(0xFFFFF5F5),
+            appBar: AppBar(
+              backgroundColor: Colors.transparent,
+              elevation: 0,
+              leading: IconButton(
+                icon: Icon(
+                  Icons.arrow_back_ios_new_rounded,
+                  color: Colors.red.shade800,
+                ),
+                onPressed: () => Navigator.pop(context),
+              ),
+              title: Text(
+                'Orden $codigo',
+                style: GoogleFonts.poppins(
+                  color: Colors.red.shade900,
+                  fontWeight: FontWeight.w900,
+                  fontSize: 17,
+                ),
+              ),
+              centerTitle: true,
+            ),
+            body: Center(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.all(24.0),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    ZoomIn(
+                      child: Container(
+                        width: 145,
+                        height: 145,
+                        padding: const EdgeInsets.all(14),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color: Colors.redAccent.withValues(alpha: 0.35),
+                            width: 3,
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.redAccent.withValues(alpha: 0.12),
+                              blurRadius: 20,
+                            ),
+                          ],
+                        ),
+                        child: PatoVista(skin: patoTriste, tamano: 110),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 4,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.red.shade100,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Text(
+                        'ORDEN CANCELADA',
+                        style: GoogleFonts.poppins(
+                          fontSize: 10.5,
+                          fontWeight: FontWeight.w900,
+                          color: Colors.red.shade900,
+                          letterSpacing: 1,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    Text(
+                      '¡Una disculpa! Tu pedido no pudo completarse 🥺💔',
+                      textAlign: TextAlign.center,
+                      style: GoogleFonts.poppins(
+                        fontSize: 20,
+                        fontWeight: FontWeight.w900,
+                        color: colorTextoOscuro,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      'Cancelado por: $canceladoPor',
+                      style: GoogleFonts.poppins(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: colorTextoGris,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(18),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(color: Colors.red.shade100),
+                      ),
+                      child: Column(
+                        children: [
+                          Text(
+                            'Motivo reportado:',
+                            style: GoogleFonts.poppins(
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.redAccent,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            motivoCancelacion,
+                            textAlign: TextAlign.center,
+                            style: GoogleFonts.poppins(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                              color: colorTextoOscuro,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    if (compensacionPts > 0) ...[
+                      const SizedBox(height: 14),
+                      Container(
+                        padding: const EdgeInsets.all(14),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFFFF8E1),
+                          borderRadius: BorderRadius.circular(18),
+                          border: Border.all(color: const Color(0xFFFFD54F)),
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(
+                              Icons.stars_rounded,
+                              color: Color(0xFFF59E0B),
+                              size: 26,
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Text(
+                                'Te abonamos +$compensacionPts pts 🪙 de compensación para abrir cápsulas en el Gachapón.',
+                                style: GoogleFonts.poppins(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.brown.shade900,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                    const SizedBox(height: 24),
+                    SizedBox(
+                      width: double.infinity,
+                      height: 52,
+                      child: ElevatedButton.icon(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: colorVerdeTese,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                        ),
+                        onPressed: () => Navigator.pop(context),
+                        icon: const Icon(
+                          Icons.restaurant_menu_rounded,
+                          color: Colors.white,
+                        ),
+                        label: Text(
+                          'Volver al Menú',
+                          style: GoogleFonts.poppins(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          );
+        }
+
+        String tituloEstado = '¡Tu pedido fue recibido!';
+        String subtituloEstado =
+            'Tu comanda ya está en la pantalla de $local. En breve iniciarán la preparación.';
+        String assetPatito = 'assets/patito_recibido.png';
+        Color colorAcentoEtapa = const Color(0xFFF59E0B);
+        Color colorCirculoPastel = const Color(0xFFFFF8E1);
+
+        if (pendienteDeSubir) {
+          tituloEstado = 'Sincronizando con la red... 📡';
+          subtituloEstado = 'Enviando tu comanda al servidor de la cafetería.';
+        } else if (estado == 1) {
+          tituloEstado = '¡El chef está cocinando! 🍳';
+          subtituloEstado =
+              '$local está preparando tus alimentos calientitos al momento.';
+          assetPatito = 'assets/patito_cocinando.png';
+          colorAcentoEtapa = const Color(0xFFEA580C);
+          colorCirculoPastel = const Color(0xFFFFF0E6);
+        } else if (estado == 2) {
+          tituloEstado = '¡Tu comida está LISTA! 🎉';
+          subtituloEstado =
+              'Pasa a la ventanilla de $local sin hacer fila y muestra tu código $codigo.';
+          assetPatito = 'assets/patito_listo.png';
+          colorAcentoEtapa = colorExito;
+          colorCirculoPastel = const Color(0xFFE8F5E9);
+        } else if (estado == 3) {
+          tituloEstado = '¡Pedido Entregado! 😋';
+          subtituloEstado =
+              '¡Buen provecho! Sumamos +$puntosGanados pts a tu credencial digital.';
+          assetPatito = 'assets/patito_feliz.png';
+          colorAcentoEtapa = colorVerdeTese;
+          colorCirculoPastel = const Color(0xFFE8F5E9);
+        }
+
+        return Scaffold(
+          backgroundColor: colorFondoCrema,
+          appBar: AppBar(
+            backgroundColor: Colors.transparent,
+            elevation: 0,
+            leading: IconButton(
+              icon: const Icon(
+                Icons.arrow_back_ios_new_rounded,
+                color: colorVerdeTese,
+                size: 20,
+              ),
+              onPressed: () => Navigator.pop(context),
+            ),
+            title: Text(
+              'Seguimiento en Vivo',
+              style: GoogleFonts.poppins(
+                color: colorVerdeTese,
+                fontWeight: FontWeight.w900,
+                fontSize: 18,
+              ),
+            ),
+            centerTitle: true,
+          ),
+          body: Stack(
+            alignment: Alignment.topCenter,
+            children: [
+              SingleChildScrollView(
+                padding: const EdgeInsets.fromLTRB(20, 6, 20, 30),
+                child: Column(
+                  children: [
+                    FadeInDown(
+                      duration: const Duration(milliseconds: 250),
+                      child: Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 18,
+                          vertical: 14,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(22),
+                          border: Border.all(
+                            color: colorAcentoEtapa.withValues(alpha: 0.35),
+                            width: 1.8,
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: colorAcentoEtapa.withValues(alpha: 0.08),
+                              blurRadius: 16,
+                              offset: const Offset(0, 6),
+                            ),
+                          ],
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'CÓDIGO PARA VENTANILLA',
+                                  style: GoogleFonts.poppins(
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.w800,
+                                    color: colorTextoGris,
+                                    letterSpacing: 1.0,
+                                  ),
+                                ),
+                                Text(
+                                  codigo,
+                                  style: GoogleFonts.poppins(
+                                    fontSize: 22,
+                                    fontWeight: FontWeight.w900,
+                                    color: colorVerdeTese,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 6,
+                              ),
+                              decoration: BoxDecoration(
+                                color: colorCirculoPastel,
+                                borderRadius: BorderRadius.circular(14),
+                                border: Border.all(
+                                  color: colorAcentoEtapa.withValues(
+                                    alpha: 0.4,
+                                  ),
+                                ),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(
+                                    Icons.storefront_rounded,
+                                    size: 15,
+                                    color: colorAcentoEtapa,
+                                  ),
+                                  const SizedBox(width: 5),
+                                  Text(
+                                    local,
+                                    style: GoogleFonts.poppins(
+                                      fontSize: 11.5,
+                                      fontWeight: FontWeight.w800,
+                                      color: colorTextoOscuro,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 18),
+                    ZoomIn(
+                      key: ValueKey<int>(estado),
+                      duration: const Duration(milliseconds: 350),
+                      child: Container(
+                        width: 155,
+                        height: 155,
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: colorCirculoPastel,
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color: colorAcentoEtapa.withValues(alpha: 0.35),
+                            width: 3,
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: colorAcentoEtapa.withValues(alpha: 0.14),
+                              blurRadius: 24,
+                              offset: const Offset(0, 8),
+                            ),
+                          ],
+                        ),
+                        child: Image.asset(
+                          assetPatito,
+                          fit: BoxFit.contain,
+                          errorBuilder:
+                              (_, __, ___) => Icon(
+                                Icons.fastfood_rounded,
+                                size: 80,
+                                color: colorAcentoEtapa,
+                              ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+                    Text(
+                      tituloEstado,
+                      textAlign: TextAlign.center,
+                      style: GoogleFonts.poppins(
+                        fontSize: 21,
+                        fontWeight: FontWeight.w900,
+                        color: colorTextoOscuro,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 10),
+                      child: Text(
+                        subtituloEstado,
+                        textAlign: TextAlign.center,
+                        style: GoogleFonts.poppins(
+                          fontSize: 12.5,
+                          color: colorTextoGris,
+                          height: 1.4,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 18),
+                    FadeInUp(
+                      delay: const Duration(milliseconds: 100),
+                      child: _TarjetaEtapasPedido(
+                        estadoActual: estado,
+                        colorActivo: colorAcentoEtapa,
+                        local: local,
+                        codigo: codigo,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    FadeInUp(
+                      delay: const Duration(milliseconds: 180),
+                      child: Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(18),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(22),
+                          border: Border.all(color: Colors.grey.shade100),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.04),
+                              blurRadius: 12,
+                              offset: const Offset(0, 4),
+                            ),
+                          ],
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text(
+                                  'Resumen de tu Orden',
+                                  style: GoogleFonts.poppins(
+                                    fontWeight: FontWeight.w800,
+                                    color: colorTextoOscuro,
+                                    fontSize: 14,
+                                  ),
+                                ),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 8,
+                                    vertical: 3,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFFFF8E1),
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: Text(
+                                    '+$puntosGanados pts 🪙',
+                                    style: GoogleFonts.poppins(
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.bold,
+                                      color: const Color(0xFFD97706),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const Divider(height: 18),
+                            Text(
+                              detalle,
+                              style: GoogleFonts.poppins(
+                                fontSize: 13.5,
+                                fontWeight: FontWeight.w600,
+                                color: colorTextoOscuro,
+                              ),
+                            ),
+                            const Divider(height: 18),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text(
+                                  metodoPago,
+                                  style: GoogleFonts.poppins(
+                                    fontSize: 12,
+                                    color: colorTextoGris,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                                Text(
+                                  'Total: \$${total.toStringAsFixed(0)} MXN',
+                                  style: GoogleFonts.poppins(
+                                    fontWeight: FontWeight.w900,
+                                    color: colorVerdeTese,
+                                    fontSize: 16,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 18),
+                    if (estado == 0 && !pendienteDeSubir) ...[
+                      SizedBox(
+                        width: double.infinity,
+                        child: OutlinedButton.icon(
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: Colors.redAccent,
+                            backgroundColor: Colors.white,
+                            side: const BorderSide(
+                              color: Colors.redAccent,
+                              width: 1.4,
+                            ),
+                            minimumSize: const Size(0, 48),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                          ),
+                          onPressed:
+                              _cancelandoPorAlumno
+                                  ? null
+                                  : () => _cancelarMiOrdenComoAlumno(data),
+                          icon: const Icon(Icons.cancel_outlined, size: 18),
+                          label: Text(
+                            'Cancelar mi orden (Aún no entra a cocina)',
+                            style: GoogleFonts.poppins(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 12.5,
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                    ],
+                    if (estado == 3) ...[
+                      SizedBox(
+                        width: double.infinity,
+                        height: 50,
+                        child: ElevatedButton.icon(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: colorAmarilloTese,
+                            foregroundColor: colorVerdeOscuro,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                          ),
+                          onPressed: () => _abrirModalResena(data),
+                          icon: const Icon(Icons.star_rate_rounded),
+                          label: Text(
+                            'Calificar Platillo y Dejar Reseña',
+                            style: GoogleFonts.poppins(
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                    ],
+                    SizedBox(
+                      width: double.infinity,
+                      height: 50,
+                      child: ElevatedButton.icon(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: colorVerdeTese,
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                        ),
+                        onPressed: () => Navigator.pop(context),
+                        icon: const Icon(
+                          Icons.restaurant_menu_rounded,
+                          size: 18,
+                        ),
+                        label: Text(
+                          'Volver al Menú Principal',
+                          style: GoogleFonts.poppins(
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              ConfettiWidget(
+                confettiController: _confettiCtrl,
+                blastDirectionality: BlastDirectionality.explosive,
+                shouldLoop: false,
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+}
+
+// ==========================================================
+// WIDGET DE ETAPAS DEL PEDIDO (STEPPER VISUAL ANIMADO)
+// ==========================================================
+class _TarjetaEtapasPedido extends StatelessWidget {
+  final int estadoActual;
+  final Color colorActivo;
+  final String local;
+  final String codigo;
+
+  const _TarjetaEtapasPedido({
+    required this.estadoActual,
+    required this.colorActivo,
+    required this.local,
+    required this.codigo,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final List<Map<String, dynamic>> etapas = [
+      {
+        'paso': 0,
+        'titulo': '1. Orden Recibida',
+        'sub': 'Comanda registrada en $local',
+        'icono': Icons.receipt_long_rounded,
+      },
+      {
+        'paso': 1,
+        'titulo': '2. En Preparación',
+        'sub': 'El chef está cocinando tus alimentos',
+        'icono': Icons.soup_kitchen_rounded,
+      },
+      {
+        'paso': 2,
+        'titulo': '3. ¡Listo en Ventanilla!',
+        'sub': 'Pasa a recoger mostrando tu folio $codigo',
+        'icono': Icons.notifications_active_rounded,
+      },
+      {
+        'paso': 3,
+        'titulo': '4. Entregado y Puntos Sumados',
+        'sub': 'Orden finalizada con éxito',
+        'icono': Icons.verified_rounded,
+      },
+    ];
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(color: Colors.grey.shade100),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Progreso de tu Pedido',
+                style: GoogleFonts.poppins(
+                  fontWeight: FontWeight.w800,
+                  fontSize: 14,
+                  color: colorTextoOscuro,
+                ),
+              ),
+              Text(
+                'Etapa ${estadoActual + 1} de 4',
+                style: GoogleFonts.poppins(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 11.5,
+                  color: colorActivo,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Row(
+            children: List.generate(4, (index) {
+              final bool completado = estadoActual >= index;
+              return Expanded(
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 300),
+                  height: 7,
+                  margin: EdgeInsets.only(right: index < 3 ? 6 : 0),
+                  decoration: BoxDecoration(
+                    color: completado ? colorActivo : Colors.grey.shade200,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
+              );
+            }),
+          ),
+          const SizedBox(height: 16),
+          ...etapas.map((e) {
+            final int paso = e['paso'] as int;
+            final bool yaPaso = estadoActual > paso;
+            final bool esActual = estadoActual == paso;
+            final bool futuro = estadoActual < paso;
+
+            Color colorCirculo = Colors.grey.shade200;
+            Color colorIcono = Colors.grey.shade500;
+            if (yaPaso) {
+              colorCirculo = const Color(0xFFE8F5E9);
+              colorIcono = colorExito;
+            } else if (esActual) {
+              colorCirculo = colorActivo;
+              colorIcono = Colors.white;
+            }
+
+            return Padding(
+              padding: EdgeInsets.only(bottom: paso < 3 ? 12 : 0),
+              child: Row(
+                children: [
+                  AnimatedContainer(
+                    duration: const Duration(milliseconds: 250),
+                    width: 36,
+                    height: 36,
+                    decoration: BoxDecoration(
+                      color: colorCirculo,
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      yaPaso ? Icons.check_rounded : (e['icono'] as IconData),
+                      color: colorIcono,
+                      size: 19,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          e['titulo'] as String,
+                          style: GoogleFonts.poppins(
+                            fontSize: 13,
+                            fontWeight:
+                                esActual
+                                    ? FontWeight.w900
+                                    : (yaPaso
+                                        ? FontWeight.w700
+                                        : FontWeight.w500),
+                            color: futuro ? colorTextoGris : colorTextoOscuro,
+                          ),
+                        ),
+                        Text(
+                          e['sub'] as String,
+                          style: GoogleFonts.poppins(
+                            fontSize: 11,
+                            color: esActual ? colorActivo : colorTextoGris,
+                            fontWeight:
+                                esActual ? FontWeight.w600 : FontWeight.normal,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  if (esActual)
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 3,
+                      ),
+                      decoration: BoxDecoration(
+                        color: colorActivo.withValues(alpha: 0.14),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Text(
+                        'Actual',
+                        style: GoogleFonts.poppins(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w800,
+                          color: colorActivo,
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            );
+          }),
+        ],
+      ),
     );
   }
 }

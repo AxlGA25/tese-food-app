@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -5,6 +6,7 @@ import 'package:animate_do/animate_do.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+import 'package:image_picker/image_picker.dart';
 import 'colores.dart';
 import 'pantalla_inicio.dart';
 import 'pantalla_gachapon.dart';
@@ -18,479 +20,492 @@ class PerfilEstudianteScreen extends StatefulWidget {
 }
 
 class _PerfilEstudianteScreenState extends State<PerfilEstudianteScreen> {
+  static const int costoPorHuevo = 50;
+
   final User? _usuarioAuth = FirebaseAuth.instance.currentUser;
-  String _alergiaSeleccionada = 'Sin restricciones alimentarias 😋';
+  final ImagePicker _picker = ImagePicker();
 
-  final List<String> _opcionesAlergias = [
+  String alergiaActual = 'Sin restricciones alimentarias 😋';
+
+  final List<String> opcionesAlergias = [
     'Sin restricciones alimentarias 😋',
-    'Intolerante a la lactosa 🥛',
-    'Alérgico a frutos secos / cacahuates 🥜',
-    'Sensible al picante (Cero salsa) 🌶️',
-    'Vegetariano (Sin carnes) 🌱',
-    'Alérgico al marisco / pescado 🐟',
+    'Intolerante a la lactosa 🥛🚫',
+    'Alérgico a los frutos secos/nueces 🥜🚫',
+    'Alérgico al gluten (Celíaco) 🍞🚫',
+    'Vegetariano / Vegano 🥗🌱',
+    'Sensible al picante extremo 🌶️🚫',
   ];
-
-  final List<String> _carrerasTese = [
-    'Ing. en Sistemas Computacionales',
-    'Ing. Informática',
-    'Ing. Mecatrónica',
-    'Ing. Industrial',
-    'Ing. Electrónica',
-    'Ing. Mecánica',
-    'Ing. Química',
-    'Ing. Bioquímica',
-    'Ing. en Gestión Empresarial',
-    'Ing. Aeronáutica',
-    'Lic. en Contaduría Pública',
-    'Otra Área / Administrativo',
-  ];
-
-  // 🦆 SELECTOR INTERACTIVO DE AVATAR DE PATITO
-  void _mostrarSelectorDePatito(
-    String uid,
-    String patoActualId,
-    Map<String, int> coleccion,
-  ) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder:
-          (ctx) => Container(
-            height: MediaQuery.of(ctx).size.height * 0.72,
-            padding: const EdgeInsets.fromLTRB(20, 14, 20, 16),
-            decoration: const BoxDecoration(
-              color: Color(0xFF16352E),
-              borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
-            ),
-            child: Column(
-              children: [
-                Container(
-                  width: 44,
-                  height: 5,
-                  decoration: BoxDecoration(
-                    color: Colors.white24,
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                ),
-                const SizedBox(height: 14),
-                Text(
-                  'Elige tu Patito de Perfil 🦆',
-                  style: GoogleFonts.poppins(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
-                  ),
-                ),
-                Text(
-                  'Toca cualquier patito desbloqueado para equiparlo',
-                  style: GoogleFonts.poppins(
-                    fontSize: 12,
-                    color: Colors.white70,
-                  ),
-                ),
-                const SizedBox(height: 14),
-                Expanded(
-                  child: GridView.builder(
-                    gridDelegate:
-                        const SliverGridDelegateWithFixedCrossAxisCount(
-                          crossAxisCount: 3,
-                          mainAxisSpacing: 10,
-                          crossAxisSpacing: 10,
-                          childAspectRatio: 0.76,
-                        ),
-                    itemCount: catalogoPatos.length,
-                    itemBuilder: (_, i) {
-                      final skin = catalogoPatos[i];
-                      final int cant = coleccion[skin.id] ?? 0;
-                      final bool desbloqueado = cant > 0;
-                      final bool equipado = skin.id == patoActualId;
-
-                      return GestureDetector(
-                        onTap: () {
-                          if (!desbloqueado) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text(
-                                  '¡Aún no tienes este patito! Consíguelo en el Gachapón 🥚',
-                                ),
-                              ),
-                            );
-                            return;
-                          }
-                          HapticFeedback.mediumImpact();
-                          FirebaseFirestore.instance
-                              .collection('Usuarios_Perfil')
-                              .doc(uid)
-                              .set({
-                                'patoEquipadoId': skin.id,
-                              }, SetOptions(merge: true));
-                          Navigator.pop(ctx);
-                        },
-                        child: Container(
-                          padding: const EdgeInsets.all(8),
-                          decoration: BoxDecoration(
-                            color:
-                                equipado
-                                    ? colorAmarilloTese.withValues(alpha: 0.18)
-                                    : Colors.white.withValues(alpha: 0.06),
-                            borderRadius: BorderRadius.circular(16),
-                            border: Border.all(
-                              color:
-                                  equipado
-                                      ? colorAmarilloTese
-                                      : (desbloqueado
-                                          ? skin.rareza.color
-                                          : Colors.white12),
-                              width: equipado ? 2.5 : 1.5,
-                            ),
-                          ),
-                          child: Column(
-                            children: [
-                              Expanded(
-                                child: FittedBox(
-                                  child:
-                                      desbloqueado
-                                          ? PatoVista(skin: skin, tamano: 90)
-                                          : ColorFiltered(
-                                            colorFilter: const ColorFilter.mode(
-                                              Color(0xFF0B1B17),
-                                              BlendMode.srcIn,
-                                            ),
-                                            child: PatoVista(
-                                              skin: skin,
-                                              tamano: 90,
-                                            ),
-                                          ),
-                                ),
-                              ),
-                              Text(
-                                desbloqueado ? skin.nombre : '???',
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: GoogleFonts.poppins(
-                                  fontSize: 10.5,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.white,
-                                ),
-                              ),
-                              Text(
-                                equipado ? 'EQUIPADO ✨' : skin.rareza.nombre,
-                                style: GoogleFonts.poppins(
-                                  fontSize: 9.5,
-                                  fontWeight: FontWeight.bold,
-                                  color:
-                                      equipado
-                                          ? colorAmarilloTese
-                                          : skin.rareza.color,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      );
-                    },
-                  ),
-                ),
-              ],
-            ),
-          ),
-    );
-  }
-
-  // ✏️ EDITAR NOMBRE, MATRÍCULA Y CARRERA EN VIVO
-  void _editarPerfil(
-    String uid,
-    String nombreActual,
-    String matriculaActual,
-    String carreraActual,
-  ) {
-    final TextEditingController nombreCtrl = TextEditingController(
-      text: nombreActual,
-    );
-    final TextEditingController matriculaCtrl = TextEditingController(
-      text: matriculaActual == 'Sin Matrícula' ? '' : matriculaActual,
-    );
-    String carreraElegida =
-        _carrerasTese.contains(carreraActual)
-            ? carreraActual
-            : _carrerasTese[0];
-
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.white,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      builder:
-          (ctx) => StatefulBuilder(
-            builder: (contextModal, setStateModal) {
-              return Padding(
-                padding: EdgeInsets.only(
-                  bottom: MediaQuery.of(contextModal).viewInsets.bottom + 20,
-                  top: 20,
-                  left: 20,
-                  right: 20,
-                ),
-                child: SingleChildScrollView(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Personalizar Perfil Estudiantil',
-                        style: GoogleFonts.poppins(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: colorTextoOscuro,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        'Actualiza tus datos para tus pedidos en la cafetería.',
-                        style: GoogleFonts.poppins(
-                          fontSize: 12.5,
-                          color: colorTextoGris,
-                        ),
-                      ),
-                      const Divider(height: 20),
-                      TextField(
-                        controller: nombreCtrl,
-                        decoration: InputDecoration(
-                          labelText: 'Nombre Completo',
-                          prefixIcon: const Icon(
-                            Icons.person_outline,
-                            color: colorVerdeTese,
-                          ),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 14),
-                      TextField(
-                        controller: matriculaCtrl,
-                        keyboardType: TextInputType.number,
-                        decoration: InputDecoration(
-                          labelText: 'Matrícula del TESE',
-                          hintText: 'Ej. 20240001',
-                          prefixIcon: const Icon(
-                            Icons.badge_outlined,
-                            color: colorVerdeTese,
-                          ),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 14),
-                      DropdownButtonFormField<String>(
-                        isExpanded: true,
-                        value: carreraElegida,
-                        decoration: InputDecoration(
-                          labelText: 'Carrera',
-                          prefixIcon: const Icon(
-                            Icons.school_outlined,
-                            color: colorVerdeTese,
-                          ),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                        ),
-                        items:
-                            _carrerasTese
-                                .map(
-                                  (c) => DropdownMenuItem(
-                                    value: c,
-                                    child: Text(
-                                      c,
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                  ),
-                                )
-                                .toList(),
-                        onChanged:
-                            (val) => setStateModal(() => carreraElegida = val!),
-                      ),
-                      const SizedBox(height: 22),
-                      SizedBox(
-                        width: double.infinity,
-                        height: 50,
-                        child: ElevatedButton(
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: colorVerdeTese,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                          ),
-                          onPressed: () {
-                            FirebaseFirestore.instance
-                                .collection('Usuarios')
-                                .doc(uid)
-                                .set({
-                                  'nombre_completo':
-                                      nombreCtrl.text.trim().isEmpty
-                                          ? nombreActual
-                                          : nombreCtrl.text.trim(),
-                                  'identificador':
-                                      matriculaCtrl.text.trim().isEmpty
-                                          ? 'Sin Matrícula'
-                                          : matriculaCtrl.text.trim(),
-                                  'carrera_area': carreraElegida,
-                                }, SetOptions(merge: true));
-
-                            Navigator.pop(ctx);
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text(
-                                  '¡Datos del perfil actualizados! 🎓✨',
-                                ),
-                                backgroundColor: colorExito,
-                              ),
-                            );
-                          },
-                          child: Text(
-                            'Guardar Datos',
-                            style: GoogleFonts.poppins(
-                              color: Colors.white,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 15,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              );
-            },
-          ),
-    );
-  }
 
   void _cambiarAlergia(String uid) {
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.white,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
       ),
-      builder:
-          (ctx) => Padding(
+      builder: (context) {
+        return SafeArea(
+          child: Padding(
             padding: const EdgeInsets.all(22.0),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(
-                  children: [
-                    const Icon(
-                      Icons.medical_information_outlined,
-                      color: colorVerdeTese,
-                      size: 24,
-                    ),
-                    const SizedBox(width: 8),
-                    Text(
-                      'Alergias y Preferencias',
-                      style: GoogleFonts.poppins(
-                        fontSize: 17,
-                        fontWeight: FontWeight.bold,
-                        color: colorTextoOscuro,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 6),
                 Text(
-                  'Esta información se notificará a la cocina al pedir tus alimentos.',
+                  'Preferencia o Alergia Alimentaria',
                   style: GoogleFonts.poppins(
-                    fontSize: 12.5,
+                    fontSize: 17,
+                    fontWeight: FontWeight.bold,
+                    color: colorVerdeTese,
+                  ),
+                ),
+                Text(
+                  'Se enviará automáticamente como nota de cuidado en tus pedidos.',
+                  style: GoogleFonts.poppins(
+                    fontSize: 12,
                     color: colorTextoGris,
                   ),
                 ),
-                const Divider(height: 24),
-                ..._opcionesAlergias.map(
-                  (opcion) => ListTile(
-                    contentPadding: EdgeInsets.zero,
-                    leading: Icon(
-                      _alergiaSeleccionada == opcion
-                          ? Icons.radio_button_checked
-                          : Icons.radio_button_off,
-                      color:
-                          _alergiaSeleccionada == opcion
-                              ? colorVerdeTese
-                              : colorTextoGris,
-                    ),
-                    title: Text(
-                      opcion,
-                      style: GoogleFonts.poppins(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                        color: colorTextoOscuro,
-                      ),
-                    ),
-                    onTap: () {
-                      setState(() => _alergiaSeleccionada = opcion);
-                      FirebaseFirestore.instance
-                          .collection('Usuarios')
-                          .doc(uid)
-                          .set({'alergia': opcion}, SetOptions(merge: true));
-                      Navigator.pop(ctx);
-                    },
+                const SizedBox(height: 12),
+                Flexible(
+                  child: ListView(
+                    shrinkWrap: true,
+                    children:
+                        opcionesAlergias
+                            .map(
+                              (opcion) => ListTile(
+                                contentPadding: EdgeInsets.zero,
+                                title: Text(
+                                  opcion,
+                                  style: GoogleFonts.poppins(
+                                    fontSize: 13.5,
+                                    fontWeight:
+                                        alergiaActual == opcion
+                                            ? FontWeight.bold
+                                            : FontWeight.normal,
+                                    color:
+                                        alergiaActual == opcion
+                                            ? colorVerdeTese
+                                            : colorTextoOscuro,
+                                  ),
+                                ),
+                                trailing:
+                                    alergiaActual == opcion
+                                        ? const Icon(
+                                          Icons.check_circle,
+                                          color: colorExito,
+                                        )
+                                        : null,
+                                onTap: () {
+                                  HapticFeedback.selectionClick();
+                                  setState(() => alergiaActual = opcion);
+                                  FirebaseFirestore.instance
+                                      .collection('Usuarios')
+                                      .doc(uid)
+                                      .set({
+                                        'alergia': opcion,
+                                      }, SetOptions(merge: true));
+                                  Navigator.pop(context);
+                                },
+                              ),
+                            )
+                            .toList(),
                   ),
                 ),
               ],
             ),
           ),
+        );
+      },
     );
   }
 
-  // ✅ PARCHEADO: Descuenta exactamente 50 pts por huevo y actualiza colección sin sobrescribir
-  void _abrirGachapon(
+  Future<void> _subirFotoReal(String uid, ImageSource source) async {
+    try {
+      final XFile? img = await _picker.pickImage(
+        source: source,
+        maxWidth: 450,
+        maxHeight: 450,
+        imageQuality: 60,
+      );
+      if (img != null) {
+        final bytes = await img.readAsBytes();
+        final String base64Str = base64Encode(bytes);
+
+        await FirebaseFirestore.instance.collection('Usuarios').doc(uid).set({
+          'fotoBase64': base64Str,
+        }, SetOptions(merge: true));
+
+        await FirebaseFirestore.instance
+            .collection('Usuarios_Perfil')
+            .doc(uid)
+            .set({'usarFotoReal': true}, SetOptions(merge: true));
+
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('¡Tu foto de perfil ha sido actualizada! 📸✨'),
+            backgroundColor: colorExito,
+          ),
+        );
+      }
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('No se pudo cargar la foto.'),
+          backgroundColor: Colors.redAccent,
+        ),
+      );
+    }
+  }
+
+  void _mostrarSelectorFotoOPatito(
     String uid,
-    int puntosDisponibles,
-    Map<String, int> coleccionActual,
+    String patoActualId,
+    Map<String, int> coleccion,
+    String fotoBase64Actual,
+    bool usandoFotoReal,
   ) {
-    final Map<String, int> copiaColeccion = Map<String, int>.from(
-      coleccionActual,
-    );
-    const int costoPorHuevo = 50;
+    final patosDesbloqueados =
+        catalogoPatos
+            .where((p) => (coleccion[p.id] ?? 0) > 0 || p.id == 'estudiante')
+            .toList();
 
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder:
-            (_) => PantallaGachapon(
-              puntos: puntosDisponibles,
-              costoTirada: costoPorHuevo,
-              coleccionInicial: copiaColeccion,
-              onPuntosCambian: (_) {
-                FirebaseFirestore.instance
-                    .collection('Usuarios_Perfil')
-                    .doc(uid)
-                    .set({
-                      'puntosGastadosEnGachapon': FieldValue.increment(
-                        costoPorHuevo,
-                      ),
-                    }, SetOptions(merge: true));
-              },
-              onPatoObtenido: (pato, veces) {
-                copiaColeccion[pato.id] = veces;
-                FirebaseFirestore.instance
-                    .collection('Usuarios_Perfil')
-                    .doc(uid)
-                    .set({
-                      'patoEquipadoId': pato.id,
-                      'coleccionPatos': copiaColeccion,
-                    }, SetOptions(merge: true));
-              },
-            ),
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.white,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
       ),
+      builder:
+          (ctx) => SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(20, 14, 20, 20),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Center(
+                    child: Container(
+                      width: 44,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: Colors.grey[300],
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+                  Text(
+                    'Personalizar Imagen de Perfil',
+                    style: GoogleFonts.poppins(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: colorVerdeTese,
+                    ),
+                  ),
+                  Text(
+                    'Elige entre usar una foto tuya o equipar un Patito de tu colección:',
+                    style: GoogleFonts.poppins(
+                      fontSize: 12,
+                      color: colorTextoGris,
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+
+                  // OPCIÓN 1: FOTO REAL (SIN CORTAR TEXTO EN CÁMARA / GALERÍA)
+                  Container(
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      color: colorFondoCrema,
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(
+                        color:
+                            usandoFotoReal
+                                ? colorVerdeTese
+                                : Colors.grey.shade200,
+                        width: 1.5,
+                      ),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            const Icon(
+                              Icons.camera_alt_rounded,
+                              color: colorVerdeTese,
+                              size: 20,
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                'Opción 1: Usar mi propia foto',
+                                style: GoogleFonts.poppins(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 13.5,
+                                  color: colorTextoOscuro,
+                                ),
+                              ),
+                            ),
+                            if (usandoFotoReal)
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 10,
+                                  vertical: 3,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: colorExito,
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                                child: Text(
+                                  'Activa',
+                                  style: GoogleFonts.poppins(
+                                    fontSize: 10.5,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                              ),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: OutlinedButton.icon(
+                                style: OutlinedButton.styleFrom(
+                                  foregroundColor: colorVerdeTese,
+                                  backgroundColor: Colors.white,
+                                  side: const BorderSide(
+                                    color: colorVerdeTese,
+                                    width: 1.3,
+                                  ),
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 11,
+                                  ),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(14),
+                                  ),
+                                ),
+                                onPressed: () {
+                                  Navigator.pop(ctx);
+                                  _subirFotoReal(uid, ImageSource.camera);
+                                },
+                                icon: const Icon(
+                                  Icons.photo_camera_rounded,
+                                  size: 18,
+                                ),
+                                label: Text(
+                                  'Cámara',
+                                  maxLines: 1,
+                                  style: GoogleFonts.poppins(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 12.5,
+                                  ),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: OutlinedButton.icon(
+                                style: OutlinedButton.styleFrom(
+                                  foregroundColor: colorVerdeTese,
+                                  backgroundColor: Colors.white,
+                                  side: const BorderSide(
+                                    color: colorVerdeTese,
+                                    width: 1.3,
+                                  ),
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 11,
+                                  ),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(14),
+                                  ),
+                                ),
+                                onPressed: () {
+                                  Navigator.pop(ctx);
+                                  _subirFotoReal(uid, ImageSource.gallery);
+                                },
+                                icon: const Icon(
+                                  Icons.photo_library_rounded,
+                                  size: 18,
+                                ),
+                                label: Text(
+                                  'Galería',
+                                  maxLines: 1,
+                                  style: GoogleFonts.poppins(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 12.5,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        if (fotoBase64Actual.isNotEmpty && !usandoFotoReal) ...[
+                          const SizedBox(height: 8),
+                          SizedBox(
+                            width: double.infinity,
+                            child: ElevatedButton.icon(
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: colorVerdeTese,
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 10,
+                                ),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(14),
+                                ),
+                              ),
+                              onPressed: () {
+                                FirebaseFirestore.instance
+                                    .collection('Usuarios_Perfil')
+                                    .doc(uid)
+                                    .set({
+                                      'usarFotoReal': true,
+                                    }, SetOptions(merge: true));
+                                Navigator.pop(ctx);
+                              },
+                              icon: const Icon(
+                                Icons.check_circle_outline,
+                                color: Colors.white,
+                                size: 17,
+                              ),
+                              label: Text(
+                                'Activar mi foto guardada',
+                                style: GoogleFonts.poppins(
+                                  color: Colors.white,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+
+                  // OPCIÓN 2: AVATAR DE PATITO (PROPORCIÓN CUADRADA SIN DEFORMAR)
+                  Row(
+                    children: [
+                      const Text('🦆', style: TextStyle(fontSize: 18)),
+                      const SizedBox(width: 6),
+                      Text(
+                        'Opción 2: Usar un Avatar de Patito (${patosDesbloqueados.length})',
+                        style: GoogleFonts.poppins(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 13.5,
+                          color: colorTextoOscuro,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+                  ConstrainedBox(
+                    constraints: BoxConstraints(
+                      maxHeight: MediaQuery.of(ctx).size.height * 0.40,
+                    ),
+                    child: GridView.builder(
+                      shrinkWrap: true,
+                      gridDelegate:
+                          const SliverGridDelegateWithFixedCrossAxisCount(
+                            crossAxisCount: 3,
+                            mainAxisSpacing: 10,
+                            crossAxisSpacing: 10,
+                            childAspectRatio: 0.86,
+                          ),
+                      itemCount: patosDesbloqueados.length,
+                      itemBuilder: (_, i) {
+                        final pato = patosDesbloqueados[i];
+                        final bool equipado =
+                            !usandoFotoReal && pato.id == patoActualId;
+                        return GestureDetector(
+                          onTap: () {
+                            HapticFeedback.mediumImpact();
+                            FirebaseFirestore.instance
+                                .collection('Usuarios_Perfil')
+                                .doc(uid)
+                                .set({
+                                  'patoEquipadoId': pato.id,
+                                  'usarFotoReal': false,
+                                }, SetOptions(merge: true));
+                            Navigator.pop(ctx);
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(
+                                  '¡Equipaste a ${pato.nombre} como tu avatar! 🦆✨',
+                                ),
+                                backgroundColor: colorVerdeTese,
+                              ),
+                            );
+                          },
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 6,
+                              vertical: 8,
+                            ),
+                            decoration: BoxDecoration(
+                              color:
+                                  equipado
+                                      ? const Color(0xFFE8F5E9)
+                                      : colorFondoCrema,
+                              borderRadius: BorderRadius.circular(18),
+                              border: Border.all(
+                                color:
+                                    equipado
+                                        ? colorVerdeTese
+                                        : Colors.grey.shade300,
+                                width: equipado ? 2.2 : 1,
+                              ),
+                            ),
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                SizedBox(
+                                  width: 68,
+                                  height: 68,
+                                  child: PatoVista(skin: pato, tamano: 68),
+                                ),
+                                const SizedBox(height: 5),
+                                Text(
+                                  pato.nombre,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  textAlign: TextAlign.center,
+                                  style: GoogleFonts.poppins(
+                                    fontSize: 10.5,
+                                    fontWeight: FontWeight.bold,
+                                    color: colorTextoOscuro,
+                                  ),
+                                ),
+                                if (equipado)
+                                  Text(
+                                    'Equipado ✓',
+                                    style: GoogleFonts.poppins(
+                                      fontSize: 9.5,
+                                      fontWeight: FontWeight.bold,
+                                      color: colorExito,
+                                    ),
+                                  ),
+                              ],
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
     );
   }
 
-  void _confirmarCerrarSesion(BuildContext context) {
+  void _confirmarCerrarSesion() {
     showDialog(
       context: context,
       builder:
@@ -506,8 +521,8 @@ class _PerfilEstudianteScreenState extends State<PerfilEstudianteScreen> {
               ),
             ),
             content: Text(
-              'Tendrás que volver a ingresar con tu cuenta para pedir comida.',
-              style: GoogleFonts.poppins(color: colorTextoGris, fontSize: 13.5),
+              'Tendrás que volver a ingresar tu cuenta para hacer pedidos.',
+              style: GoogleFonts.poppins(fontSize: 13.5, color: colorTextoGris),
             ),
             actions: [
               TextButton(
@@ -516,7 +531,7 @@ class _PerfilEstudianteScreenState extends State<PerfilEstudianteScreen> {
                   'Cancelar',
                   style: GoogleFonts.poppins(
                     color: colorTextoGris,
-                    fontWeight: FontWeight.bold,
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
               ),
@@ -530,19 +545,18 @@ class _PerfilEstudianteScreenState extends State<PerfilEstudianteScreen> {
                 onPressed: () async {
                   Navigator.pop(ctx);
                   await FirebaseAuth.instance.signOut();
-                  await GoogleSignIn().signOut();
-                  if (context.mounted) {
-                    Navigator.pushAndRemoveUntil(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => const DecisionScreen(),
-                      ),
-                      (route) => false,
-                    );
-                  }
+                  try {
+                    await GoogleSignIn().signOut();
+                  } catch (_) {}
+                  if (!mounted) return;
+                  Navigator.pushAndRemoveUntil(
+                    context,
+                    MaterialPageRoute(builder: (c) => const DecisionScreen()),
+                    (route) => false,
+                  );
                 },
                 child: Text(
-                  'Cerrar Sesión',
+                  'Salir',
                   style: GoogleFonts.poppins(
                     color: Colors.white,
                     fontWeight: FontWeight.bold,
@@ -557,817 +571,686 @@ class _PerfilEstudianteScreenState extends State<PerfilEstudianteScreen> {
   @override
   Widget build(BuildContext context) {
     final String uid = _usuarioAuth?.uid ?? 'anonimo';
-    final String correoAuth = _usuarioAuth?.email ?? 'alumno@tese.edu.mx';
 
-    return Scaffold(
-      backgroundColor: colorFondoCrema,
-      appBar: AppBar(
-        title: Text(
-          'Mi Perfil',
-          style: GoogleFonts.poppins(
-            color: colorVerdeTese,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        centerTitle: true,
-        actions: [
-          IconButton(
-            tooltip: 'Ver Guía de la App',
-            icon: const Icon(Icons.help_outline_rounded, color: colorVerdeTese),
-            onPressed: () => mostrarMiniTutorialTese(context),
-          ),
-        ],
-      ),
-      body: StreamBuilder<DocumentSnapshot>(
-        stream:
-            FirebaseFirestore.instance
-                .collection('Usuarios')
-                .doc(uid)
-                .snapshots(),
-        builder: (context, userSnap) {
-          final userData = userSnap.data?.data() as Map<String, dynamic>? ?? {};
-          final String nombreReal =
-              userData['nombre_completo'] ??
-              (_usuarioAuth?.displayName ?? 'Estudiante TESE');
-          final String matriculaReal =
-              userData['identificador'] ?? 'Sin Matrícula';
-          final String carreraReal =
-              userData['carrera_area'] ?? 'Ing. en Sistemas Computacionales';
-          final String rolReal = userData['rol'] ?? 'Estudiante';
-          final String alergiaReal =
-              userData['alergia'] ?? _alergiaSeleccionada;
+    return StreamBuilder<DocumentSnapshot>(
+      stream:
+          FirebaseFirestore.instance
+              .collection('Usuarios')
+              .doc(uid)
+              .snapshots(),
+      builder: (context, userSnapshot) {
+        String nombreAlumno = _usuarioAuth?.displayName ?? 'Estudiante TESE';
+        String matricula = 'Sin matrícula';
+        String carrera = 'Ing. en Computación';
+        String rol = 'Estudiante';
+        String fotoBase64 = '';
+        int puntosCompensacion = 0;
 
-          return StreamBuilder<DocumentSnapshot>(
-            stream:
-                FirebaseFirestore.instance
-                    .collection('Usuarios_Perfil')
-                    .doc(uid)
-                    .snapshots(),
-            builder: (context, gachaSnap) {
-              final gachaData =
-                  gachaSnap.data?.data() as Map<String, dynamic>? ?? {};
-              final String patoEquipadoId =
-                  gachaData['patoEquipadoId'] ?? 'estudiante';
-              final Map<String, int> coleccionPatos = Map<String, int>.from(
-                gachaData['coleccionPatos'] ?? {'estudiante': 1},
-              );
-              final int puntosGastados =
-                  gachaData['puntosGastadosEnGachapon'] ?? 0;
+        if (userSnapshot.hasData && userSnapshot.data!.exists) {
+          final userData = userSnapshot.data!.data() as Map<String, dynamic>;
+          nombreAlumno = userData['nombre_completo'] ?? nombreAlumno;
+          matricula = userData['identificador'] ?? matricula;
+          carrera = userData['carrera_area'] ?? carrera;
+          rol = userData['rol'] ?? 'Estudiante';
+          alergiaActual =
+              userData['alergia'] ?? 'Sin restricciones alimentarias 😋';
+          fotoBase64 = (userData['fotoBase64'] ?? '').toString();
+          puntosCompensacion = (userData['puntosCompensacion'] ?? 0) as int;
+        }
 
-              final PatoSkin patoEquipado = catalogoPatos.firstWhere(
-                (p) => p.id == patoEquipadoId,
-                orElse: () => catalogoPatos[1],
-              );
+        return StreamBuilder<QuerySnapshot>(
+          stream:
+              FirebaseFirestore.instance
+                  .collection('Pedidos')
+                  .where('idAlumno', isEqualTo: uid)
+                  .snapshots(),
+          builder: (context, pedidosSnapshot) {
+            int totalPedidosEntregados = 0;
+            double totalGastado = 0.0;
+            int puntosGanadosEnPedidos = 0;
 
-              return StreamBuilder<QuerySnapshot>(
-                stream:
-                    FirebaseFirestore.instance
-                        .collection('Pedidos')
-                        .where('idAlumno', isEqualTo: uid)
-                        .snapshots(),
-                builder: (context, pedidosSnap) {
-                  int totalPedidos = 0;
-                  int pedidosSistemas = 0;
-                  int pedidosBiblioteca = 0;
-                  int pedidosCentral = 0;
-                  int puntosGanadosAcumulados = 0;
+            if (pedidosSnapshot.hasData) {
+              for (var doc in pedidosSnapshot.data!.docs) {
+                final data = doc.data() as Map<String, dynamic>;
+                int estado = data['estado'] ?? 0;
+                if (estado == 3) {
+                  totalPedidosEntregados++;
+                  totalGastado += (data['total'] ?? 0.0).toDouble();
+                  int ptsPedido = data['puntosGanados'] ?? 10;
+                  puntosGanadosEnPedidos += ptsPedido;
+                }
+              }
+            }
 
-                  if (pedidosSnap.hasData) {
-                    final docs = pedidosSnap.data!.docs;
-                    totalPedidos = docs.length;
+            return StreamBuilder<DocumentSnapshot>(
+              stream:
+                  FirebaseFirestore.instance
+                      .collection('Usuarios_Perfil')
+                      .doc(uid)
+                      .snapshots(),
+              builder: (context, perfilSnapshot) {
+                String patoEquipadoId = 'estudiante';
+                bool usarFotoReal = false;
+                Map<String, int> coleccionPatos = {'estudiante': 1};
+                int puntosGastados = 0;
 
-                    for (var doc in docs) {
-                      final data = doc.data() as Map<String, dynamic>;
-                      final String local = data['local']?.toString() ?? '';
-                      final int estado = data['estado'] ?? 0;
-                      final int puntosOrden = data['puntosGanados'] ?? 10;
-
-                      if (estado >= 3) {
-                        puntosGanadosAcumulados += puntosOrden;
-                      }
-
-                      if (local.contains('Sistemas')) {
-                        pedidosSistemas++;
-                      } else if (local.contains('Biblioteca')) {
-                        pedidosBiblioteca++;
-                      } else {
-                        pedidosCentral++;
-                      }
-                    }
+                if (perfilSnapshot.hasData && perfilSnapshot.data!.exists) {
+                  final pData =
+                      perfilSnapshot.data!.data() as Map<String, dynamic>;
+                  patoEquipadoId = pData['patoEquipadoId'] ?? 'estudiante';
+                  usarFotoReal = pData['usarFotoReal'] == true;
+                  puntosGastados = pData['puntosGastadosEnGachapon'] ?? 0;
+                  if (pData['coleccionPatos'] != null) {
+                    coleccionPatos = Map<String, int>.from(
+                      pData['coleccionPatos'],
+                    );
                   }
+                }
 
-                  int puntosDisponibles =
-                      puntosGanadosAcumulados - puntosGastados;
-                  if (puntosDisponibles < 0) {
-                    puntosDisponibles = 0;
-                  }
+                int puntosDisponibles =
+                    (puntosGanadosEnPedidos + puntosCompensacion) -
+                    puntosGastados;
+                if (puntosDisponibles < 0) puntosDisponibles = 0;
 
-                  String rangoHambreado = 'Novato del Receso 🍪';
-                  if (totalPedidos >= 5) {
-                    rangoHambreado = 'Comelón Frecuente 🍟';
-                  }
-                  if (totalPedidos >= 15) {
-                    rangoHambreado = 'Hambreado VIP 🥇';
-                  }
+                final PatoSkin patoActual = catalogoPatos.firstWhere(
+                  (p) => p.id == patoEquipadoId,
+                  orElse: () => catalogoPatos[1],
+                );
 
-                  String sucursalFavorita = 'Kiosko Sistemas';
-                  if (pedidosBiblioteca > pedidosSistemas &&
-                      pedidosBiblioteca > pedidosCentral) {
-                    sucursalFavorita = 'Kiosko Biblioteca';
-                  } else if (pedidosCentral > pedidosSistemas &&
-                      pedidosCentral > pedidosBiblioteca) {
-                    sucursalFavorita = 'Cafetería Central';
-                  }
+                final bool mostrarFotoReal =
+                    usarFotoReal && fotoBase64.isNotEmpty;
 
-                  return SingleChildScrollView(
-                    padding: const EdgeInsets.fromLTRB(20, 10, 20, 100),
+                String nivelComelon = 'Novato del Receso 🍪';
+                if (totalPedidosEntregados >= 5) {
+                  nivelComelon = 'Comelón Frecuente 🍟';
+                }
+                if (totalPedidosEntregados >= 15) {
+                  nivelComelon = 'Hambreado VIP 🥇';
+                }
+
+                return Scaffold(
+                  backgroundColor: colorFondoCrema,
+                  appBar: AppBar(
+                    title: Text(
+                      'Mi Perfil TESE',
+                      style: GoogleFonts.poppins(
+                        color: colorVerdeTese,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    backgroundColor: Colors.transparent,
+                    elevation: 0,
+                    centerTitle: true,
+                    automaticallyImplyLeading: false,
+                    actions: [
+                      TextButton.icon(
+                        onPressed: () {
+                          HapticFeedback.selectionClick();
+                          mostrarMiniTutorialTese(
+                            context,
+                            nombreAlumno.split(' ').first,
+                          );
+                        },
+                        icon: const Icon(
+                          Icons.help_outline_rounded,
+                          color: colorVerdeTese,
+                          size: 18,
+                        ),
+                        label: Text(
+                          'Guía',
+                          style: GoogleFonts.poppins(
+                            color: colorVerdeTese,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                    ],
+                  ),
+                  body: SingleChildScrollView(
+                    padding: const EdgeInsets.fromLTRB(22, 6, 22, 115),
                     child: Column(
                       children: [
                         FadeInDown(
-                          child: Center(
-                            child: Column(
-                              children: [
-                                GestureDetector(
-                                  onTap:
-                                      () => _mostrarSelectorDePatito(
-                                        uid,
-                                        patoEquipadoId,
-                                        coleccionPatos,
+                          child: GestureDetector(
+                            onTap: () {
+                              HapticFeedback.selectionClick();
+                              _mostrarSelectorFotoOPatito(
+                                uid,
+                                patoEquipadoId,
+                                coleccionPatos,
+                                fotoBase64,
+                                mostrarFotoReal,
+                              );
+                            },
+                            child: Center(
+                              child: Stack(
+                                alignment: Alignment.bottomRight,
+                                children: [
+                                  Container(
+                                    width: 120,
+                                    height: 120,
+                                    decoration: BoxDecoration(
+                                      shape: BoxShape.circle,
+                                      color: Colors.white,
+                                      border: Border.all(
+                                        color:
+                                            mostrarFotoReal
+                                                ? colorVerdeTese
+                                                : patoActual.rareza.color,
+                                        width: 4,
                                       ),
-                                  child: Stack(
-                                    alignment: Alignment.bottomRight,
-                                    children: [
-                                      Container(
-                                        padding: const EdgeInsets.all(4),
-                                        decoration: BoxDecoration(
-                                          shape: BoxShape.circle,
-                                          border: Border.all(
-                                            color: patoEquipado.rareza.color,
-                                            width: 3.5,
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color: colorVerdeTese.withValues(
+                                            alpha: 0.12,
                                           ),
-                                          boxShadow: [
-                                            BoxShadow(
-                                              color: patoEquipado.rareza.color
-                                                  .withValues(alpha: 0.35),
-                                              blurRadius: 14,
-                                            ),
-                                          ],
+                                          blurRadius: 20,
+                                          offset: const Offset(0, 8),
                                         ),
-                                        child: CircleAvatar(
-                                          radius: 52,
-                                          backgroundColor: const Color(
-                                            0xFF16352E,
-                                          ),
-                                          child: ClipOval(
-                                            child: PatoVista(
-                                              skin: patoEquipado,
-                                              tamano: 92,
-                                            ),
-                                          ),
-                                        ),
-                                      ),
-                                      Container(
-                                        padding: const EdgeInsets.symmetric(
-                                          horizontal: 8,
-                                          vertical: 4,
-                                        ),
-                                        decoration: BoxDecoration(
-                                          color: patoEquipado.rareza.color,
-                                          borderRadius: BorderRadius.circular(
-                                            10,
-                                          ),
-                                        ),
-                                        child: Row(
-                                          mainAxisSize: MainAxisSize.min,
-                                          children: [
-                                            const Icon(
-                                              Icons.swap_horiz_rounded,
-                                              size: 12,
-                                              color: colorVerdeOscuro,
-                                            ),
-                                            const SizedBox(width: 2),
-                                            Text(
-                                              patoEquipado.rareza.nombre,
-                                              style: GoogleFonts.poppins(
-                                                fontSize: 10,
-                                                fontWeight: FontWeight.bold,
-                                                color: colorVerdeOscuro,
+                                      ],
+                                    ),
+                                    child: ClipOval(
+                                      child:
+                                          mostrarFotoReal
+                                              ? Image.memory(
+                                                base64Decode(fotoBase64),
+                                                fit: BoxFit.cover,
+                                                width: 120,
+                                                height: 120,
+                                                errorBuilder:
+                                                    (_, __, ___) => PatoVista(
+                                                      skin: patoActual,
+                                                      tamano: 96,
+                                                    ),
+                                              )
+                                              : Center(
+                                                child: PatoVista(
+                                                  skin: patoActual,
+                                                  tamano: 96,
+                                                ),
                                               ),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                                const SizedBox(height: 6),
-                                Text(
-                                  'Toca tu patito para cambiar de skin',
-                                  style: GoogleFonts.poppins(
-                                    fontSize: 11,
-                                    color: colorTextoGris,
-                                  ),
-                                ),
-                                const SizedBox(height: 6),
-                                Text(
-                                  nombreReal,
-                                  textAlign: TextAlign.center,
-                                  style: GoogleFonts.poppins(
-                                    fontSize: 22,
-                                    fontWeight: FontWeight.bold,
-                                    color: colorVerdeTese,
-                                  ),
-                                ),
-                                const SizedBox(height: 4),
-                                Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 12,
-                                    vertical: 4,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: colorVerdeTese.withValues(
-                                      alpha: 0.1,
                                     ),
-                                    borderRadius: BorderRadius.circular(12),
                                   ),
-                                  child: Text(
-                                    '$rolReal TESE',
-                                    style: GoogleFonts.poppins(
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.w700,
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 10,
+                                      vertical: 5,
+                                    ),
+                                    decoration: BoxDecoration(
                                       color: colorVerdeTese,
+                                      borderRadius: BorderRadius.circular(14),
+                                      border: Border.all(
+                                        color: Colors.white,
+                                        width: 2,
+                                      ),
+                                    ),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        const Icon(
+                                          Icons.camera_alt_rounded,
+                                          color: colorAmarilloTese,
+                                          size: 13,
+                                        ),
+                                        const SizedBox(width: 4),
+                                        Text(
+                                          'Foto / Pato',
+                                          style: GoogleFonts.poppins(
+                                            fontSize: 9.5,
+                                            fontWeight: FontWeight.bold,
+                                            color: Colors.white,
+                                          ),
+                                        ),
+                                      ],
                                     ),
                                   ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        Text(
+                          nombreAlumno,
+                          style: GoogleFonts.poppins(
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                            color: colorTextoOscuro,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                        Text(
+                          mostrarFotoReal
+                              ? 'Foto de credencial activa  •  $nivelComelon'
+                              : 'Avatar: ${patoActual.nombre}  •  $nivelComelon',
+                          style: GoogleFonts.poppins(
+                            fontSize: 12,
+                            color: colorVerdeTese,
+                            fontWeight: FontWeight.w600,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                        const SizedBox(height: 18),
+
+                        // CREDENCIAL EN TONO PASTEL ELEGANTE Y SUAVE
+                        FadeInUp(
+                          delay: const Duration(milliseconds: 100),
+                          child: Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.all(20),
+                            decoration: BoxDecoration(
+                              gradient: const LinearGradient(
+                                colors: [Color(0xFFE8F5E9), Color(0xFFD7EFE0)],
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                              ),
+                              borderRadius: BorderRadius.circular(24),
+                              border: Border.all(
+                                color: colorVerdeTese.withValues(alpha: 0.25),
+                                width: 1.5,
+                              ),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: colorVerdeTese.withValues(alpha: 0.08),
+                                  blurRadius: 15,
+                                  offset: const Offset(0, 6),
                                 ),
                               ],
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 10,
+                                        vertical: 3,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: colorVerdeTese,
+                                        borderRadius: BorderRadius.circular(10),
+                                      ),
+                                      child: Text(
+                                        'CREDENCIAL • ${rol.toUpperCase()}',
+                                        style: GoogleFonts.poppins(
+                                          fontSize: 10,
+                                          fontWeight: FontWeight.bold,
+                                          color: Colors.white,
+                                          letterSpacing: 1.0,
+                                        ),
+                                      ),
+                                    ),
+                                    Row(
+                                      children: [
+                                        const Icon(
+                                          Icons.verified_rounded,
+                                          color: colorVerdeTese,
+                                          size: 16,
+                                        ),
+                                        const SizedBox(width: 4),
+                                        Text(
+                                          'Verificada',
+                                          style: GoogleFonts.poppins(
+                                            fontSize: 11,
+                                            fontWeight: FontWeight.bold,
+                                            color: colorVerdeTese,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 12),
+                                Text(
+                                  carrera,
+                                  style: GoogleFonts.poppins(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w800,
+                                    color: colorTextoOscuro,
+                                  ),
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  'Matrícula / ID: $matricula',
+                                  style: GoogleFonts.poppins(
+                                    fontSize: 13,
+                                    color: colorVerdeTese,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                                Divider(
+                                  color: colorVerdeTese.withValues(alpha: 0.2),
+                                  height: 26,
+                                ),
+                                Row(
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    _ColumnaDatoCredencial(
+                                      icono: Icons.stars_rounded,
+                                      valor: '$puntosDisponibles pts',
+                                      etiqueta: 'Disponibles',
+                                      colorIcono: const Color(0xFFF59E0B),
+                                    ),
+                                    _ColumnaDatoCredencial(
+                                      icono: Icons.receipt_long_rounded,
+                                      valor: '$totalPedidosEntregados',
+                                      etiqueta: 'Entregados',
+                                      colorIcono: colorVerdeTese,
+                                    ),
+                                    _ColumnaDatoCredencial(
+                                      icono: Icons.savings_outlined,
+                                      valor:
+                                          '\$${totalGastado.toStringAsFixed(0)}',
+                                      etiqueta: 'Invertido',
+                                      colorIcono: colorExito,
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+
+                        FadeInUp(
+                          delay: const Duration(milliseconds: 180),
+                          child: InkWell(
+                            borderRadius: BorderRadius.circular(20),
+                            onTap: () {
+                              HapticFeedback.mediumImpact();
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder:
+                                      (_) => PantallaGachapon(
+                                        puntos: puntosDisponibles,
+                                        costoTirada: costoPorHuevo,
+                                        coleccionInicial: coleccionPatos,
+                                        onPuntosCambian: (_) {
+                                          FirebaseFirestore.instance
+                                              .collection('Usuarios_Perfil')
+                                              .doc(uid)
+                                              .set({
+                                                'puntosGastadosEnGachapon':
+                                                    FieldValue.increment(
+                                                      costoPorHuevo,
+                                                    ),
+                                              }, SetOptions(merge: true));
+                                        },
+                                        onPatoObtenido: (pato, veces) {
+                                          coleccionPatos[pato.id] = veces;
+                                          FirebaseFirestore.instance
+                                              .collection('Usuarios_Perfil')
+                                              .doc(uid)
+                                              .set({
+                                                'patoEquipadoId': pato.id,
+                                                'usarFotoReal': false,
+                                                'coleccionPatos':
+                                                    coleccionPatos,
+                                              }, SetOptions(merge: true));
+                                        },
+                                      ),
+                                ),
+                              );
+                            },
+                            child: Container(
+                              width: double.infinity,
+                              padding: const EdgeInsets.all(16),
+                              decoration: BoxDecoration(
+                                gradient: const LinearGradient(
+                                  colors: [
+                                    Color(0xFFFFF3C4),
+                                    Color(0xFFFFE082),
+                                  ],
+                                ),
+                                borderRadius: BorderRadius.circular(20),
+                                border: Border.all(
+                                  color: colorAmarilloTese,
+                                  width: 1.5,
+                                ),
+                              ),
+                              child: Row(
+                                children: [
+                                  const Icon(
+                                    Icons.egg_rounded,
+                                    size: 38,
+                                    color: colorVerdeOscuro,
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          'Multiverso Gachapón TESE 🦆',
+                                          style: GoogleFonts.poppins(
+                                            fontSize: 15,
+                                            fontWeight: FontWeight.w900,
+                                            color: colorVerdeOscuro,
+                                          ),
+                                        ),
+                                        Text(
+                                          'Colección: ${coleccionPatos.length}/${catalogoPatos.length} patitos ($costoPorHuevo pts por cápsula)',
+                                          style: GoogleFonts.poppins(
+                                            fontSize: 11.5,
+                                            fontWeight: FontWeight.w600,
+                                            color: colorVerdeOscuro.withValues(
+                                              alpha: 0.85,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  const Icon(
+                                    Icons.arrow_forward_ios,
+                                    color: colorVerdeOscuro,
+                                    size: 18,
+                                  ),
+                                ],
+                              ),
                             ),
                           ),
                         ),
                         const SizedBox(height: 20),
 
                         FadeInUp(
-                          child: Container(
-                            padding: const EdgeInsets.all(18),
-                            decoration: BoxDecoration(
-                              gradient: const LinearGradient(
-                                colors: [colorVerdeTese, Color(0xFF1B3D37)],
-                                begin: Alignment.topLeft,
-                                end: Alignment.bottomRight,
-                              ),
-                              borderRadius: BorderRadius.circular(24),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: colorVerdeTese.withValues(alpha: 0.25),
-                                  blurRadius: 14,
-                                  offset: const Offset(0, 6),
-                                ),
-                              ],
-                            ),
-                            child: Column(
-                              children: [
-                                Row(
-                                  mainAxisAlignment:
-                                      MainAxisAlignment.spaceBetween,
-                                  children: [
-                                    Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          'Rango Estudiantil',
-                                          style: GoogleFonts.poppins(
-                                            color: Colors.white70,
-                                            fontSize: 12,
-                                          ),
-                                        ),
-                                        Text(
-                                          rangoHambreado,
-                                          style: GoogleFonts.poppins(
-                                            color: colorAmarilloTese,
-                                            fontSize: 16,
-                                            fontWeight: FontWeight.bold,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 12,
-                                        vertical: 6,
-                                      ),
-                                      decoration: BoxDecoration(
-                                        color: Colors.white.withValues(
-                                          alpha: 0.15,
-                                        ),
-                                        borderRadius: BorderRadius.circular(16),
-                                      ),
-                                      child: Row(
-                                        children: [
-                                          const Icon(
-                                            Icons.stars_rounded,
-                                            color: colorAmarilloTese,
-                                            size: 20,
-                                          ),
-                                          const SizedBox(width: 5),
-                                          Text(
-                                            '$puntosDisponibles Pts',
-                                            style: GoogleFonts.poppins(
-                                              color: Colors.white,
-                                              fontWeight: FontWeight.bold,
-                                              fontSize: 14,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                const Divider(
-                                  color: Colors.white24,
-                                  height: 22,
-                                ),
-                                Row(
-                                  mainAxisAlignment:
-                                      MainAxisAlignment.spaceAround,
-                                  children: [
-                                    _itemEstadistica(
-                                      'Pedidos',
-                                      '$totalPedidos',
-                                      Icons.receipt_long,
-                                    ),
-                                    Container(
-                                      width: 1,
-                                      height: 32,
-                                      color: Colors.white24,
-                                    ),
-                                    _itemEstadistica(
-                                      'Puntos',
-                                      '$puntosDisponibles',
-                                      Icons.monetization_on_outlined,
-                                    ),
-                                    Container(
-                                      width: 1,
-                                      height: 32,
-                                      color: Colors.white24,
-                                    ),
-                                    _itemEstadistica(
-                                      'Patitos',
-                                      '${coleccionPatos.length}/${catalogoPatos.length}',
-                                      Icons.egg_alt,
-                                    ),
-                                  ],
-                                ),
-                                const SizedBox(height: 16),
-                                SizedBox(
-                                  width: double.infinity,
-                                  height: 48,
-                                  child: ElevatedButton.icon(
-                                    icon: const Icon(
-                                      Icons.egg_alt_rounded,
-                                      color: colorVerdeOscuro,
-                                      size: 22,
-                                    ),
-                                    label: Text(
-                                      'Gachapón de Patitos 🦆 (50 pts)',
-                                      style: GoogleFonts.poppins(
-                                        fontWeight: FontWeight.w800,
-                                        fontSize: 13.5,
-                                        color: colorVerdeOscuro,
-                                      ),
-                                    ),
-                                    style: ElevatedButton.styleFrom(
-                                      backgroundColor: colorAmarilloTese,
-                                      elevation: 4,
-                                      shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(16),
-                                      ),
-                                    ),
-                                    onPressed:
-                                        () => _abrirGachapon(
-                                          uid,
-                                          puntosDisponibles,
-                                          coleccionPatos,
-                                        ),
+                          delay: const Duration(milliseconds: 260),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Align(
+                                alignment: Alignment.centerLeft,
+                                child: Text(
+                                  'Salud y Personalización',
+                                  style: GoogleFonts.poppins(
+                                    fontSize: 15.5,
+                                    fontWeight: FontWeight.bold,
+                                    color: colorTextoOscuro,
                                   ),
                                 ),
-                              ],
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 18),
-
-                        FadeInUp(
-                          delay: const Duration(milliseconds: 100),
-                          child: _contenedorTarjeta(
-                            titulo: 'Historial por Sucursal',
-                            hijos: [
-                              _FilaSucursal(
-                                icono: Icons.computer,
-                                nombre: 'Kiosko Sistemas',
-                                pedidos: pedidosSistemas,
-                                esFavorito:
-                                    sucursalFavorita == 'Kiosko Sistemas',
                               ),
-                              const Divider(height: 1),
-                              _FilaSucursal(
-                                icono: Icons.menu_book,
-                                nombre: 'Kiosko Biblioteca',
-                                pedidos: pedidosBiblioteca,
-                                esFavorito:
-                                    sucursalFavorita == 'Kiosko Biblioteca',
+                              const SizedBox(height: 10),
+                              _TarjetaOpcionPerfil(
+                                icono: Icons.medical_information_outlined,
+                                titulo: 'Restricción o Alergia Alimentaria',
+                                subtitulo: alergiaActual,
+                                onTap: () => _cambiarAlergia(uid),
                               ),
-                              const Divider(height: 1),
-                              _FilaSucursal(
-                                icono: Icons.storefront,
-                                nombre: 'Cafetería Central',
-                                pedidos: pedidosCentral,
-                                esFavorito:
-                                    sucursalFavorita == 'Cafetería Central',
+                              const SizedBox(height: 10),
+                              _TarjetaOpcionPerfil(
+                                icono: Icons.camera_enhance_outlined,
+                                titulo: 'Cambiar Foto Real o Avatar de Patito',
+                                subtitulo:
+                                    mostrarFotoReal
+                                        ? 'Usando tu foto de cámara/galería'
+                                        : 'Usando a ${patoActual.nombre} (${coleccionPatos.length} desbloqueados)',
+                                onTap:
+                                    () => _mostrarSelectorFotoOPatito(
+                                      uid,
+                                      patoEquipadoId,
+                                      coleccionPatos,
+                                      fotoBase64,
+                                      mostrarFotoReal,
+                                    ),
                               ),
                             ],
                           ),
                         ),
-                        const SizedBox(height: 18),
-
-                        // ALERGIAS
-                        FadeInUp(
-                          delay: const Duration(milliseconds: 200),
-                          child: Container(
-                            width: double.infinity,
-                            padding: const EdgeInsets.all(18),
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(22),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: colorVerdeTese.withValues(alpha: 0.05),
-                                  blurRadius: 14,
-                                  offset: const Offset(0, 5),
-                                ),
-                              ],
-                            ),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Row(
-                                  mainAxisAlignment:
-                                      MainAxisAlignment.spaceBetween,
-                                  children: [
-                                    Text(
-                                      'Restricciones y Alergias',
-                                      style: GoogleFonts.poppins(
-                                        fontSize: 14,
-                                        fontWeight: FontWeight.bold,
-                                        color: colorVerdeTese,
-                                      ),
-                                    ),
-                                    InkWell(
-                                      onTap: () => _cambiarAlergia(uid),
-                                      child: Text(
-                                        'Cambiar',
-                                        style: GoogleFonts.poppins(
-                                          fontSize: 12.5,
-                                          fontWeight: FontWeight.bold,
-                                          color: colorAmarilloTese,
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                const SizedBox(height: 10),
-                                Container(
-                                  width: double.infinity,
-                                  padding: const EdgeInsets.all(12),
-                                  decoration: BoxDecoration(
-                                    color: colorFondoCrema,
-                                    borderRadius: BorderRadius.circular(14),
-                                    border: Border.all(
-                                      color: colorVerdeTese.withValues(
-                                        alpha: 0.15,
-                                      ),
-                                    ),
-                                  ),
-                                  child: Row(
-                                    children: [
-                                      const Icon(
-                                        Icons.health_and_safety_outlined,
-                                        color: colorVerdeTese,
-                                        size: 22,
-                                      ),
-                                      const SizedBox(width: 10),
-                                      Expanded(
-                                        child: Text(
-                                          alergiaReal,
-                                          style: GoogleFonts.poppins(
-                                            fontSize: 13,
-                                            fontWeight: FontWeight.w600,
-                                            color: colorTextoOscuro,
-                                          ),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 18),
-
-                        // 🎓 CREDENCIAL CON BOTÓN EDITAR ✏️
-                        FadeInUp(
-                          delay: const Duration(milliseconds: 300),
-                          child: Container(
-                            width: double.infinity,
-                            padding: const EdgeInsets.all(18),
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(22),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: colorVerdeTese.withValues(alpha: 0.05),
-                                  blurRadius: 14,
-                                  offset: const Offset(0, 5),
-                                ),
-                              ],
-                            ),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Row(
-                                  mainAxisAlignment:
-                                      MainAxisAlignment.spaceBetween,
-                                  children: [
-                                    Text(
-                                      'Credencial Institucional TESE',
-                                      style: GoogleFonts.poppins(
-                                        fontSize: 14,
-                                        fontWeight: FontWeight.bold,
-                                        color: colorVerdeTese,
-                                      ),
-                                    ),
-                                    InkWell(
-                                      onTap:
-                                          () => _editarPerfil(
-                                            uid,
-                                            nombreReal,
-                                            matriculaReal,
-                                            carreraReal,
-                                          ),
-                                      child: Row(
-                                        children: [
-                                          const Icon(
-                                            Icons.edit,
-                                            size: 14,
-                                            color: colorAmarilloTese,
-                                          ),
-                                          const SizedBox(width: 4),
-                                          Text(
-                                            'Editar',
-                                            style: GoogleFonts.poppins(
-                                              fontSize: 12.5,
-                                              fontWeight: FontWeight.bold,
-                                              color: colorAmarilloTese,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                const SizedBox(height: 10),
-                                _FilaInfoPerfil(
-                                  icono: Icons.badge_outlined,
-                                  etiqueta: 'Matrícula',
-                                  valor: matriculaReal,
-                                ),
-                                const Divider(height: 1),
-                                _FilaInfoPerfil(
-                                  icono: Icons.school_outlined,
-                                  etiqueta: 'Carrera',
-                                  valor: carreraReal,
-                                ),
-                                const Divider(height: 1),
-                                _FilaInfoPerfil(
-                                  icono: Icons.email_outlined,
-                                  etiqueta: 'Correo',
-                                  valor: correoAuth,
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
                         const SizedBox(height: 24),
 
-                        // CERRAR SESIÓN
                         FadeInUp(
                           delay: const Duration(milliseconds: 350),
                           child: SizedBox(
                             width: double.infinity,
                             child: OutlinedButton.icon(
-                              style: OutlinedButton.styleFrom(
-                                foregroundColor: Colors.redAccent,
-                                side: const BorderSide(
-                                  color: Colors.redAccent,
-                                  width: 1.5,
-                                ),
-                                padding: const EdgeInsets.symmetric(
-                                  vertical: 14,
-                                ),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(16),
-                                ),
+                              icon: const Icon(
+                                Icons.logout_rounded,
+                                color: Colors.redAccent,
                               ),
-                              onPressed: () => _confirmarCerrarSesion(context),
-                              icon: const Icon(Icons.logout, size: 20),
                               label: Text(
                                 'Cerrar Sesión',
                                 style: GoogleFonts.poppins(
+                                  color: Colors.redAccent,
                                   fontWeight: FontWeight.bold,
                                   fontSize: 15,
                                 ),
                               ),
+                              style: OutlinedButton.styleFrom(
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 14,
+                                ),
+                                side: const BorderSide(
+                                  color: Colors.redAccent,
+                                  width: 1.5,
+                                ),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(15),
+                                ),
+                              ),
+                              onPressed: _confirmarCerrarSesion,
                             ),
                           ),
                         ),
                       ],
                     ),
-                  );
-                },
-              );
-            },
-          );
-        },
-      ),
+                  ),
+                );
+              },
+            );
+          },
+        );
+      },
     );
   }
+}
 
-  Widget _itemEstadistica(String label, String valor, IconData icono) {
+class _ColumnaDatoCredencial extends StatelessWidget {
+  final IconData icono;
+  final String valor;
+  final String etiqueta;
+  final Color colorIcono;
+
+  const _ColumnaDatoCredencial({
+    required this.icono,
+    required this.valor,
+    required this.etiqueta,
+    required this.colorIcono,
+  });
+
+  @override
+  Widget build(BuildContext context) {
     return Column(
       children: [
-        Icon(icono, color: Colors.white, size: 20),
-        const SizedBox(height: 4),
-        Text(
-          valor,
-          style: GoogleFonts.poppins(
-            color: Colors.white,
-            fontWeight: FontWeight.bold,
-            fontSize: 14,
-          ),
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icono, color: colorIcono, size: 18),
+            const SizedBox(width: 4),
+            Text(
+              valor,
+              style: GoogleFonts.poppins(
+                fontSize: 16,
+                fontWeight: FontWeight.w900,
+                color: colorTextoOscuro,
+              ),
+            ),
+          ],
         ),
         Text(
-          label,
-          style: GoogleFonts.poppins(color: Colors.white70, fontSize: 10.5),
+          etiqueta,
+          style: GoogleFonts.poppins(fontSize: 11, color: colorTextoGris),
         ),
       ],
     );
   }
+}
 
-  Widget _contenedorTarjeta({
-    required String titulo,
-    required List<Widget> hijos,
-  }) {
+class _TarjetaOpcionPerfil extends StatelessWidget {
+  final IconData icono;
+  final String titulo;
+  final String subtitulo;
+  final VoidCallback onTap;
+
+  const _TarjetaOpcionPerfil({
+    required this.icono,
+    required this.titulo,
+    required this.subtitulo,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
     return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(22),
+        borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
             color: colorVerdeTese.withValues(alpha: 0.05),
-            blurRadius: 14,
-            offset: const Offset(0, 5),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
           ),
         ],
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            titulo,
-            style: GoogleFonts.poppins(
-              fontSize: 14,
-              fontWeight: FontWeight.bold,
-              color: colorVerdeTese,
-            ),
+      child: ListTile(
+        onTap: onTap,
+        leading: Container(
+          padding: const EdgeInsets.all(10),
+          decoration: BoxDecoration(
+            color: const Color(0xFFE8F5E9),
+            shape: BoxShape.circle,
           ),
-          const SizedBox(height: 10),
-          ...hijos,
-        ],
-      ),
-    );
-  }
-}
-
-class _FilaSucursal extends StatelessWidget {
-  final IconData icono;
-  final String nombre;
-  final int pedidos;
-  final bool esFavorito;
-
-  const _FilaSucursal({
-    required this.icono,
-    required this.nombre,
-    required this.pedidos,
-    required this.esFavorito,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 11),
-      child: Row(
-        children: [
-          Icon(icono, color: colorVerdeTese, size: 20),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Row(
-              children: [
-                Text(
-                  nombre,
-                  style: GoogleFonts.poppins(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                    color: colorTextoOscuro,
-                  ),
-                ),
-                if (esFavorito && pedidos > 0) ...[
-                  const SizedBox(width: 6),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 6,
-                      vertical: 2,
-                    ),
-                    decoration: BoxDecoration(
-                      color: colorAmarilloTese.withValues(alpha: 0.2),
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    child: Text(
-                      'Favorito 👑',
-                      style: GoogleFonts.poppins(
-                        fontSize: 9.5,
-                        fontWeight: FontWeight.bold,
-                        color: colorVerdeOscuro,
-                      ),
-                    ),
-                  ),
-                ],
-              ],
-            ),
+          child: Icon(icono, color: colorVerdeTese),
+        ),
+        title: Text(
+          titulo,
+          style: GoogleFonts.poppins(
+            fontWeight: FontWeight.bold,
+            fontSize: 13.5,
+            color: colorTextoOscuro,
           ),
-          Text(
-            '$pedidos pedidos',
-            style: GoogleFonts.poppins(
-              fontSize: 12.5,
-              fontWeight: FontWeight.bold,
-              color: colorTextoGris,
-            ),
+        ),
+        subtitle: Text(
+          subtitulo,
+          style: GoogleFonts.poppins(
+            fontSize: 12,
+            color: colorVerdeTese,
+            fontWeight: FontWeight.w600,
           ),
-        ],
-      ),
-    );
-  }
-}
-
-class _FilaInfoPerfil extends StatelessWidget {
-  final IconData icono;
-  final String etiqueta;
-  final String valor;
-  const _FilaInfoPerfil({
-    required this.icono,
-    required this.etiqueta,
-    required this.valor,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 12),
-      child: Row(
-        children: [
-          Icon(icono, color: colorVerdeTese, size: 19),
-          const SizedBox(width: 10),
-          Text(
-            etiqueta,
-            style: GoogleFonts.poppins(color: colorTextoGris, fontSize: 13),
-          ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Text(
-              valor,
-              textAlign: TextAlign.right,
-              overflow: TextOverflow.ellipsis,
-              style: GoogleFonts.poppins(
-                color: colorTextoOscuro,
-                fontWeight: FontWeight.w600,
-                fontSize: 13,
-              ),
-            ),
-          ),
-        ],
+        ),
+        trailing: const Icon(
+          Icons.edit_outlined,
+          size: 18,
+          color: colorTextoGris,
+        ),
       ),
     );
   }

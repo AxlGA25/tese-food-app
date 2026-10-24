@@ -1,97 +1,146 @@
 import 'package:flutter/material.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 
 class Platillo {
   final String id;
   final String nombre;
   final String local;
   final double precio;
-  final String categoria;
-  final IconData icono;
   final String descripcion;
+  final String tiempoPreparacion;
+  final IconData icono;
+  final String categoria;
+  int existencias;
+  final int puntos;
+  final List<String> fotos;
   final double calificacion;
   final int numCalificaciones;
-  final String tiempoPrep;
-  final bool popular;
   final List<String> ingredientes;
+  final bool popular;
   final List<String> personalizacion;
-  final List<String> fotos;
-  final int existencias; // 📦 Stock real
-  final int puntos; // 🪙 Puntos que regala
 
   Platillo({
-    required this.id,
+    this.id = '',
     required this.nombre,
     required this.local,
     required this.precio,
-    this.categoria = 'Comida',
-    this.icono = Icons.fastfood,
-    this.descripcion = '',
-    this.calificacion = 0.0,
-    this.numCalificaciones = 0,
-    this.tiempoPrep = '10 min',
-    this.popular = false,
-    this.ingredientes = const [],
-    this.personalizacion = const [],
-    this.fotos = const [],
-    this.existencias = 0,
+    required this.descripcion,
+    String? tiempoPreparacion,
+    String? tiempoPrep,
+    this.icono = Icons.fastfood_rounded,
+    required this.categoria,
+    this.existencias = 15,
     this.puntos = 10,
-  });
+    this.fotos = const [],
+    this.calificacion = 5.0,
+    this.numCalificaciones = 1,
+    this.ingredientes = const ['Queso', 'Crema', 'Salsa', 'Cebolla'],
+    this.popular = false,
+    this.personalizacion = const [],
+  }) : tiempoPreparacion = tiempoPreparacion ?? tiempoPrep ?? '10 - 15 min';
+
+  String get tiempo => tiempoPreparacion;
+  String get tiempoPrep => tiempoPreparacion;
 
   Platillo copyWith({
-    List<String>? personalizacion,
-    List<String>? fotos,
+    String? id,
+    String? nombre,
+    String? local,
+    double? precio,
+    String? descripcion,
+    String? tiempoPreparacion,
+    String? tiempoPrep,
+    IconData? icono,
+    String? categoria,
     int? existencias,
+    int? puntos,
+    List<String>? fotos,
+    double? calificacion,
+    int? numCalificaciones,
+    List<String>? ingredientes,
+    bool? popular,
+    List<String>? personalizacion,
   }) {
     return Platillo(
-      id: id,
-      nombre: nombre,
-      local: local,
-      precio: precio,
-      categoria: categoria,
-      icono: icono,
-      descripcion: descripcion,
-      calificacion: calificacion,
-      numCalificaciones: numCalificaciones,
-      tiempoPrep: tiempoPrep,
-      popular: popular,
-      ingredientes: ingredientes,
-      personalizacion: personalizacion ?? this.personalizacion,
-      fotos: fotos ?? this.fotos,
+      id: id ?? this.id,
+      nombre: nombre ?? this.nombre,
+      local: local ?? this.local,
+      precio: precio ?? this.precio,
+      descripcion: descripcion ?? this.descripcion,
+      tiempoPreparacion:
+          tiempoPreparacion ?? tiempoPrep ?? this.tiempoPreparacion,
+      icono: icono ?? this.icono,
+      categoria: categoria ?? this.categoria,
       existencias: existencias ?? this.existencias,
-      puntos: puntos,
+      puntos: puntos ?? this.puntos,
+      fotos: fotos ?? this.fotos,
+      calificacion: calificacion ?? this.calificacion,
+      numCalificaciones: numCalificaciones ?? this.numCalificaciones,
+      ingredientes: ingredientes ?? this.ingredientes,
+      popular: popular ?? this.popular,
+      personalizacion: personalizacion ?? this.personalizacion,
     );
   }
 
-  factory Platillo.fromFirestore(DocumentSnapshot doc) {
-    Map data = doc.data() as Map<String, dynamic>? ?? {};
+  Map<String, dynamic> toMap() {
+    return {
+      'nombre': nombre,
+      'local': local,
+      'precio': precio,
+      'descripcion': descripcion,
+      'tiempoPreparacion': tiempoPreparacion,
+      'tiempoPrep': tiempoPreparacion,
+      'tiempo': tiempoPreparacion,
+      'categoria': categoria,
+      'existencias': existencias,
+      'puntos': puntos,
+      'fotos': fotos,
+      'calificacion': calificacion,
+      'numCalificaciones': numCalificaciones,
+      'ingredientes': ingredientes,
+      'popular': popular,
+      'personalizacion': personalizacion,
+    };
+  }
+
+  factory Platillo.fromMap(Map<String, dynamic> map, String documentId) {
+    final String cat = (map['categoria'] ?? 'Comida').toString();
+    IconData ic = Icons.fastfood_rounded;
+    if (cat == 'Desayunos') ic = Icons.egg_alt_rounded;
+    if (cat == 'Bebidas') ic = Icons.local_cafe_rounded;
+    if (cat == 'Postres') ic = Icons.icecream_rounded;
 
     return Platillo(
-      id: doc.id,
-      nombre: data['nombre'] ?? 'Sin Nombre',
-      local: data['local'] ?? 'Cafetería',
-      precio: (data['precio'] ?? 0).toDouble(),
-      categoria: data['categoria'] ?? 'Comida',
-      descripcion: data['descripcion'] ?? '',
-      calificacion: (data['calificacion'] ?? 0.0).toDouble(),
-      numCalificaciones: (data['numCalificaciones'] ?? 0) as int,
-      tiempoPrep: data['tiempoPrep'] ?? '15 min',
-      popular: data['popular'] ?? false,
+      id: documentId,
+      nombre: (map['nombre'] ?? 'Platillo TESE').toString(),
+      local: (map['local'] ?? 'Cafetería Central').toString(),
+      precio: (map['precio'] ?? 0.0).toDouble(),
+      descripcion: (map['descripcion'] ?? 'Preparado al momento').toString(),
+      tiempoPreparacion:
+          (map['tiempoPreparacion'] ??
+                  map['tiempoPrep'] ??
+                  map['tiempo'] ??
+                  '10 - 15 min')
+              .toString(),
+      icono: ic,
+      categoria: cat,
+      existencias: (map['existencias'] ?? 0) as int,
+      puntos: (map['puntos'] ?? 10) as int,
+      fotos: map['fotos'] != null ? List<String>.from(map['fotos']) : const [],
+      calificacion: (map['calificacion'] ?? 5.0).toDouble(),
+      numCalificaciones: (map['numCalificaciones'] ?? 1) as int,
       ingredientes:
-          data['ingredientes'] != null
-              ? List<String>.from(data['ingredientes'])
-              : [],
-      fotos: data['fotos'] != null ? List<String>.from(data['fotos']) : [],
-      existencias: (data['existencias'] ?? 0) as int,
-      puntos: (data['puntos'] ?? 10) as int,
-      icono: _iconoPorCategoria(data['categoria']),
+          map['ingredientes'] != null
+              ? List<String>.from(map['ingredientes'])
+              : const ['Queso', 'Crema', 'Salsa', 'Cebolla'],
+      popular: map['popular'] == true || ((map['calificacion'] ?? 5.0) >= 4.7),
+      personalizacion:
+          map['personalizacion'] != null
+              ? List<String>.from(map['personalizacion'])
+              : const [],
     );
   }
 
-  static IconData _iconoPorCategoria(String? categoria) {
-    if (categoria == 'Desayunos') return Icons.breakfast_dining;
-    if (categoria == 'Bebidas') return Icons.local_drink;
-    if (categoria == 'Postres') return Icons.cake;
-    return Icons.lunch_dining;
+  factory Platillo.fromFirestore(Map<String, dynamic> map, String documentId) {
+    return Platillo.fromMap(map, documentId);
   }
 }

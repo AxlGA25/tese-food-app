@@ -1,11 +1,35 @@
+import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:audioplayers/audioplayers.dart';
 
 class ServicioNotificaciones {
-  static final FlutterLocalNotificationsPlugin _notificationsPlugin =
+  static final FlutterLocalNotificationsPlugin _plugin =
       FlutterLocalNotificationsPlugin();
 
-  // 1. INICIALIZAR Y SOLICITAR PERMISOS NATIVOS
+  static final AudioPlayer _player = AudioPlayer();
+  static bool _inicializado = false;
+  static DateTime? _ultimoSonido;
+
   static Future<void> inicializar() async {
+    if (_inicializado) return;
+
+    try {
+      await AudioPlayer.global.setAudioContext(
+        AudioContext(
+          android: const AudioContextAndroid(
+            isSpeakerphoneOn: true,
+            stayAwake: false,
+            contentType: AndroidContentType.music,
+            usageType: AndroidUsageType.media,
+            audioFocus: AndroidAudioFocus.none,
+          ),
+        ),
+      );
+    } catch (e) {
+      debugPrint('Aviso AudioContext: $e');
+    }
+
     const AndroidInitializationSettings androidSettings =
         AndroidInitializationSettings('@mipmap/ic_launcher');
 
@@ -13,73 +37,117 @@ class ServicioNotificaciones {
       android: androidSettings,
     );
 
-    await _notificationsPlugin.initialize(initSettings);
+    await _plugin.initialize(initSettings);
 
-    final AndroidFlutterLocalNotificationsPlugin? androidImplementation =
-        _notificationsPlugin
+    final androidImpl =
+        _plugin
             .resolvePlatformSpecificImplementation<
               AndroidFlutterLocalNotificationsPlugin
             >();
 
-    if (androidImplementation != null) {
-      await androidImplementation.requestNotificationsPermission();
+    if (androidImpl != null) {
+      await androidImpl.requestNotificationsPermission();
+      const AndroidNotificationChannel canal = AndroidNotificationChannel(
+        'canal_pedidos_tese_silencioso',
+        'Seguimiento de Pedidos TESE',
+        description: 'Avisos en tiempo real de la cafetería',
+        importance: Importance.max,
+        playSound: false,
+        enableVibration: true,
+      );
+      await androidImpl.createNotificationChannel(canal);
+    }
+
+    _inicializado = true;
+  }
+
+  /// Reproduce 'sonidos/exito.mp3' o 'sonidos/cuac.mp3' sin cortes
+  static Future<void> sonarEfecto(String rutaAsset) async {
+    await inicializar();
+
+    final ahora = DateTime.now();
+    if (_ultimoSonido != null &&
+        ahora.difference(_ultimoSonido!).inMilliseconds < 700) {
+      return;
+    }
+    _ultimoSonido = ahora;
+
+    final String archivo = rutaAsset
+        .replaceFirst('assets/', '')
+        .replaceFirst('sonidos/', '');
+
+    try {
+      await _player.setVolume(1.0);
+      await _player.play(AssetSource('sonidos/$archivo'));
+    } catch (_) {
+      try {
+        await _player.play(AssetSource(archivo));
+      } catch (_) {
+        SystemSound.play(SystemSoundType.alert);
+      }
     }
   }
 
-  // 2. DISPARAR NOTIFICACIÓN NATIVA DE BANNER (ALERTA DE PEDIDO)
-  static Future<void> mostrarNotificacion({
+  static Future<void> sonarCuac({String asset = 'sonidos/cuac.mp3'}) async {
+    await sonarEfecto(asset);
+  }
+
+  static Future<void> mostrarNotificacionOrden({
     required int id,
     required String titulo,
     required String cuerpo,
+    bool enCurso = false,
+    bool esPedidoListo = false,
+    String sonido = 'sonidos/cuac.mp3',
   }) async {
-    const AndroidNotificationDetails androidDetails =
-        AndroidNotificationDetails(
-          'pedidos_tese_canal',
-          'Pedidos TESE',
-          channelDescription: 'Notificaciones en vivo del estado de comida',
-          importance: Importance.max,
-          priority: Priority.high,
-          playSound: true,
-          enableVibration: true,
-        );
+    try {
+      await inicializar();
 
-    const NotificationDetails notificationDetails = NotificationDetails(
-      android: androidDetails,
-    );
+      if (esPedidoListo) {
+        HapticFeedback.heavyImpact();
+      } else {
+        HapticFeedback.mediumImpact();
+      }
 
-    await _notificationsPlugin.show(id, titulo, cuerpo, notificationDetails);
+      final AndroidNotificationDetails androidDetails =
+          AndroidNotificationDetails(
+            'canal_pedidos_tese_silencioso',
+            'Seguimiento de Pedidos TESE',
+            channelDescription: 'Avisos en tiempo real de la cafetería',
+            importance: Importance.max,
+            priority: Priority.max,
+            ongoing: enCurso,
+            autoCancel: !enCurso,
+            playSound: false,
+            enableVibration: true,
+          );
+
+      final NotificationDetails details = NotificationDetails(
+        android: androidDetails,
+      );
+
+      // 1. Mostramos la notificación visual
+      await _plugin.show(id, titulo, cuerpo, details);
+
+      // 2. Reproducimos nuestro MP3 ('exito.mp3' al confirmar o 'cuac.mp3' al preparar/listo)
+      await sonarEfecto(sonido);
+    } catch (e) {
+      debugPrint('Error en notificación: $e');
+    }
   }
 
-  // 3. NOTIFICACIÓN FIJA DE MONITOREO (EVITA QUE ANDROID DUERMA LA APP AL SALIRTE)
-  static Future<void> iniciarMonitoreoOrden(String idPedido) async {
-    const AndroidNotificationDetails androidDetails =
-        AndroidNotificationDetails(
-          'monitoreo_tese_canal',
-          'Monitoreo de Pedidos',
-          channelDescription:
-              'Mantiene viva la conexión mientras se prepara la comida',
-          importance: Importance.low,
-          priority: Priority.low,
-          ongoing: true, // Le prohíbe al sistema operativo congelar la conexión
-          autoCancel: false,
-          playSound: false,
-          enableVibration: false,
-        );
-
-    const NotificationDetails notificationDetails = NotificationDetails(
-      android: androidDetails,
+  static Future<void> mostrarNotificacion({
+    int id = 1,
+    required String titulo,
+    required String cuerpo,
+    bool ongoing = false,
+  }) async {
+    await mostrarNotificacionOrden(
+      id: id,
+      titulo: titulo,
+      cuerpo: cuerpo,
+      enCurso: ongoing,
+      sonido: 'sonidos/cuac.mp3',
     );
-
-    await _notificationsPlugin.show(
-      999, // ID fijo de monitoreo
-      '🦆 TESE Hambreados',
-      'Monitoreando tu orden $idPedido en tiempo real...',
-      notificationDetails,
-    );
-  }
-
-  // 4. CANCELAR EL MONITOREO CUANDO YA ESTÁ LISTO O ENTREGADO
-  static Future<void> cancelarMonitoreo() async {
-    await _notificationsPlugin.cancel(999);
   }
 }
