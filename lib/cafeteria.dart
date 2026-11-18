@@ -6,1012 +6,155 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:animate_do/animate_do.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:audioplayers/audioplayers.dart';
 import 'colores.dart';
-import 'modelos.dart';
-import 'pantalla_gachapon.dart';
-import 'pantalla_login.dart';
+import 'pantalla_acceso_qr.dart';
 
 // ==========================================================
-// GUÍA RÁPIDA INTERACTIVA PARA COCINA
+// 1. PUERTA DE ACCESO (CONECTADA A QR 1-DISPOSITIVO + ADMIN)
 // ==========================================================
-void mostrarTutorialCocina(BuildContext context, String nombreSucursal) {
-  int paginaActual = 0;
-  final PageController pageCtrl = PageController();
-
-  final List<Map<String, dynamic>> pasos = [
-    {
-      'badge': 'PASO 1 DE 4 • COMANDAS EN VIVO',
-      'titulo': 'Terminal de $nombreSucursal 👨‍🍳',
-      'descripcion':
-          'Aquí recibirás en tiempo real únicamente los pedidos dirigidos a tu sucursal. Cada tarjeta te muestra hora de llegada, total de piezas, platillos desglosados y método de cobro.',
-      'skinId': 'chef',
-      'icono': Icons.volume_up_rounded,
-      'color': colorVerdeTese,
-    },
-    {
-      'badge': 'PASO 2 DE 4 • FLUJO Y CANCELACIÓN',
-      'titulo': 'Cocina, Entrega o Cancela ⚡',
-      'descripcion':
-          '1️⃣ Toca "Aceptar y Cocinar" para avisarle al alumno.\n2️⃣ Toca "¡Marcar Listo!" para que suene su celular (¡CUAC!).\n3️⃣ Si se agotó un ingrediente, toca "Cancelar" para devolver el stock y compensar al alumno.',
-      'skinId': 'insulini',
-      'icono': Icons.notifications_active_rounded,
-      'color': const Color(0xFFFF8F00),
-    },
-    {
-      'badge': 'PASO 3 DE 4 • CONTROL DE STOCK',
-      'titulo': 'Inventario y Local Abierto/Cerrado 📦',
-      'descripcion':
-          'Usa el botón superior Abierto/Cerrado para pausar pedidos al terminar el turno. En la pestaña "Mi Menú" ajusta tus existencias con [-] y [+] o sube hasta 3 fotos reales por platillo.',
-      'skinId': 'ing_sistemas',
-      'icono': Icons.inventory_2_rounded,
-      'color': const Color(0xFF00B4D8),
-    },
-    {
-      'badge': 'PASO 4 DE 4 • CORTE DE CAJA Y OPINIONES',
-      'titulo': 'Historial y Reputación ⭐',
-      'descripcion':
-          'En la pestaña "Historial" consulta tu corte de caja (Efectivo vs. Terminal, entregados y cancelados). En "Opiniones" revisa las calificaciones públicas o anónimas de tu kiosko.',
-      'skinId': 'oro',
-      'icono': Icons.analytics_rounded,
-      'color': const Color(0xFF8E24AA),
-    },
-  ];
-
-  showDialog(
-    context: context,
-    barrierDismissible: false,
-    builder:
-        (ctx) => StatefulBuilder(
-          builder: (contextModal, setStateModal) {
-            final pasoActual = pasos[paginaActual];
-            final Color colorTema = pasoActual['color'] as Color;
-
-            return Dialog(
-              backgroundColor: Colors.transparent,
-              insetPadding: const EdgeInsets.symmetric(
-                horizontal: 20,
-                vertical: 24,
-              ),
-              child: Container(
-                constraints: const BoxConstraints(maxWidth: 400),
-                padding: const EdgeInsets.fromLTRB(22, 18, 22, 20),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(28),
-                  border: Border.all(
-                    color: colorTema.withValues(alpha: 0.4),
-                    width: 2,
-                  ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.20),
-                      blurRadius: 25,
-                      offset: const Offset(0, 12),
-                    ),
-                  ],
-                ),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 10,
-                            vertical: 4,
-                          ),
-                          decoration: BoxDecoration(
-                            color: colorTema.withValues(alpha: 0.12),
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Text(
-                            pasoActual['badge'] as String,
-                            style: GoogleFonts.poppins(
-                              fontSize: 10,
-                              fontWeight: FontWeight.w800,
-                              color: colorTema,
-                            ),
-                          ),
-                        ),
-                        TextButton(
-                          onPressed: () => Navigator.pop(ctx),
-                          child: Text(
-                            'Saltar',
-                            style: GoogleFonts.poppins(
-                              fontSize: 12,
-                              fontWeight: FontWeight.bold,
-                              color: colorTextoGris,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    SizedBox(
-                      height: 300,
-                      child: PageView.builder(
-                        controller: pageCtrl,
-                        itemCount: pasos.length,
-                        onPageChanged: (idx) {
-                          HapticFeedback.selectionClick();
-                          setStateModal(() => paginaActual = idx);
-                        },
-                        itemBuilder: (_, index) {
-                          final item = pasos[index];
-                          final PatoSkin skin = catalogoPatos.firstWhere(
-                            (p) => p.id == item['skinId'],
-                            orElse: () => catalogoPatos[4],
-                          );
-                          final Color cItem = item['color'] as Color;
-
-                          return SingleChildScrollView(
-                            physics: const BouncingScrollPhysics(),
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                const SizedBox(height: 6),
-                                Container(
-                                  width: 118,
-                                  height: 118,
-                                  decoration: BoxDecoration(
-                                    shape: BoxShape.circle,
-                                    color: cItem.withValues(alpha: 0.1),
-                                    border: Border.all(
-                                      color: cItem.withValues(alpha: 0.35),
-                                      width: 2,
-                                    ),
-                                  ),
-                                  child: PatoVista(skin: skin, tamano: 92),
-                                ),
-                                const SizedBox(height: 14),
-                                Text(
-                                  item['titulo'] as String,
-                                  textAlign: TextAlign.center,
-                                  style: GoogleFonts.poppins(
-                                    fontSize: 17.5,
-                                    fontWeight: FontWeight.w900,
-                                    color: colorTextoOscuro,
-                                  ),
-                                ),
-                                const SizedBox(height: 8),
-                                Padding(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 6,
-                                  ),
-                                  child: Text(
-                                    item['descripcion'] as String,
-                                    textAlign: TextAlign.center,
-                                    style: GoogleFonts.poppins(
-                                      fontSize: 12.5,
-                                      color: colorTextoGris,
-                                      height: 1.42,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          );
-                        },
-                      ),
-                    ),
-                    const SizedBox(height: 10),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: List.generate(pasos.length, (i) {
-                        final bool activo = i == paginaActual;
-                        return AnimatedContainer(
-                          duration: const Duration(milliseconds: 250),
-                          margin: const EdgeInsets.symmetric(horizontal: 4),
-                          width: activo ? 24 : 8,
-                          height: 8,
-                          decoration: BoxDecoration(
-                            color: activo ? colorTema : Colors.grey.shade300,
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                        );
-                      }),
-                    ),
-                    const SizedBox(height: 16),
-                    Row(
-                      children: [
-                        if (paginaActual > 0) ...[
-                          Expanded(
-                            child: OutlinedButton(
-                              style: OutlinedButton.styleFrom(
-                                foregroundColor: colorTextoOscuro,
-                                side: BorderSide(color: Colors.grey.shade300),
-                                minimumSize: const Size(0, 48),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(16),
-                                ),
-                              ),
-                              onPressed: () {
-                                pageCtrl.previousPage(
-                                  duration: const Duration(milliseconds: 300),
-                                  curve: Curves.easeOut,
-                                );
-                              },
-                              child: Text(
-                                'Anterior',
-                                style: GoogleFonts.poppins(
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 10),
-                        ],
-                        Expanded(
-                          flex: 2,
-                          child: ElevatedButton.icon(
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: colorTema,
-                              foregroundColor: Colors.white,
-                              minimumSize: const Size(0, 48),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(16),
-                              ),
-                            ),
-                            onPressed: () {
-                              if (paginaActual < pasos.length - 1) {
-                                pageCtrl.nextPage(
-                                  duration: const Duration(milliseconds: 300),
-                                  curve: Curves.easeOut,
-                                );
-                              } else {
-                                HapticFeedback.mediumImpact();
-                                Navigator.pop(ctx);
-                              }
-                            },
-                            icon: Icon(
-                              paginaActual < pasos.length - 1
-                                  ? Icons.arrow_forward_rounded
-                                  : Icons.check_circle_outline,
-                              size: 18,
-                            ),
-                            label: Text(
-                              paginaActual < pasos.length - 1
-                                  ? 'Siguiente'
-                                  : '¡A cocinar! 🍳',
-                              style: GoogleFonts.poppins(
-                                fontWeight: FontWeight.bold,
-                                fontSize: 14,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            );
-          },
-        ),
-  );
-}
-
-// ==========================================================
-// 1. ACCESO DE SEGURIDAD A LOCALES
-// ==========================================================
-class LoginLocalScreen extends StatefulWidget {
+class LoginLocalScreen extends StatelessWidget {
   const LoginLocalScreen({super.key});
 
   @override
-  State<LoginLocalScreen> createState() => _LoginLocalScreenState();
-}
-
-class _LoginLocalScreenState extends State<LoginLocalScreen> {
-  final TextEditingController _codigoSucursalCtrl = TextEditingController();
-  final TextEditingController _pinSecretoCtrl = TextEditingController();
-
-  bool _ocultarPin = true;
-  bool _validandoCredenciales = false;
-  int _intentosFallidos = 0;
-  DateTime? _bloqueadoHasta;
-
-  final Map<String, Map<String, dynamic>> _credencialesIniciales = {
-    'KS-SISTEMAS': {
-      'nombre': 'Kiosko Sistemas',
-      'pinSecreto': '849201',
-      'ubicacion': 'Edificio de Ingeniería en Sistemas Computacionales',
-      'activo': true,
-      'abierto': true,
-    },
-    'KB-BIBLIO': {
-      'nombre': 'Kiosko Biblioteca',
-      'pinSecreto': '715309',
-      'ubicacion': 'Explanada de Biblioteca Central',
-      'activo': true,
-      'abierto': true,
-    },
-    'CC-CENTRAL': {
-      'nombre': 'Cafetería Central',
-      'pinSecreto': '938420',
-      'ubicacion': 'Comedor Principal del Campus TESE',
-      'activo': true,
-      'abierto': true,
-    },
-  };
-
-  @override
-  void initState() {
-    super.initState();
-    _inicializarCredencialesEnFirestore();
-  }
-
-  Future<void> _inicializarCredencialesEnFirestore() async {
-    try {
-      final col = FirebaseFirestore.instance.collection('Locales_Seguridad');
-      for (final entrada in _credencialesIniciales.entries) {
-        final docRef = col.doc(entrada.key);
-        final docSnap = await docRef.get();
-        if (!docSnap.exists) {
-          await docRef.set({
-            ...entrada.value,
-            'codigoSucursal': entrada.key,
-            'fechaCreacion': FieldValue.serverTimestamp(),
-          });
-        }
-      }
-    } catch (_) {}
-  }
-
-  @override
-  void dispose() {
-    _codigoSucursalCtrl.dispose();
-    _pinSecretoCtrl.dispose();
-    super.dispose();
-  }
-
-  Future<void> _ingresarAlKiosko() async {
-    if (_bloqueadoHasta != null && DateTime.now().isBefore(_bloqueadoHasta!)) {
-      final segRestantes =
-          _bloqueadoHasta!.difference(DateTime.now()).inSeconds;
-      _mostrarErrorSeguridad(
-        'Terminal bloqueada temporalmente por seguridad. Intenta en $segRestantes segundos.',
-      );
-      return;
-    }
-
-    final String codigo = _codigoSucursalCtrl.text.trim().toUpperCase();
-    final String pin = _pinSecretoCtrl.text.trim();
-
-    if (codigo.isEmpty || pin.isEmpty) {
-      _mostrarErrorSeguridad(
-        'Ingresa tanto el Código de Sucursal como el PIN Maestro de 6 dígitos.',
-      );
-      return;
-    }
-
-    setState(() => _validandoCredenciales = true);
-    HapticFeedback.lightImpact();
-
-    if (!await verificarConexionInternet()) {
-      setState(() => _validandoCredenciales = false);
-      _mostrarErrorSeguridad(
-        '📡 Sin conexión a Internet. Conéctate a una red para abrir la terminal.',
-      );
-      return;
-    }
-
-    try {
-      String? nombreSucursalAutorizada;
-
-      final doc = await FirebaseFirestore.instance
-          .collection('Locales_Seguridad')
-          .doc(codigo)
-          .get()
-          .timeout(const Duration(seconds: 8));
-
-      if (doc.exists) {
-        final data = doc.data()!;
-        final bool activo = data['activo'] ?? true;
-        final String pinReal = (data['pinSecreto'] ?? '').toString();
-
-        if (!activo) {
-          setState(() => _validandoCredenciales = false);
-          _mostrarErrorSeguridad('Esta sucursal se encuentra deshabilitada.');
-          return;
-        }
-
-        if (pinReal == pin) {
-          nombreSucursalAutorizada = data['nombre'] as String?;
-        }
-      } else if (_credencialesIniciales.containsKey(codigo)) {
-        final localData = _credencialesIniciales[codigo]!;
-        if (localData['pinSecreto'] == pin) {
-          nombreSucursalAutorizada = localData['nombre'] as String;
-        }
-      }
-
-      if (!mounted) return;
-
-      if (nombreSucursalAutorizada != null) {
-        _intentosFallidos = 0;
-        HapticFeedback.heavyImpact();
+  Widget build(BuildContext context) {
+    return PantallaAccesoQR(
+      onTerminalAutorizada: (docId, nombreSucursal, codigoSucursal) {
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(
             builder:
-                (context) => DashboardLocalScreen(
-                  nombreLocal: nombreSucursalAutorizada!,
-                  codigoSucursal: codigo,
+                (_) => DashboardLocalScreen(
+                  nombreLocal: nombreSucursal,
+                  docIdLocal: docId,
                 ),
           ),
         );
-      } else {
-        _intentosFallidos++;
-        HapticFeedback.vibrate();
-        if (_intentosFallidos >= 3) {
-          _bloqueadoHasta = DateTime.now().add(const Duration(seconds: 30));
-          _intentosFallidos = 0;
-          _mostrarErrorSeguridad(
-            'Demasiados intentos fallidos. Acceso bloqueado por 30 segundos.',
-          );
-        } else {
-          _mostrarErrorSeguridad(
-            'Credenciales inválidas. Verifica el código y tu PIN (${3 - _intentosFallidos} intentos restantes).',
-          );
-        }
-      }
-    } catch (e) {
-      _mostrarErrorSeguridad(
-        '📡 Error al conectar con el servidor de seguridad.',
-      );
-    } finally {
-      if (mounted) setState(() => _validandoCredenciales = false);
-    }
-  }
-
-  void _mostrarErrorSeguridad(String mensaje) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Row(
-          children: [
-            const Icon(Icons.gpp_bad_outlined, color: Colors.white),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Text(mensaje, style: GoogleFonts.poppins(fontSize: 12.5)),
-            ),
-          ],
-        ),
-        backgroundColor: Colors.red.shade800,
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-      ),
-    );
-  }
-
-  void _mostrarAyudaCredenciales() {
-    showDialog(
-      context: context,
-      builder:
-          (ctx) => AlertDialog(
-            backgroundColor: Colors.white,
-            insetPadding: const EdgeInsets.symmetric(
-              horizontal: 20,
-              vertical: 24,
-            ),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(26),
-            ),
-            title: Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: const BoxDecoration(
-                    color: Color(0xFFE8F5E9),
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(
-                    Icons.vpn_key_rounded,
-                    color: colorVerdeTese,
-                    size: 22,
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Text(
-                    'Directorio de Terminales KDS',
-                    style: GoogleFonts.poppins(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 16,
-                      color: colorTextoOscuro,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            content: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Credenciales oficiales para evaluación del sistema multi-sucursal (Toca una tarjeta para autocompletar):',
-                    style: GoogleFonts.poppins(
-                      fontSize: 12,
-                      color: colorTextoGris,
-                    ),
-                  ),
-                  const SizedBox(height: 14),
-                  ..._credencialesIniciales.entries.map((e) {
-                    return Container(
-                      margin: const EdgeInsets.only(bottom: 10),
-                      decoration: BoxDecoration(
-                        color: colorFondoCrema,
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(
-                          color: colorVerdeTese.withValues(alpha: 0.25),
-                        ),
-                      ),
-                      child: InkWell(
-                        borderRadius: BorderRadius.circular(16),
-                        onTap: () {
-                          HapticFeedback.selectionClick();
-                          setState(() {
-                            _codigoSucursalCtrl.text = e.key;
-                            _pinSecretoCtrl.text = e.value['pinSecreto'];
-                          });
-                          Navigator.pop(ctx);
-                        },
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 14,
-                            vertical: 12,
-                          ),
-                          child: Row(
-                            children: [
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      e.value['nombre'],
-                                      style: GoogleFonts.poppins(
-                                        fontWeight: FontWeight.bold,
-                                        color: colorVerdeTese,
-                                        fontSize: 13.5,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 2),
-                                    Text(
-                                      'Código: ${e.key}  •  PIN: ${e.value['pinSecreto']}',
-                                      style: GoogleFonts.poppins(
-                                        fontSize: 11.5,
-                                        fontWeight: FontWeight.w600,
-                                        color: colorTextoOscuro,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              Container(
-                                padding: const EdgeInsets.all(6),
-                                decoration: BoxDecoration(
-                                  color: Colors.white,
-                                  borderRadius: BorderRadius.circular(10),
-                                ),
-                                child: const Icon(
-                                  Icons.touch_app_outlined,
-                                  color: colorVerdeTese,
-                                  size: 18,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    );
-                  }),
-                ],
-              ),
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(ctx),
-                child: Text(
-                  'Cerrar',
-                  style: GoogleFonts.poppins(
-                    color: colorVerdeTese,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-            ],
-          ),
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: colorFondoCrema,
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(
-            Icons.arrow_back_ios_new,
-            color: colorVerdeTese,
-            size: 20,
-          ),
-          onPressed: () => Navigator.pop(context),
-        ),
-        actions: [
-          Padding(
-            padding: const EdgeInsets.only(right: 12),
-            child: TextButton.icon(
-              style: TextButton.styleFrom(
-                backgroundColor: const Color(0xFFE8F5E9),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 6,
-                ),
-              ),
-              onPressed: _mostrarAyudaCredenciales,
-              icon: const Icon(
-                Icons.vpn_key_outlined,
-                color: colorVerdeTese,
-                size: 16,
-              ),
-              label: Text(
-                'Códigos',
-                style: GoogleFonts.poppins(
-                  color: colorVerdeTese,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 12,
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-      body: Center(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 10),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              ZoomIn(
-                child: Container(
-                  padding: const EdgeInsets.all(14),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    shape: BoxShape.circle,
-                    border: Border.all(color: colorAmarilloTese, width: 2),
-                    boxShadow: [
-                      BoxShadow(
-                        color: colorVerdeTese.withValues(alpha: 0.10),
-                        blurRadius: 24,
-                        offset: const Offset(0, 8),
-                      ),
-                    ],
-                  ),
-                  child: Image.asset('assets/patito_chef.png', height: 110),
-                ),
-              ),
-              const SizedBox(height: 16),
-              FadeInDown(
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 5,
-                  ),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFE8F5E9),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Icon(
-                        Icons.verified_user_rounded,
-                        color: colorVerdeTese,
-                        size: 15,
-                      ),
-                      const SizedBox(width: 6),
-                      Text(
-                        'ACCESO DE PERSONAL DE COCINA',
-                        style: GoogleFonts.poppins(
-                          fontSize: 10.5,
-                          fontWeight: FontWeight.w800,
-                          color: colorVerdeTese,
-                          letterSpacing: 0.8,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              const SizedBox(height: 8),
-              FadeInDown(
-                child: Text(
-                  'Terminal de Cocina',
-                  style: GoogleFonts.poppins(
-                    fontSize: 26,
-                    fontWeight: FontWeight.w900,
-                    color: colorVerdeTese,
-                  ),
-                ),
-              ),
-              Text(
-                'Autenticación por doble credencial de sucursal',
-                textAlign: TextAlign.center,
-                style: GoogleFonts.poppins(fontSize: 13, color: colorTextoGris),
-              ),
-              const SizedBox(height: 24),
-              FadeInUp(
-                child: Container(
-                  padding: const EdgeInsets.all(22),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(24),
-                    boxShadow: [
-                      BoxShadow(
-                        color: colorVerdeTese.withValues(alpha: 0.08),
-                        blurRadius: 20,
-                        offset: const Offset(0, 8),
-                      ),
-                    ],
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        '1. Identificador de Sucursal',
-                        style: GoogleFonts.poppins(
-                          fontSize: 12.5,
-                          fontWeight: FontWeight.bold,
-                          color: colorTextoOscuro,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      TextField(
-                        controller: _codigoSucursalCtrl,
-                        textCapitalization: TextCapitalization.characters,
-                        style: GoogleFonts.poppins(
-                          fontWeight: FontWeight.bold,
-                          letterSpacing: 1.2,
-                        ),
-                        decoration: InputDecoration(
-                          hintText: 'Ej. KS-SISTEMAS',
-                          prefixIcon: const Icon(
-                            Icons.storefront_outlined,
-                            color: colorVerdeTese,
-                          ),
-                          filled: true,
-                          fillColor: colorFondoCrema,
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(16),
-                            borderSide: BorderSide.none,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                      Text(
-                        '2. PIN Maestro de Seguridad (6 dígitos)',
-                        style: GoogleFonts.poppins(
-                          fontSize: 12.5,
-                          fontWeight: FontWeight.bold,
-                          color: colorTextoOscuro,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      TextField(
-                        controller: _pinSecretoCtrl,
-                        obscureText: _ocultarPin,
-                        keyboardType: TextInputType.number,
-                        maxLength: 6,
-                        onSubmitted: (_) => _ingresarAlKiosko(),
-                        style: GoogleFonts.poppins(
-                          fontWeight: FontWeight.bold,
-                          letterSpacing: 4,
-                        ),
-                        decoration: InputDecoration(
-                          counterText: '',
-                          hintText: '••••••',
-                          prefixIcon: const Icon(
-                            Icons.pin_outlined,
-                            color: colorVerdeTese,
-                          ),
-                          suffixIcon: IconButton(
-                            icon: Icon(
-                              _ocultarPin
-                                  ? Icons.visibility_off
-                                  : Icons.visibility,
-                              color: colorTextoGris,
-                            ),
-                            onPressed:
-                                () =>
-                                    setState(() => _ocultarPin = !_ocultarPin),
-                          ),
-                          filled: true,
-                          fillColor: colorFondoCrema,
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(16),
-                            borderSide: BorderSide.none,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 22),
-                      SizedBox(
-                        width: double.infinity,
-                        height: 54,
-                        child: ElevatedButton.icon(
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: colorVerdeTese,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(16),
-                            ),
-                            elevation: 3,
-                          ),
-                          onPressed:
-                              _validandoCredenciales ? null : _ingresarAlKiosko,
-                          icon:
-                              _validandoCredenciales
-                                  ? const SizedBox.shrink()
-                                  : const Icon(
-                                    Icons.lock_open_rounded,
-                                    color: Colors.white,
-                                  ),
-                          label:
-                              _validandoCredenciales
-                                  ? const SizedBox(
-                                    width: 22,
-                                    height: 22,
-                                    child: CircularProgressIndicator(
-                                      color: Colors.white,
-                                      strokeWidth: 2.5,
-                                    ),
-                                  )
-                                  : Text(
-                                    'Desbloquear Terminal',
-                                    style: GoogleFonts.poppins(
-                                      color: Colors.white,
-                                      fontSize: 15.5,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
+      },
     );
   }
 }
 
 // ==========================================================
-// 2. DASHBOARD DE CAFETERÍA CON FICHA ULTRA DETALLADA DE PEDIDOS
+// 2. TERMINAL DE COCINA (KDS) + CORTE DE CAJA INTERACTIVO
 // ==========================================================
 class DashboardLocalScreen extends StatefulWidget {
   final String nombreLocal;
-  final String codigoSucursal;
+  final String? docIdLocal;
 
   const DashboardLocalScreen({
     super.key,
     required this.nombreLocal,
-    this.codigoSucursal = 'KS-SISTEMAS',
+    this.docIdLocal,
   });
 
   @override
   State<DashboardLocalScreen> createState() => _DashboardLocalScreenState();
 }
 
-class _DashboardLocalScreenState extends State<DashboardLocalScreen> {
-  int _indicePestana = 0;
-  int _filtroEstadoPedido = -1;
-  String _busquedaFolio = '';
-  final TextEditingController _buscadorFolioCtrl = TextEditingController();
+class _DashboardLocalScreenState extends State<DashboardLocalScreen>
+    with SingleTickerProviderStateMixin {
+  late final TabController _tabController;
+  StreamSubscription<DocumentSnapshot>? _subSeguridadDispositivo;
 
-  final AudioPlayer _audioPlayer = AudioPlayer();
-  StreamSubscription<QuerySnapshot>? _vigilanteNuevasComandas;
-  final Set<String> _pedidosConocidos = {};
-  bool _primeraCargaComandas = true;
+  // Filtro Pestaña 1 (Comandas KDS): -1 = Todos, 0 = Nuevos, 1 = En Cocina, 2 = Listos
+  int _filtroEstadoKds = -1;
+
+  // Filtros Pestaña 2 (Historial y Corte de Caja Interactivo)
+  // 'vendidos' | 'efectivo' | 'tarjeta' | 'cancelados'
+  String _filtroCorte = 'vendidos';
+  bool _soloHoyCorte = true;
+
+  bool _localAbierto = true;
+  String? _docIdResuelto;
 
   @override
   void initState() {
     super.initState();
-    _iniciarVigilanteAudioCocina();
+    _tabController = TabController(length: 4, vsync: this);
+    _iniciarVigilanciaTerminal();
   }
 
-  void _iniciarVigilanteAudioCocina() {
-    _vigilanteNuevasComandas = FirebaseFirestore.instance
-        .collection('Pedidos')
-        .where('local', isEqualTo: widget.nombreLocal)
-        .snapshots(includeMetadataChanges: true)
-        .listen((snapshot) async {
-          if (_primeraCargaComandas) {
-            for (var doc in snapshot.docs) {
-              _pedidosConocidos.add(doc.id);
-            }
-            _primeraCargaComandas = false;
-            return;
-          }
+  Future<void> _iniciarVigilanciaTerminal() async {
+    try {
+      String? docId = widget.docIdLocal;
+      if (docId == null || docId.isEmpty) {
+        final q =
+            await FirebaseFirestore.instance
+                .collection('Locales_Seguridad')
+                .where('nombre', isEqualTo: widget.nombreLocal)
+                .limit(1)
+                .get();
+        if (q.docs.isNotEmpty) {
+          docId = q.docs.first.id;
+        }
+      }
+      if (docId == null) return;
+      _docIdResuelto = docId;
 
-          for (var change in snapshot.docChanges) {
-            if (change.type == DocumentChangeType.added &&
-                !change.doc.metadata.hasPendingWrites) {
-              final idDoc = change.doc.id;
-              if (!_pedidosConocidos.contains(idDoc)) {
-                _pedidosConocidos.add(idDoc);
-                final data = change.doc.data();
-                if (data != null && (data['estado'] ?? 0) == 0) {
-                  HapticFeedback.heavyImpact();
-                  try {
-                    await _audioPlayer.play(AssetSource('sonidos/exito.mp3'));
-                  } catch (_) {}
-                  if (mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text(
-                          '🔔 ¡Nueva comanda recibida (${data['idPedido']}) de ${data['alumno']}!',
-                          style: GoogleFonts.poppins(
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        backgroundColor: colorVerdeTese,
-                        behavior: SnackBarBehavior.floating,
-                      ),
-                    );
-                  }
-                }
-              }
+      final miDeviceId =
+          await ServicioDispositivoTerminal.obtenerOCrearDeviceId();
+
+      _subSeguridadDispositivo = FirebaseFirestore.instance
+          .collection('Locales_Seguridad')
+          .doc(docId)
+          .snapshots()
+          .listen((snap) {
+            if (!snap.exists || !mounted) return;
+            final data = snap.data()!;
+            final bool abierto = (data['abierto'] ?? true) as bool;
+            if (_localAbierto != abierto) {
+              setState(() => _localAbierto = abierto);
             }
-          }
-        });
+
+            // Si el Admin expulsó este dispositivo o vinculó otro, cerramos sesión en vivo
+            final String? autorizadoEnNube =
+                data['dispositivoAutorizadoId'] as String?;
+            if (autorizadoEnNube != null && autorizadoEnNube != miDeviceId) {
+              _expulsarPorRevocacion();
+            } else if (autorizadoEnNube == null && widget.docIdLocal != null) {
+              _expulsarPorRevocacion();
+            }
+          });
+    } catch (_) {}
+  }
+
+  Future<void> _expulsarPorRevocacion() async {
+    await _subSeguridadDispositivo?.cancel();
+    await ServicioDispositivoTerminal.limpiarVinculacionLocal();
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          '🔒 Esta terminal fue desvinculada por Administración.',
+          style: GoogleFonts.poppins(fontSize: 12.5),
+        ),
+        backgroundColor: Colors.redAccent,
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+    Navigator.of(context).pop();
   }
 
   @override
   void dispose() {
-    _vigilanteNuevasComandas?.cancel();
-    _audioPlayer.dispose();
-    _buscadorFolioCtrl.dispose();
+    _subSeguridadDispositivo?.cancel();
+    _tabController.dispose();
     super.dispose();
   }
 
-  // Formatea la hora de llegada y cuántos minutos lleva esperando el alumno
-  String _formatearHoraYTiempoEspera(Timestamp? ts) {
-    if (ts == null) return 'Recién recibido';
-    final dt = ts.toDate();
-    final hh = dt.hour.toString().padLeft(2, '0');
-    final mm = dt.minute.toString().padLeft(2, '0');
-    final diff = DateTime.now().difference(dt).inMinutes;
-    if (diff <= 0) return '$hh:$mm hrs • Hace un momento';
-    if (diff < 60) return '$hh:$mm hrs • Hace $diff min';
-    return '$hh:$mm hrs • ${dt.day}/${dt.month}';
-  }
-
-  // Cuenta cuántas piezas totales lleva el pedido para empacar fácil
-  int _calcularTotalPiezas(Map<String, dynamic> p) {
-    final mapaCant = p['cantidadesPorPlatillo'] as Map<String, dynamic>?;
-    if (mapaCant != null && mapaCant.isNotEmpty) {
-      int suma = 0;
-      for (final v in mapaCant.values) {
-        suma += (v as num).toInt();
-      }
-      if (suma > 0) return suma;
-    }
-    final String det = (p['detalle'] ?? '').toString();
-    final lineas = det.split('\n').where((l) => l.trim().isNotEmpty).toList();
-    return lineas.isEmpty ? 1 : lineas.length;
-  }
-
-  void _confirmarBloquearTerminal() {
+  Future<void> _alternarEstadoLocal(bool nuevoValor) async {
     HapticFeedback.mediumImpact();
-    showDialog(
+    setState(() => _localAbierto = nuevoValor);
+    if (_docIdResuelto != null) {
+      await FirebaseFirestore.instance
+          .collection('Locales_Seguridad')
+          .doc(_docIdResuelto)
+          .set({'abierto': nuevoValor}, SetOptions(merge: true));
+    }
+  }
+
+  Future<void> _confirmarBloqueoTerminal() async {
+    final salir = await showDialog<bool>(
       context: context,
       builder:
           (ctx) => AlertDialog(
@@ -1023,13 +166,14 @@ class _DashboardLocalScreenState extends State<DashboardLocalScreen> {
               children: [
                 Container(
                   padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: Colors.red.shade50,
+                  decoration: const BoxDecoration(
+                    color: Color(0xFFFFEBEE),
                     shape: BoxShape.circle,
                   ),
                   child: const Icon(
                     Icons.lock_outline_rounded,
                     color: Colors.redAccent,
+                    size: 22,
                   ),
                 ),
                 const SizedBox(width: 10),
@@ -1037,8 +181,8 @@ class _DashboardLocalScreenState extends State<DashboardLocalScreen> {
                   child: Text(
                     '¿Bloquear Terminal?',
                     style: GoogleFonts.poppins(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 17,
+                      fontWeight: FontWeight.w800,
+                      fontSize: 16.5,
                       color: colorTextoOscuro,
                     ),
                   ),
@@ -1046,38 +190,30 @@ class _DashboardLocalScreenState extends State<DashboardLocalScreen> {
               ],
             ),
             content: Text(
-              'Saldrás del panel de ${widget.nombreLocal} y necesitarás ingresar el PIN de seguridad nuevamente para ver las comandas.',
+              'Saldrás de la pantalla de cocina de ${widget.nombreLocal}. Tu dispositivo seguirá vinculado para cuando vuelvas a entrar.',
               style: GoogleFonts.poppins(fontSize: 13, color: colorTextoGris),
             ),
             actions: [
               TextButton(
-                onPressed: () => Navigator.pop(ctx),
+                onPressed: () => Navigator.pop(ctx, false),
                 child: Text(
-                  'Seguir en cocina',
+                  'Seguir en Cocina',
                   style: GoogleFonts.poppins(
-                    color: colorVerdeTese,
-                    fontWeight: FontWeight.bold,
+                    fontWeight: FontWeight.w600,
+                    color: colorTextoGris,
                   ),
                 ),
               ),
-              ElevatedButton.icon(
+              ElevatedButton(
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.redAccent,
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(14),
                   ),
                 ),
-                onPressed: () {
-                  Navigator.pop(ctx);
-                  Navigator.pop(context);
-                },
-                icon: const Icon(
-                  Icons.lock_rounded,
-                  color: Colors.white,
-                  size: 16,
-                ),
-                label: Text(
-                  'Bloquear y Salir',
+                onPressed: () => Navigator.pop(ctx, true),
+                child: Text(
+                  'Bloquear',
                   style: GoogleFonts.poppins(
                     color: Colors.white,
                     fontWeight: FontWeight.bold,
@@ -1087,271 +223,176 @@ class _DashboardLocalScreenState extends State<DashboardLocalScreen> {
             ],
           ),
     );
+
+    if (salir == true && mounted) {
+      Navigator.pop(context);
+    }
   }
 
-  Future<void> _avanzarEstadoPedido(
-    String docId,
-    int estadoActual,
-    String codigoOrden,
-  ) async {
-    if (estadoActual >= 3) return;
+  Future<void> _cambiarEstadoPedido(String docId, int nuevoEstado) async {
     HapticFeedback.mediumImpact();
-    final int nuevoEstado = estadoActual + 1;
-
     await FirebaseFirestore.instance.collection('Pedidos').doc(docId).update({
       'estado': nuevoEstado,
+      if (nuevoEstado == 3) 'horaEntrega': FieldValue.serverTimestamp(),
     });
-
-    if (!mounted) return;
-    String textoAviso = 'Orden $codigoOrden pasó a preparación 🍳';
-    if (nuevoEstado == 2) {
-      textoAviso =
-          '¡Orden $codigoOrden marcada como LISTA! Se notificó al alumno 🔔';
-    } else if (nuevoEstado == 3) {
-      textoAviso =
-          'Orden $codigoOrden ENTREGADA. Puntos liberados al estudiante 🪙✅';
-    }
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(textoAviso, style: GoogleFonts.poppins(fontSize: 12.5)),
-        backgroundColor: nuevoEstado == 3 ? colorExito : colorVerdeTese,
-        behavior: SnackBarBehavior.floating,
-        duration: const Duration(seconds: 2),
-      ),
-    );
   }
 
-  void _mostrarModalCancelarPedidoCocina(
+  Future<void> _cancelarPedidoDesdeCocina(
     String docId,
-    Map<String, dynamic> pData,
-  ) {
-    final List<String> motivosRapidos = [
-      'Se agotó un ingrediente principal del platillo 🥖',
-      'Alta saturación en cocina / Tiempo excedido ⏳',
-      'Cierre de turno de la cafetería 🔒',
-      'Problema técnico en equipos de cocina 🔧',
-    ];
-    String motivoSeleccionado = motivosRapidos[0];
-    final TextEditingController notaExtraCtrl = TextEditingController();
-    bool cancelando = false;
+    Map<String, dynamic> data,
+  ) async {
+    final TextEditingController motivoCtrl = TextEditingController(
+      text: 'Sin existencias suficientes en cocina.',
+    );
 
-    showDialog(
+    final confirmar = await showDialog<bool>(
       context: context,
       builder:
-          (ctx) => StatefulBuilder(
-            builder: (contextModal, setStateModal) {
-              return AlertDialog(
-                backgroundColor: Colors.white,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(24),
-                ),
-                title: Row(
-                  children: [
-                    const Icon(
-                      Icons.cancel_rounded,
-                      color: Colors.redAccent,
-                      size: 26,
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        'Cancelar ${pData['idPedido']}',
-                        style: GoogleFonts.poppins(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 17,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                content: SingleChildScrollView(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Selecciona la razón. El sistema devolverá el stock al menú y le abonará +10 pts 🪙 de disculpa al estudiante:',
-                        style: GoogleFonts.poppins(
-                          fontSize: 12,
-                          color: colorTextoGris,
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      ...motivosRapidos.map(
-                        (m) => RadioListTile<String>(
-                          contentPadding: EdgeInsets.zero,
-                          dense: true,
-                          activeColor: Colors.redAccent,
-                          title: Text(
-                            m,
-                            style: GoogleFonts.poppins(fontSize: 12.5),
-                          ),
-                          value: m,
-                          groupValue: motivoSeleccionado,
-                          onChanged:
-                              (val) => setStateModal(
-                                () => motivoSeleccionado = val!,
-                              ),
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      TextField(
-                        controller: notaExtraCtrl,
-                        decoration: InputDecoration(
-                          labelText: 'Detalle adicional (opcional)',
-                          hintText: 'Ej. Se terminó el jamón de pavo',
-                          filled: true,
-                          fillColor: colorFondoCrema,
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            borderSide: BorderSide.none,
-                          ),
-                        ),
-                      ),
-                    ],
+          (ctx) => AlertDialog(
+            backgroundColor: Colors.white,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(22),
+            ),
+            title: Text(
+              'Cancelar Comanda',
+              style: GoogleFonts.poppins(
+                fontWeight: FontWeight.w800,
+                color: Colors.red.shade800,
+              ),
+            ),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Se devolverán las existencias al inventario y se abonarán +10 pts 🪙 de compensación al estudiante.',
+                  style: GoogleFonts.poppins(
+                    fontSize: 12.5,
+                    color: colorTextoGris,
                   ),
                 ),
-                actions: [
-                  TextButton(
-                    onPressed: cancelando ? null : () => Navigator.pop(ctx),
-                    child: Text(
-                      'Volver',
-                      style: GoogleFonts.poppins(color: colorTextoGris),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: motivoCtrl,
+                  maxLines: 2,
+                  decoration: InputDecoration(
+                    labelText: 'Motivo para el estudiante',
+                    filled: true,
+                    fillColor: colorFondoCrema,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(14),
+                      borderSide: BorderSide.none,
                     ),
                   ),
-                  ElevatedButton.icon(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.redAccent,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
-                    onPressed:
-                        cancelando
-                            ? null
-                            : () async {
-                              setStateModal(() => cancelando = true);
-                              final String extra = notaExtraCtrl.text.trim();
-                              final String motivoFinal =
-                                  extra.isNotEmpty
-                                      ? '$motivoSeleccionado ($extra)'
-                                      : motivoSeleccionado;
-
-                              try {
-                                await FirebaseFirestore.instance
-                                    .collection('Pedidos')
-                                    .doc(docId)
-                                    .update({
-                                      'estado': 4,
-                                      'canceladoPor':
-                                          'Cafetería (${widget.nombreLocal})',
-                                      'motivoCancelacion': motivoFinal,
-                                      'compensacionPts': 10,
-                                    });
-
-                                final List<dynamic> ids =
-                                    pData['platillosIds'] ?? [];
-                                final Map<String, dynamic> cantidadesMap =
-                                    (pData['cantidadesPorPlatillo']
-                                        as Map<String, dynamic>?) ??
-                                    {};
-
-                                for (var idPlatillo in ids) {
-                                  final String pid = idPlatillo.toString();
-                                  final int cantDevuelta =
-                                      (cantidadesMap[pid] ?? 1) as int;
-                                  await FirebaseFirestore.instance
-                                      .collection('Menu_Platillos')
-                                      .doc(pid)
-                                      .update({
-                                        'existencias': FieldValue.increment(
-                                          cantDevuelta,
-                                        ),
-                                      })
-                                      .catchError((_) {});
-                                }
-
-                                final String idAl =
-                                    (pData['idAlumno'] ?? '').toString();
-                                if (idAl.isNotEmpty && idAl != 'anonimo') {
-                                  await FirebaseFirestore.instance
-                                      .collection('Usuarios')
-                                      .doc(idAl)
-                                      .set({
-                                        'puntosCompensacion':
-                                            FieldValue.increment(10),
-                                      }, SetOptions(merge: true));
-                                }
-
-                                if (!ctx.mounted) return;
-                                Navigator.pop(ctx);
-                                if (!mounted) return;
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                    content: Text(
-                                      'Pedido ${pData['idPedido']} cancelado. Stock devuelto y +10 pts abonados al alumno.',
-                                      style: GoogleFonts.poppins(
-                                        fontSize: 12.5,
-                                      ),
-                                    ),
-                                    backgroundColor: Colors.redAccent,
-                                  ),
-                                );
-                              } catch (_) {
-                                setStateModal(() => cancelando = false);
-                              }
-                            },
-                    icon: const Icon(
-                      Icons.cancel_outlined,
-                      color: Colors.white,
-                      size: 18,
-                    ),
-                    label: Text(
-                      'Confirmar Cancelación',
-                      style: GoogleFonts.poppins(
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
+                ),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx, false),
+                child: Text('Volver', style: GoogleFonts.poppins()),
+              ),
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.redAccent,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
                   ),
-                ],
-              );
-            },
+                ),
+                onPressed: () => Navigator.pop(ctx, true),
+                child: Text(
+                  'Confirmar Cancelación',
+                  style: GoogleFonts.poppins(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ],
           ),
     );
+
+    if (confirmar != true) return;
+    HapticFeedback.heavyImpact();
+
+    await FirebaseFirestore.instance.collection('Pedidos').doc(docId).update({
+      'estado': 4,
+      'canceladoPor': widget.nombreLocal,
+      'motivoCancelacion':
+          motivoCtrl.text.trim().isEmpty
+              ? 'Sin existencias suficientes.'
+              : motivoCtrl.text.trim(),
+      'compensacionPts': 10,
+    });
+
+    // Devolver stock atómicamente
+    final List<dynamic> ids = data['platillosIds'] ?? [];
+    final Map<String, dynamic> cantidadesMap =
+        (data['cantidadesPorPlatillo'] as Map<String, dynamic>?) ?? {};
+    for (final idPlatillo in ids) {
+      final String pid = idPlatillo.toString();
+      final int cant = (cantidadesMap[pid] ?? 1) as int;
+      await FirebaseFirestore.instance
+          .collection('Menu_Platillos')
+          .doc(pid)
+          .update({'existencias': FieldValue.increment(cant)})
+          .catchError((_) {});
+    }
+
+    // Abonar +10 pts al alumno
+    final String idAlumno = (data['idAlumno'] ?? '').toString();
+    if (idAlumno.isNotEmpty && idAlumno != 'anonimo') {
+      await FirebaseFirestore.instance
+          .collection('Usuarios')
+          .doc(idAlumno)
+          .set({
+            'puntosCompensacion': FieldValue.increment(10),
+          }, SetOptions(merge: true))
+          .catchError((_) {});
+    }
   }
 
-  // 📋 FICHA COMPLETA DE DESPACHO (SIN OVERFLOW Y CON DATOS DEL ESTUDIANTE)
-  void _mostrarDetallePedido(String docId, Map<String, dynamic> p) {
-    final int estado = p['estado'] ?? 0;
-    final String codigo = p['idPedido'] ?? '#TESE-0000';
-    final String alumno = p['alumno'] ?? 'Estudiante';
-    final String idAlumno = (p['idAlumno'] ?? '').toString();
-    final String detalle = (p['detalle'] ?? '').toString();
-    final List<String> lineasPlatillos =
-        detalle.split('\n').where((l) => l.trim().isNotEmpty).toList();
-    final String notas = (p['notas'] ?? 'Sin notas adicionales').toString();
-    final String pago = (p['metodoPago'] ?? 'Efectivo').toString();
-    final bool esEfectivo = pago.toLowerCase().contains('efectivo');
-    final double total = (p['total'] ?? 0.0).toDouble();
-    final int puntos = (p['puntosGanados'] ?? 10) as int;
-    final int totalPiezas = _calcularTotalPiezas(p);
-    final String textoHora = _formatearHoraYTiempoEspera(
-      p['horaLlegada'] as Timestamp?,
-    );
+  // Modal de detalle de comanda (sirve tanto para KDS como para Ticket del Historial)
+  void _abrirDetalleComanda(
+    String docId,
+    Map<String, dynamic> data, {
+    bool soloLectura = false,
+  }) {
+    final String codigo = (data['idPedido'] ?? '#TESE').toString();
+    final String alumno = (data['alumno'] ?? 'Estudiante TESE').toString();
+    final String idAlumno = (data['idAlumno'] ?? '').toString();
+    final String detalle = (data['detalle'] ?? '').toString();
+    final String notas = (data['notas'] ?? 'Sin notas adicionales').toString();
+    final String metodoPago = (data['metodoPago'] ?? 'Efectivo').toString();
+    final double total = (data['total'] ?? 0).toDouble();
+    final int estado = (data['estado'] ?? 0) as int;
+    final Timestamp? horaLlegada = data['horaLlegada'] as Timestamp?;
+    final String motivoCancelacion =
+        (data['motivoCancelacion'] ?? '').toString();
+
+    final List<String> lineas =
+        detalle
+            .split('\n')
+            .map((e) => e.trim())
+            .where((e) => e.isNotEmpty)
+            .toList();
 
     showModalBottomSheet(
       context: context,
-      backgroundColor: Colors.white,
       isScrollControlled: true,
+      backgroundColor: Colors.white,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
       ),
       builder:
-          (ctx) => SafeArea(
+          (ctx) => Padding(
+            padding: EdgeInsets.only(
+              left: 20,
+              right: 20,
+              top: 14,
+              bottom: MediaQuery.of(ctx).viewInsets.bottom + 22,
+            ),
             child: SingleChildScrollView(
-              padding: const EdgeInsets.fromLTRB(22, 14, 22, 22),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -1359,7 +400,7 @@ class _DashboardLocalScreenState extends State<DashboardLocalScreen> {
                   Center(
                     child: Container(
                       width: 44,
-                      height: 4,
+                      height: 5,
                       decoration: BoxDecoration(
                         color: Colors.grey.shade300,
                         borderRadius: BorderRadius.circular(10),
@@ -1367,14 +408,22 @@ class _DashboardLocalScreenState extends State<DashboardLocalScreen> {
                     ),
                   ),
                   const SizedBox(height: 14),
-                  // Encabezado Folio + Estado
                   Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
+                            Text(
+                              soloLectura
+                                  ? 'Ticket de Transacción'
+                                  : 'Ficha de Despacho',
+                              style: GoogleFonts.poppins(
+                                fontSize: 11.5,
+                                fontWeight: FontWeight.w700,
+                                color: colorTextoGris,
+                              ),
+                            ),
                             Text(
                               codigo,
                               style: GoogleFonts.poppins(
@@ -1383,57 +432,52 @@ class _DashboardLocalScreenState extends State<DashboardLocalScreen> {
                                 color: colorVerdeTese,
                               ),
                             ),
-                            Row(
-                              children: [
-                                const Icon(
-                                  Icons.access_time_rounded,
-                                  size: 14,
-                                  color: colorTextoGris,
-                                ),
-                                const SizedBox(width: 4),
-                                Flexible(
-                                  child: Text(
-                                    '$textoHora  •  ${widget.nombreLocal}',
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: GoogleFonts.poppins(
-                                      fontSize: 11.5,
-                                      fontWeight: FontWeight.w600,
-                                      color: colorTextoGris,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
                           ],
                         ),
                       ),
-                      _BadgeEstadoCocina(estado: estado),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 6,
+                        ),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFE8F5E9),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Text(
+                          _formatearFechaHora(horaLlegada),
+                          style: GoogleFonts.poppins(
+                            fontSize: 11.5,
+                            fontWeight: FontWeight.w800,
+                            color: colorVerdeTese,
+                          ),
+                        ),
+                      ),
                     ],
                   ),
-                  const SizedBox(height: 14),
+                  const SizedBox(height: 12),
 
-                  // Tarjeta de Identificación del Cliente (Consulta Matrícula y Carrera en vivo)
+                  // Credencial del estudiante (consulta Matrícula y Carrera en vivo)
                   FutureBuilder<DocumentSnapshot>(
                     future:
-                        idAlumno.isNotEmpty && idAlumno != 'anonimo'
+                        idAlumno.isNotEmpty
                             ? FirebaseFirestore.instance
                                 .collection('Usuarios')
                                 .doc(idAlumno)
                                 .get()
                             : null,
-                    builder: (context, userSnap) {
-                      String matricula = 'Verificada en campus';
-                      String carrera = 'Comunidad TESE';
-                      String rol = 'Estudiante';
-                      if (userSnap.hasData &&
-                          userSnap.data != null &&
-                          userSnap.data!.exists) {
-                        final u = userSnap.data!.data() as Map<String, dynamic>;
+                    builder: (_, snapAlumno) {
+                      String matricula = 'Sin matrícula';
+                      String carrera = 'Estudiante TESE';
+                      if (snapAlumno.hasData &&
+                          snapAlumno.data != null &&
+                          snapAlumno.data!.exists) {
+                        final u =
+                            snapAlumno.data!.data() as Map<String, dynamic>;
                         matricula =
-                            (u['identificador'] ?? matricula).toString();
-                        carrera = (u['carrera_area'] ?? carrera).toString();
-                        rol = (u['rol'] ?? rol).toString();
+                            (u['identificador'] ?? 'Sin matrícula').toString();
+                        carrera =
+                            (u['carrera_area'] ?? 'Estudiante TESE').toString();
                       }
 
                       return Container(
@@ -1448,16 +492,11 @@ class _DashboardLocalScreenState extends State<DashboardLocalScreen> {
                         ),
                         child: Row(
                           children: [
-                            Container(
-                              padding: const EdgeInsets.all(10),
-                              decoration: const BoxDecoration(
+                            const CircleAvatar(
+                              backgroundColor: colorVerdeTese,
+                              child: Icon(
+                                Icons.person_rounded,
                                 color: Colors.white,
-                                shape: BoxShape.circle,
-                              ),
-                              child: const Icon(
-                                Icons.badge_rounded,
-                                color: colorVerdeTese,
-                                size: 22,
                               ),
                             ),
                             const SizedBox(width: 12),
@@ -1468,26 +507,17 @@ class _DashboardLocalScreenState extends State<DashboardLocalScreen> {
                                   Text(
                                     alumno,
                                     style: GoogleFonts.poppins(
-                                      fontSize: 14.5,
-                                      fontWeight: FontWeight.w900,
+                                      fontWeight: FontWeight.w800,
+                                      fontSize: 14,
                                       color: colorTextoOscuro,
                                     ),
                                   ),
                                   Text(
-                                    '$rol • Matrícula: $matricula',
+                                    '$matricula • $carrera',
                                     style: GoogleFonts.poppins(
                                       fontSize: 11.5,
-                                      fontWeight: FontWeight.w700,
-                                      color: colorVerdeTese,
-                                    ),
-                                  ),
-                                  Text(
-                                    carrera,
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: GoogleFonts.poppins(
-                                      fontSize: 11,
-                                      color: colorTextoGris,
+                                      fontWeight: FontWeight.w600,
+                                      color: colorVerdeOscuro,
                                     ),
                                   ),
                                 ],
@@ -1500,83 +530,36 @@ class _DashboardLocalScreenState extends State<DashboardLocalScreen> {
                   ),
                   const SizedBox(height: 14),
 
-                  // Cabecera de platillos y conteo de piezas
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        'Desglose para preparar:',
-                        style: GoogleFonts.poppins(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w800,
-                          color: colorTextoOscuro,
-                        ),
-                      ),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 10,
-                          vertical: 3,
-                        ),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFFFF6D6),
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: Text(
-                          '$totalPiezas ${totalPiezas == 1 ? 'artículo' : 'artículos'} en total',
-                          style: GoogleFonts.poppins(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w800,
-                            color: const Color(0xFFB45309),
-                          ),
-                        ),
-                      ),
-                    ],
+                  Text(
+                    'Platillos (${lineas.length}):',
+                    style: GoogleFonts.poppins(
+                      fontWeight: FontWeight.w800,
+                      fontSize: 13.5,
+                      color: colorTextoOscuro,
+                    ),
                   ),
                   const SizedBox(height: 8),
-
-                  // Lista individual de cada platillo y su personalización
-                  ...lineasPlatillos.map((linea) {
+                  ...lineas.map((linea) {
                     return Container(
                       width: double.infinity,
                       margin: const EdgeInsets.only(bottom: 8),
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 14,
-                        vertical: 11,
-                      ),
+                      padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
                         color: colorFondoCrema,
-                        borderRadius: BorderRadius.circular(16),
+                        borderRadius: BorderRadius.circular(14),
                         border: Border.all(color: Colors.grey.shade200),
                       ),
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Padding(
-                            padding: EdgeInsets.only(top: 2),
-                            child: Icon(
-                              Icons.restaurant_menu_rounded,
-                              size: 17,
-                              color: colorVerdeTese,
-                            ),
-                          ),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: Text(
-                              linea,
-                              style: GoogleFonts.poppins(
-                                fontSize: 13.5,
-                                fontWeight: FontWeight.w700,
-                                color: colorTextoOscuro,
-                                height: 1.35,
-                              ),
-                            ),
-                          ),
-                        ],
+                      child: Text(
+                        linea,
+                        style: GoogleFonts.poppins(
+                          fontSize: 13.5,
+                          fontWeight: FontWeight.w700,
+                          color: colorTextoOscuro,
+                        ),
                       ),
                     );
                   }),
 
-                  // Notas o alertas médicas de alergia
                   if (notas.isNotEmpty && notas != 'Sin notas adicionales') ...[
                     const SizedBox(height: 6),
                     Container(
@@ -1584,79 +567,64 @@ class _DashboardLocalScreenState extends State<DashboardLocalScreen> {
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
                         color: const Color(0xFFFFF8E1),
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(
-                          color: Colors.amber.shade400,
-                          width: 1.4,
-                        ),
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(color: const Color(0xFFFFD54F)),
                       ),
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Icon(
-                            Icons.warning_amber_rounded,
-                            color: Colors.orange,
-                            size: 20,
-                          ),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: Text(
-                              'Atención en cocina: $notas',
-                              style: GoogleFonts.poppins(
-                                fontSize: 12.5,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.brown.shade900,
-                              ),
-                            ),
-                          ),
-                        ],
+                      child: Text(
+                        '📝 Notas / Alergias: $notas',
+                        style: GoogleFonts.poppins(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                          color: Colors.brown.shade900,
+                        ),
                       ),
                     ),
                   ],
-                  const SizedBox(height: 14),
 
-                  // Tarjeta de Cobro en Ventanilla (100% libre de RIGHT OVERFLOW)
+                  if (estado == 4 && motivoCancelacion.isNotEmpty) ...[
+                    const SizedBox(height: 8),
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFFFEBEE),
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                      child: Text(
+                        '❌ Motivo de cancelación: $motivoCancelacion',
+                        style: GoogleFonts.poppins(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                          color: Colors.red.shade900,
+                        ),
+                      ),
+                    ),
+                  ],
+
+                  const SizedBox(height: 14),
+                  // Fila de cobro sin desbordamiento (Expanded + píldora fija)
                   Container(
-                    width: double.infinity,
                     padding: const EdgeInsets.all(14),
                     decoration: BoxDecoration(
-                      color: colorFondoCrema,
-                      borderRadius: BorderRadius.circular(18),
+                      color: Colors.grey.shade50,
+                      borderRadius: BorderRadius.circular(16),
                       border: Border.all(color: Colors.grey.shade200),
                     ),
                     child: Row(
                       children: [
-                        Container(
-                          padding: const EdgeInsets.all(9),
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Icon(
-                            esEfectivo
-                                ? Icons.payments_outlined
-                                : Icons.credit_card_rounded,
-                            color: colorVerdeTese,
-                            size: 22,
-                          ),
-                        ),
-                        const SizedBox(width: 10),
                         Expanded(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                'Cobro al entregar en ventanilla',
+                                'Método de pago:',
                                 style: GoogleFonts.poppins(
-                                  fontSize: 10.5,
+                                  fontSize: 11,
                                   color: colorTextoGris,
-                                  fontWeight: FontWeight.w600,
                                 ),
                               ),
                               Text(
-                                esEfectivo
-                                    ? 'Efectivo en ventanilla 💵'
-                                    : 'Terminal Bancaria / Tarjeta 💳',
+                                metodoPago,
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                                 style: GoogleFonts.poppins(
@@ -1665,122 +633,317 @@ class _DashboardLocalScreenState extends State<DashboardLocalScreen> {
                                   color: colorTextoOscuro,
                                 ),
                               ),
-                              Text(
-                                'Libera +$puntos pts al entregarse',
-                                style: GoogleFonts.poppins(
-                                  fontSize: 10.5,
-                                  fontWeight: FontWeight.bold,
-                                  color: const Color(0xFFB45309),
-                                ),
-                              ),
                             ],
                           ),
                         ),
-                        const SizedBox(width: 8),
+                        const SizedBox(width: 10),
                         Container(
                           padding: const EdgeInsets.symmetric(
-                            horizontal: 12,
+                            horizontal: 14,
                             vertical: 8,
                           ),
                           decoration: BoxDecoration(
-                            color: const Color(0xFFE8F5E9),
-                            borderRadius: BorderRadius.circular(14),
+                            color: colorVerdeTese,
+                            borderRadius: BorderRadius.circular(12),
                           ),
                           child: Text(
                             '\$${total.toStringAsFixed(0)} MXN',
                             style: GoogleFonts.poppins(
-                              fontSize: 17,
+                              color: Colors.white,
                               fontWeight: FontWeight.w900,
-                              color: colorVerdeTese,
+                              fontSize: 15,
                             ),
                           ),
                         ),
                       ],
                     ),
                   ),
-                  const SizedBox(height: 18),
 
-                  // Botones de acción amplios sin partir "Cancelar"
-                  if (estado < 3)
+                  if (!soloLectura && estado < 3) ...[
+                    const SizedBox(height: 16),
                     Row(
                       children: [
-                        OutlinedButton.icon(
-                          style: OutlinedButton.styleFrom(
-                            foregroundColor: Colors.redAccent,
-                            side: const BorderSide(
-                              color: Colors.redAccent,
-                              width: 1.5,
-                            ),
-                            minimumSize: const Size(118, 52),
-                            padding: const EdgeInsets.symmetric(horizontal: 14),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(16),
-                            ),
-                          ),
-                          onPressed: () {
-                            Navigator.pop(ctx);
-                            _mostrarModalCancelarPedidoCocina(docId, p);
-                          },
-                          icon: const Icon(Icons.cancel_outlined, size: 18),
-                          label: Text(
-                            'Cancelar',
-                            maxLines: 1,
-                            style: GoogleFonts.poppins(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 13,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: ElevatedButton.icon(
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor:
-                                  estado == 0
-                                      ? Colors.orange.shade800
-                                      : (estado == 1
-                                          ? colorExito
-                                          : colorVerdeTese),
-                              minimumSize: const Size(0, 52),
+                        if (estado < 2) ...[
+                          OutlinedButton(
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: Colors.redAccent,
+                              side: const BorderSide(
+                                color: Colors.redAccent,
+                                width: 1.4,
+                              ),
+                              minimumSize: const Size(105, 48),
                               shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(16),
+                                borderRadius: BorderRadius.circular(14),
                               ),
                             ),
                             onPressed: () {
                               Navigator.pop(ctx);
-                              _avanzarEstadoPedido(docId, estado, codigo);
+                              _cancelarPedidoDesdeCocina(docId, data);
                             },
-                            icon: Icon(
-                              estado == 0
-                                  ? Icons.soup_kitchen_outlined
-                                  : (estado == 1
-                                      ? Icons.notifications_active_outlined
-                                      : Icons.check_circle_outline),
-                              color: Colors.white,
-                              size: 19,
-                            ),
-                            label: Text(
-                              estado == 0
-                                  ? 'Aceptar y Cocinar'
-                                  : (estado == 1
-                                      ? '¡Marcar LISTO!'
-                                      : 'Entregar Orden'),
+                            child: Text(
+                              'Cancelar',
                               maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
                               style: GoogleFonts.poppins(
-                                color: Colors.white,
                                 fontWeight: FontWeight.bold,
-                                fontSize: 13.5,
+                                fontSize: 13,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                        ],
+                        Expanded(
+                          child: SizedBox(
+                            height: 48,
+                            child: ElevatedButton.icon(
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor:
+                                    estado == 0
+                                        ? const Color(0xFFEA580C)
+                                        : (estado == 1
+                                            ? colorExito
+                                            : colorVerdeTese),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(14),
+                                ),
+                              ),
+                              onPressed: () {
+                                Navigator.pop(ctx);
+                                _cambiarEstadoPedido(docId, estado + 1);
+                              },
+                              icon: Icon(
+                                estado == 0
+                                    ? Icons.soup_kitchen_rounded
+                                    : (estado == 1
+                                        ? Icons.notifications_active_rounded
+                                        : Icons.check_circle_rounded),
+                                color: Colors.white,
+                                size: 19,
+                              ),
+                              label: Text(
+                                estado == 0
+                                    ? 'Aceptar y Cocinar'
+                                    : (estado == 1
+                                        ? '¡Marcar Listo!'
+                                        : 'Entregar Pedido'),
+                                style: GoogleFonts.poppins(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 13.5,
+                                ),
                               ),
                             ),
                           ),
                         ),
                       ],
                     ),
+                  ],
                 ],
               ),
             ),
           ),
+    );
+  }
+
+  void _abrirModalNuevoPlatillo() {
+    final nombreCtrl = TextEditingController();
+    final descCtrl = TextEditingController();
+    final precioCtrl = TextEditingController();
+    final stockCtrl = TextEditingController(text: '20');
+    final ingCtrl = TextEditingController();
+    String categoria = 'Comida';
+    String fotoBase64 = '';
+    bool guardando = false;
+    final ImagePicker picker = ImagePicker();
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+      ),
+      builder:
+          (ctx) => StatefulBuilder(
+            builder: (contextModal, setStateModal) {
+              return Padding(
+                padding: EdgeInsets.only(
+                  left: 20,
+                  right: 20,
+                  top: 16,
+                  bottom: MediaQuery.of(contextModal).viewInsets.bottom + 22,
+                ),
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Agregar Platillo a ${widget.nombreLocal} 🍽️',
+                        style: GoogleFonts.poppins(
+                          fontSize: 17,
+                          fontWeight: FontWeight.w900,
+                          color: colorVerdeTese,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      TextField(
+                        controller: nombreCtrl,
+                        decoration: _decoracionCampo('Nombre del platillo'),
+                      ),
+                      const SizedBox(height: 10),
+                      TextField(
+                        controller: descCtrl,
+                        maxLines: 2,
+                        decoration: _decoracionCampo('Descripción breve'),
+                      ),
+                      const SizedBox(height: 10),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: TextField(
+                              controller: precioCtrl,
+                              keyboardType: TextInputType.number,
+                              decoration: _decoracionCampo('Precio MXN'),
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: TextField(
+                              controller: stockCtrl,
+                              keyboardType: TextInputType.number,
+                              decoration: _decoracionCampo('Existencias'),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 10),
+                      DropdownButtonFormField<String>(
+                        value: categoria,
+                        decoration: _decoracionCampo('Categoría'),
+                        items:
+                            ['Desayunos', 'Comida', 'Bebidas', 'Postres']
+                                .map(
+                                  (c) => DropdownMenuItem(
+                                    value: c,
+                                    child: Text(c),
+                                  ),
+                                )
+                                .toList(),
+                        onChanged: (v) {
+                          if (v != null) setStateModal(() => categoria = v);
+                        },
+                      ),
+                      const SizedBox(height: 10),
+                      TextField(
+                        controller: ingCtrl,
+                        decoration: _decoracionCampo(
+                          'Ingredientes personalizables (separados por coma)',
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      OutlinedButton.icon(
+                        onPressed: () async {
+                          final img = await picker.pickImage(
+                            source: ImageSource.gallery,
+                            maxWidth: 600,
+                            imageQuality: 55,
+                          );
+                          if (img != null) {
+                            final bytes = await img.readAsBytes();
+                            setStateModal(
+                              () => fotoBase64 = base64Encode(bytes),
+                            );
+                          }
+                        },
+                        icon: const Icon(Icons.photo_camera_outlined, size: 18),
+                        label: Text(
+                          fotoBase64.isEmpty
+                              ? 'Subir fotografía del platillo'
+                              : 'Fotografía lista ✓',
+                          style: GoogleFonts.poppins(fontSize: 12.5),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      SizedBox(
+                        width: double.infinity,
+                        height: 48,
+                        child: ElevatedButton(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: colorVerdeTese,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(14),
+                            ),
+                          ),
+                          onPressed:
+                              guardando
+                                  ? null
+                                  : () async {
+                                    if (nombreCtrl.text.trim().isEmpty ||
+                                        precioCtrl.text.trim().isEmpty) {
+                                      return;
+                                    }
+                                    setStateModal(() => guardando = true);
+                                    final double precio =
+                                        double.tryParse(
+                                          precioCtrl.text.trim(),
+                                        ) ??
+                                        0;
+                                    final int stock =
+                                        int.tryParse(stockCtrl.text.trim()) ??
+                                        10;
+                                    final List<String> ingredientes =
+                                        ingCtrl.text
+                                            .split(',')
+                                            .map((e) => e.trim())
+                                            .where((e) => e.isNotEmpty)
+                                            .toList();
+
+                                    await FirebaseFirestore.instance
+                                        .collection('Menu_Platillos')
+                                        .add({
+                                          'nombre': nombreCtrl.text.trim(),
+                                          'descripcion': descCtrl.text.trim(),
+                                          'precio': precio,
+                                          'existencias': stock,
+                                          'categoria': categoria,
+                                          'local': widget.nombreLocal,
+                                          'puntos': (precio / 5).round().clamp(
+                                            5,
+                                            50,
+                                          ),
+                                          'ingredientes': ingredientes,
+                                          'imagenBase64': fotoBase64,
+                                        });
+                                    if (ctx.mounted) Navigator.pop(ctx);
+                                  },
+                          child: Text(
+                            guardando ? 'Guardando...' : 'Publicar Platillo',
+                            style: GoogleFonts.poppins(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            },
+          ),
+    );
+  }
+
+  InputDecoration _decoracionCampo(String label) {
+    return InputDecoration(
+      labelText: label,
+      labelStyle: GoogleFonts.poppins(fontSize: 12.5),
+      filled: true,
+      fillColor: colorFondoCrema,
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(14),
+        borderSide: BorderSide.none,
+      ),
     );
   }
 
@@ -1789,226 +952,164 @@ class _DashboardLocalScreenState extends State<DashboardLocalScreen> {
     return PopScope(
       canPop: false,
       onPopInvokedWithResult: (didPop, _) {
-        if (!didPop) {
-          _confirmarBloquearTerminal();
-        }
+        if (!didPop) _confirmarBloqueoTerminal();
       },
       child: Scaffold(
         backgroundColor: colorFondoCrema,
-        appBar: AppBar(
-          backgroundColor: Colors.white,
-          elevation: 0,
-          automaticallyImplyLeading: false,
-          title: Row(
+        body: SafeArea(
+          child: Column(
             children: [
+              // ENCABEZADO KDS
               Container(
-                padding: const EdgeInsets.all(8),
+                margin: const EdgeInsets.fromLTRB(16, 10, 16, 10),
+                padding: const EdgeInsets.all(14),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFE8F5E9),
-                  borderRadius: BorderRadius.circular(12),
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(22),
+                  boxShadow: [
+                    BoxShadow(
+                      color: colorVerdeTese.withValues(alpha: 0.08),
+                      blurRadius: 14,
+                      offset: const Offset(0, 5),
+                    ),
+                  ],
                 ),
-                child: const Icon(
-                  Icons.storefront_rounded,
-                  color: colorVerdeTese,
-                  size: 20,
-                ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                child: Row(
                   children: [
-                    Text(
-                      widget.nombreLocal,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: GoogleFonts.poppins(
-                        color: colorTextoOscuro,
-                        fontWeight: FontWeight.w900,
-                        fontSize: 15.5,
+                    Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFE8F5E9),
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                      child: const Icon(
+                        Icons.storefront_rounded,
+                        color: colorVerdeTese,
+                        size: 24,
                       ),
                     ),
-                    Text(
-                      'Terminal ${widget.codigoSucursal}',
-                      style: GoogleFonts.poppins(
-                        color: colorVerdeTese,
-                        fontWeight: FontWeight.w600,
-                        fontSize: 10.5,
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            widget.nombreLocal,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: GoogleFonts.poppins(
+                              fontWeight: FontWeight.w900,
+                              fontSize: 16,
+                              color: colorTextoOscuro,
+                            ),
+                          ),
+                          Row(
+                            children: [
+                              Container(
+                                width: 8,
+                                height: 8,
+                                decoration: BoxDecoration(
+                                  color:
+                                      _localAbierto
+                                          ? colorExito
+                                          : Colors.redAccent,
+                                  shape: BoxShape.circle,
+                                ),
+                              ),
+                              const SizedBox(width: 6),
+                              Text(
+                                _localAbierto
+                                    ? 'Recibiendo pedidos'
+                                    : 'Cerrado temporalmente',
+                                style: GoogleFonts.poppins(
+                                  fontSize: 11.5,
+                                  fontWeight: FontWeight.w600,
+                                  color:
+                                      _localAbierto
+                                          ? colorExito
+                                          : Colors.redAccent,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                    Switch(
+                      value: _localAbierto,
+                      activeColor: colorVerdeTese,
+                      onChanged: _alternarEstadoLocal,
+                    ),
+                    IconButton(
+                      tooltip: 'Bloquear Terminal',
+                      onPressed: _confirmarBloqueoTerminal,
+                      icon: const Icon(
+                        Icons.lock_outline_rounded,
+                        color: Colors.redAccent,
                       ),
                     ),
                   ],
                 ),
               ),
+
+              // PESTAÑAS
+              Container(
+                margin: const EdgeInsets.symmetric(horizontal: 16),
+                padding: const EdgeInsets.all(4),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(18),
+                ),
+                child: TabBar(
+                  controller: _tabController,
+                  isScrollable: true,
+                  tabAlignment: TabAlignment.start,
+                  dividerColor: Colors.transparent,
+                  indicatorSize: TabBarIndicatorSize.tab,
+                  indicator: BoxDecoration(
+                    color: const Color(0xFFE8F5E9),
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(
+                      color: colorVerdeTese.withValues(alpha: 0.3),
+                    ),
+                  ),
+                  labelColor: colorVerdeTese,
+                  unselectedLabelColor: colorTextoGris,
+                  labelStyle: GoogleFonts.poppins(
+                    fontWeight: FontWeight.w800,
+                    fontSize: 12,
+                  ),
+                  tabs: const [
+                    Tab(text: '🍳 Comandas'),
+                    Tab(text: '💰 Historial / Corte'),
+                    Tab(text: '🍔 Menú'),
+                    Tab(text: '⭐ Opiniones'),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 10),
+
+              Expanded(
+                child: TabBarView(
+                  controller: _tabController,
+                  children: [
+                    _construirTabComandas(),
+                    _construirTabHistorialInteractivo(),
+                    _construirTabMenu(),
+                    _construirTabOpiniones(),
+                  ],
+                ),
+              ),
             ],
           ),
-          actions: [
-            StreamBuilder<DocumentSnapshot>(
-              stream:
-                  FirebaseFirestore.instance
-                      .collection('Locales_Seguridad')
-                      .doc(widget.codigoSucursal)
-                      .snapshots(),
-              builder: (context, snapLocal) {
-                bool estaAbierto = true;
-                if (snapLocal.hasData && snapLocal.data!.exists) {
-                  final d = snapLocal.data!.data() as Map<String, dynamic>;
-                  estaAbierto = d['abierto'] ?? true;
-                }
-                return GestureDetector(
-                  onTap: () {
-                    HapticFeedback.mediumImpact();
-                    FirebaseFirestore.instance
-                        .collection('Locales_Seguridad')
-                        .doc(widget.codigoSucursal)
-                        .set({
-                          'nombre': widget.nombreLocal,
-                          'abierto': !estaAbierto,
-                        }, SetOptions(merge: true));
-                  },
-                  child: Container(
-                    margin: const EdgeInsets.symmetric(
-                      vertical: 10,
-                      horizontal: 4,
-                    ),
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 10,
-                      vertical: 4,
-                    ),
-                    decoration: BoxDecoration(
-                      color:
-                          estaAbierto
-                              ? const Color(0xFFE8F5E9)
-                              : const Color(0xFFFFEBEE),
-                      borderRadius: BorderRadius.circular(20),
-                      border: Border.all(
-                        color: estaAbierto ? colorExito : Colors.redAccent,
-                        width: 1.4,
-                      ),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          Icons.circle,
-                          color: estaAbierto ? colorExito : Colors.redAccent,
-                          size: 9,
-                        ),
-                        const SizedBox(width: 5),
-                        Text(
-                          estaAbierto ? 'Abierto' : 'Cerrado',
-                          style: GoogleFonts.poppins(
-                            color:
-                                estaAbierto ? colorVerdeTese : Colors.redAccent,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 11,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                );
-              },
-            ),
-            IconButton(
-              tooltip: 'Guía de Cocina',
-              icon: const Icon(
-                Icons.help_outline_rounded,
-                color: colorVerdeTese,
-              ),
-              onPressed: () {
-                HapticFeedback.selectionClick();
-                mostrarTutorialCocina(context, widget.nombreLocal);
-              },
-            ),
-            Padding(
-              padding: const EdgeInsets.only(right: 6),
-              child: IconButton(
-                tooltip: 'Bloquear Terminal',
-                style: IconButton.styleFrom(
-                  backgroundColor: const Color(0xFFFFF0F0),
-                ),
-                icon: const Icon(
-                  Icons.lock_outline_rounded,
-                  color: Colors.redAccent,
-                  size: 20,
-                ),
-                onPressed: _confirmarBloquearTerminal,
-              ),
-            ),
-          ],
         ),
-        body: IndexedStack(
-          index: _indicePestana,
-          children: [
-            _construirTabComandas(),
-            _construirTabMenu(),
-            _construirTabHistorial(),
-            _construirTabResenas(),
-          ],
-        ),
-        bottomNavigationBar: BottomNavigationBar(
-          currentIndex: _indicePestana,
-          selectedItemColor: colorVerdeTese,
-          unselectedItemColor: colorTextoGris,
-          backgroundColor: Colors.white,
-          type: BottomNavigationBarType.fixed,
-          selectedLabelStyle: GoogleFonts.poppins(
-            fontWeight: FontWeight.bold,
-            fontSize: 11,
-          ),
-          unselectedLabelStyle: GoogleFonts.poppins(fontSize: 10.5),
-          onTap: (idx) {
-            HapticFeedback.selectionClick();
-            setState(() => _indicePestana = idx);
-          },
-          items: const [
-            BottomNavigationBarItem(
-              icon: Icon(Icons.receipt_long_rounded),
-              label: 'Comandas',
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.restaurant_menu_rounded),
-              label: 'Mi Menú',
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.history_edu_rounded),
-              label: 'Historial',
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.reviews_outlined),
-              label: 'Opiniones',
-            ),
-          ],
-        ),
-        floatingActionButton:
-            _indicePestana == 1
-                ? FloatingActionButton.extended(
-                  backgroundColor: colorAmarilloTese,
-                  icon: const Icon(Icons.add_rounded, color: colorVerdeOscuro),
-                  label: Text(
-                    'Nuevo Platillo',
-                    style: GoogleFonts.poppins(
-                      color: colorVerdeOscuro,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder:
-                            (_) => AgregarPlatilloScreen(
-                              localAsignado: widget.nombreLocal,
-                            ),
-                      ),
-                    );
-                  },
-                )
-                : null,
       ),
     );
   }
 
+  // =========================================================================
+  // PESTAÑA 1: COMANDAS ACTIVAS (KDS)
+  // =========================================================================
   Widget _construirTabComandas() {
     return StreamBuilder<QuerySnapshot>(
       stream:
@@ -2023,456 +1124,253 @@ class _DashboardLocalScreenState extends State<DashboardLocalScreen> {
           );
         }
 
-        final docs = snapshot.data?.docs ?? [];
-        final List<QueryDocumentSnapshot> pedidosActivos = [];
-        int contNuevos = 0;
-        int contCocinando = 0;
-        int contListos = 0;
+        final docs =
+            (snapshot.data?.docs ?? []).where((d) {
+              final data = d.data() as Map<String, dynamic>;
+              final int est = (data['estado'] ?? 0) as int;
+              return est >= 0 && est <= 2;
+            }).toList();
 
-        for (var doc in docs) {
-          final data = doc.data() as Map<String, dynamic>;
-          final int est = data['estado'] ?? 0;
-          if (est == 0) contNuevos++;
-          if (est == 1) contCocinando++;
-          if (est == 2) contListos++;
-          if (est < 3) {
-            final String codigo =
-                (data['idPedido'] ?? '').toString().toUpperCase();
-            final String alumno =
-                (data['alumno'] ?? '').toString().toUpperCase();
-            final bool coincideBusqueda =
-                _busquedaFolio.isEmpty ||
-                codigo.contains(_busquedaFolio.toUpperCase()) ||
-                alumno.contains(_busquedaFolio.toUpperCase());
-
-            if (coincideBusqueda &&
-                (_filtroEstadoPedido == -1 || est == _filtroEstadoPedido)) {
-              pedidosActivos.add(doc);
-            }
-          }
-        }
-
-        pedidosActivos.sort((a, b) {
-          final da = a.data() as Map<String, dynamic>;
-          final db = b.data() as Map<String, dynamic>;
-          final ta = da['horaLlegada'] as Timestamp?;
-          final tb = db['horaLlegada'] as Timestamp?;
-          if (ta == null || tb == null) return 0;
-          return ta.compareTo(tb);
+        docs.sort((a, b) {
+          final ta =
+              (a.data() as Map<String, dynamic>)['horaLlegada'] as Timestamp?;
+          final tb =
+              (b.data() as Map<String, dynamic>)['horaLlegada'] as Timestamp?;
+          return (ta?.millisecondsSinceEpoch ?? 0).compareTo(
+            tb?.millisecondsSinceEpoch ?? 0,
+          );
         });
+
+        final int cNuevos =
+            docs.where((d) => ((d.data() as Map)['estado'] ?? 0) == 0).length;
+        final int cCocina =
+            docs.where((d) => ((d.data() as Map)['estado'] ?? 0) == 1).length;
+        final int cListos =
+            docs.where((d) => ((d.data() as Map)['estado'] ?? 0) == 2).length;
+
+        final filtrados =
+            _filtroEstadoKds == -1
+                ? docs
+                : docs
+                    .where(
+                      (d) =>
+                          ((d.data() as Map)['estado'] ?? 0) ==
+                          _filtroEstadoKds,
+                    )
+                    .toList();
 
         return Column(
           children: [
-            Container(
-              padding: const EdgeInsets.fromLTRB(14, 10, 14, 12),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.03),
-                    blurRadius: 8,
-                    offset: const Offset(0, 3),
-                  ),
-                ],
-              ),
-              child: Column(
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Row(
                 children: [
-                  Row(
-                    children: [
-                      _ChipContadorKDS(
-                        titulo: 'Todos',
-                        cantidad: contNuevos + contCocinando + contListos,
-                        color: colorVerdeTese,
-                        seleccionado: _filtroEstadoPedido == -1,
-                        onTap: () => setState(() => _filtroEstadoPedido = -1),
-                      ),
-                      const SizedBox(width: 6),
-                      _ChipContadorKDS(
-                        titulo: 'Nuevos',
-                        cantidad: contNuevos,
-                        color: const Color(0xFFE53935),
-                        seleccionado: _filtroEstadoPedido == 0,
-                        onTap: () => setState(() => _filtroEstadoPedido = 0),
-                      ),
-                      const SizedBox(width: 6),
-                      _ChipContadorKDS(
-                        titulo: 'En Cocina',
-                        cantidad: contCocinando,
-                        color: const Color(0xFFF57C00),
-                        seleccionado: _filtroEstadoPedido == 1,
-                        onTap: () => setState(() => _filtroEstadoPedido = 1),
-                      ),
-                      const SizedBox(width: 6),
-                      _ChipContadorKDS(
-                        titulo: 'Listos',
-                        cantidad: contListos,
-                        color: colorExito,
-                        seleccionado: _filtroEstadoPedido == 2,
-                        onTap: () => setState(() => _filtroEstadoPedido = 2),
-                      ),
-                    ],
+                  _ChipContadorKds(
+                    titulo: 'Todos',
+                    cuenta: docs.length,
+                    color: colorVerdeTese,
+                    activo: _filtroEstadoKds == -1,
+                    onTap: () => setState(() => _filtroEstadoKds = -1),
                   ),
-                  const SizedBox(height: 10),
-                  SizedBox(
-                    height: 40,
-                    child: TextField(
-                      controller: _buscadorFolioCtrl,
-                      onChanged:
-                          (v) => setState(() => _busquedaFolio = v.trim()),
-                      decoration: InputDecoration(
-                        hintText:
-                            'Buscar folio #TESE-XXXX o nombre del alumno...',
-                        hintStyle: GoogleFonts.poppins(
-                          fontSize: 12,
-                          color: colorTextoGris,
-                        ),
-                        prefixIcon: const Icon(
-                          Icons.search,
-                          color: colorVerdeTese,
-                          size: 19,
-                        ),
-                        suffixIcon:
-                            _busquedaFolio.isNotEmpty
-                                ? IconButton(
-                                  icon: const Icon(Icons.clear, size: 17),
-                                  onPressed: () {
-                                    _buscadorFolioCtrl.clear();
-                                    setState(() => _busquedaFolio = '');
-                                  },
-                                )
-                                : null,
-                        contentPadding: const EdgeInsets.symmetric(
-                          vertical: 0,
-                          horizontal: 12,
-                        ),
-                        filled: true,
-                        fillColor: colorFondoCrema,
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: BorderSide.none,
-                        ),
-                      ),
-                    ),
+                  const SizedBox(width: 6),
+                  _ChipContadorKds(
+                    titulo: 'Nuevos',
+                    cuenta: cNuevos,
+                    color: Colors.redAccent,
+                    activo: _filtroEstadoKds == 0,
+                    onTap: () => setState(() => _filtroEstadoKds = 0),
+                  ),
+                  const SizedBox(width: 6),
+                  _ChipContadorKds(
+                    titulo: 'Cocina',
+                    cuenta: cCocina,
+                    color: const Color(0xFFEA580C),
+                    activo: _filtroEstadoKds == 1,
+                    onTap: () => setState(() => _filtroEstadoKds = 1),
+                  ),
+                  const SizedBox(width: 6),
+                  _ChipContadorKds(
+                    titulo: 'Listos',
+                    cuenta: cListos,
+                    color: colorExito,
+                    activo: _filtroEstadoKds == 2,
+                    onTap: () => setState(() => _filtroEstadoKds = 2),
                   ),
                 ],
               ),
             ),
+            const SizedBox(height: 10),
             Expanded(
               child:
-                  pedidosActivos.isEmpty
+                  filtrados.isEmpty
                       ? Center(
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            Container(
-                              padding: const EdgeInsets.all(20),
-                              decoration: const BoxDecoration(
-                                color: Color(0xFFE8F5E9),
-                                shape: BoxShape.circle,
-                              ),
-                              child: const Icon(
-                                Icons.check_circle_outline_rounded,
-                                size: 54,
-                                color: colorVerdeTese,
-                              ),
+                            const Icon(
+                              Icons.check_circle_outline_rounded,
+                              size: 56,
+                              color: colorVerdeTese,
                             ),
-                            const SizedBox(height: 12),
+                            const SizedBox(height: 10),
                             Text(
-                              'Sin comandas pendientes en esta vista',
+                              'Sin comandas pendientes',
                               style: GoogleFonts.poppins(
-                                fontSize: 15,
                                 fontWeight: FontWeight.bold,
+                                fontSize: 16,
                                 color: colorTextoOscuro,
-                              ),
-                            ),
-                            Text(
-                              'Solo se muestran órdenes de ${widget.nombreLocal}',
-                              style: GoogleFonts.poppins(
-                                fontSize: 12,
-                                color: colorTextoGris,
                               ),
                             ),
                           ],
                         ),
                       )
                       : ListView.builder(
-                        padding: const EdgeInsets.all(14),
-                        itemCount: pedidosActivos.length,
-                        itemBuilder: (context, index) {
-                          final doc = pedidosActivos[index];
-                          final p = doc.data() as Map<String, dynamic>;
-                          final int estado = p['estado'] ?? 0;
-                          final String codigo = p['idPedido'] ?? '#TESE';
-                          final String alumno = p['alumno'] ?? 'Estudiante';
+                        padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
+                        itemCount: filtrados.length,
+                        itemBuilder: (_, idx) {
+                          final doc = filtrados[idx];
+                          final data = doc.data() as Map<String, dynamic>;
+                          final int est = (data['estado'] ?? 0) as int;
+                          final String codigo =
+                              (data['idPedido'] ?? '#TESE').toString();
+                          final String alumno =
+                              (data['alumno'] ?? 'Estudiante').toString();
                           final String detalle =
-                              (p['detalle'] ?? '').toString();
-                          final List<String> lineas =
-                              detalle
-                                  .split('\n')
-                                  .where((l) => l.trim().isNotEmpty)
-                                  .toList();
-                          final String notas = (p['notas'] ?? '').toString();
-                          final String pago =
-                              (p['metodoPago'] ?? 'Efectivo').toString();
-                          final bool esEfectivo = pago.toLowerCase().contains(
-                            'efectivo',
-                          );
-                          final double total = (p['total'] ?? 0.0).toDouble();
-                          final int totalPiezas = _calcularTotalPiezas(p);
-                          final String horaTexto = _formatearHoraYTiempoEspera(
-                            p['horaLlegada'] as Timestamp?,
-                          );
+                              (data['detalle'] ?? '').toString();
+                          final double total = (data['total'] ?? 0).toDouble();
 
-                          Color colorBorde = const Color(0xFFE53935);
-                          if (estado == 1) colorBorde = const Color(0xFFF57C00);
-                          if (estado == 2) colorBorde = colorExito;
+                          final Color colorBorde =
+                              est == 0
+                                  ? Colors.redAccent
+                                  : (est == 1
+                                      ? const Color(0xFFEA580C)
+                                      : colorExito);
+                          final String etiqueta =
+                              est == 0
+                                  ? 'NUEVO'
+                                  : (est == 1
+                                      ? 'EN COCINA'
+                                      : 'LISTO EN VENTANILLA');
 
-                          return FadeInUp(
-                            duration: const Duration(milliseconds: 220),
+                          return GestureDetector(
+                            onTap: () => _abrirDetalleComanda(doc.id, data),
                             child: Container(
                               margin: const EdgeInsets.only(bottom: 12),
+                              padding: const EdgeInsets.all(15),
                               decoration: BoxDecoration(
                                 color: Colors.white,
                                 borderRadius: BorderRadius.circular(20),
                                 border: Border.all(
-                                  color: colorBorde.withValues(alpha: 0.5),
+                                  color: colorBorde.withValues(alpha: 0.55),
                                   width: 1.8,
                                 ),
                                 boxShadow: [
                                   BoxShadow(
-                                    color: colorBorde.withValues(alpha: 0.06),
+                                    color: colorBorde.withValues(alpha: 0.08),
                                     blurRadius: 10,
                                     offset: const Offset(0, 4),
                                   ),
                                 ],
                               ),
-                              child: InkWell(
-                                borderRadius: BorderRadius.circular(20),
-                                onTap: () => _mostrarDetallePedido(doc.id, p),
-                                child: Padding(
-                                  padding: const EdgeInsets.all(14.0),
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
                                     children: [
-                                      // Fila 1: Código + Hora de llegada + Estado
-                                      Row(
-                                        mainAxisAlignment:
-                                            MainAxisAlignment.spaceBetween,
-                                        children: [
-                                          Expanded(
-                                            child: Column(
-                                              crossAxisAlignment:
-                                                  CrossAxisAlignment.start,
-                                              children: [
-                                                Text(
-                                                  codigo,
-                                                  style: GoogleFonts.poppins(
-                                                    fontSize: 17,
-                                                    fontWeight: FontWeight.w900,
-                                                    color: colorTextoOscuro,
-                                                  ),
-                                                ),
-                                                Text(
-                                                  '🕒 $horaTexto',
-                                                  style: GoogleFonts.poppins(
-                                                    fontSize: 11,
-                                                    color: colorTextoGris,
-                                                    fontWeight: FontWeight.w600,
-                                                  ),
-                                                ),
-                                              ],
-                                            ),
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 9,
+                                          vertical: 3,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color: colorBorde.withValues(
+                                            alpha: 0.14,
                                           ),
-                                          _BadgeEstadoCocina(estado: estado),
-                                        ],
-                                      ),
-                                      const SizedBox(height: 8),
-                                      // Fila 2: Cliente y cantidad total de piezas
-                                      Row(
-                                        mainAxisAlignment:
-                                            MainAxisAlignment.spaceBetween,
-                                        children: [
-                                          Expanded(
-                                            child: Text(
-                                              '👤 $alumno',
-                                              maxLines: 1,
-                                              overflow: TextOverflow.ellipsis,
-                                              style: GoogleFonts.poppins(
-                                                fontSize: 13,
-                                                fontWeight: FontWeight.w700,
-                                                color: colorVerdeTese,
-                                              ),
-                                            ),
-                                          ),
-                                          Container(
-                                            padding: const EdgeInsets.symmetric(
-                                              horizontal: 8,
-                                              vertical: 2,
-                                            ),
-                                            decoration: BoxDecoration(
-                                              color: const Color(0xFFE8F5E9),
-                                              borderRadius:
-                                                  BorderRadius.circular(8),
-                                            ),
-                                            child: Text(
-                                              '$totalPiezas ${totalPiezas == 1 ? 'pieza' : 'piezas'}',
-                                              style: GoogleFonts.poppins(
-                                                fontSize: 10.5,
-                                                fontWeight: FontWeight.w800,
-                                                color: colorVerdeTese,
-                                              ),
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                      const Divider(height: 16),
-                                      // Desglose claro por platillo
-                                      ...lineas.map((l) {
-                                        return Padding(
-                                          padding: const EdgeInsets.only(
-                                            bottom: 4,
-                                          ),
-                                          child: Row(
-                                            crossAxisAlignment:
-                                                CrossAxisAlignment.start,
-                                            children: [
-                                              const Text(
-                                                '🍽️ ',
-                                                style: TextStyle(fontSize: 13),
-                                              ),
-                                              Expanded(
-                                                child: Text(
-                                                  l,
-                                                  style: GoogleFonts.poppins(
-                                                    fontSize: 13,
-                                                    fontWeight: FontWeight.bold,
-                                                    color: colorTextoOscuro,
-                                                  ),
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                        );
-                                      }),
-                                      if (notas.isNotEmpty &&
-                                          notas != 'Sin notas adicionales') ...[
-                                        const SizedBox(height: 6),
-                                        Container(
-                                          width: double.infinity,
-                                          padding: const EdgeInsets.symmetric(
-                                            horizontal: 10,
-                                            vertical: 6,
-                                          ),
-                                          decoration: BoxDecoration(
-                                            color: const Color(0xFFFFF8E1),
-                                            borderRadius: BorderRadius.circular(
-                                              10,
-                                            ),
-                                            border: Border.all(
-                                              color: Colors.amber.shade400,
-                                            ),
-                                          ),
-                                          child: Text(
-                                            '⚠️ $notas',
-                                            style: GoogleFonts.poppins(
-                                              fontSize: 11.5,
-                                              fontWeight: FontWeight.bold,
-                                              color: Colors.brown.shade900,
-                                            ),
+                                          borderRadius: BorderRadius.circular(
+                                            8,
                                           ),
                                         ),
-                                      ],
-                                      const SizedBox(height: 10),
-                                      // Fila inferior de cobro y acciones (sin overflow)
-                                      Row(
-                                        children: [
-                                          Expanded(
-                                            child: Container(
-                                              padding:
-                                                  const EdgeInsets.symmetric(
-                                                    horizontal: 10,
-                                                    vertical: 6,
-                                                  ),
-                                              decoration: BoxDecoration(
-                                                color: colorFondoCrema,
-                                                borderRadius:
-                                                    BorderRadius.circular(10),
-                                              ),
-                                              child: Text(
-                                                '${esEfectivo ? '💵 Efectivo' : '💳 Tarjeta'} • \$${total.toStringAsFixed(0)} MXN',
-                                                maxLines: 1,
-                                                overflow: TextOverflow.ellipsis,
-                                                style: GoogleFonts.poppins(
-                                                  fontSize: 12,
-                                                  fontWeight: FontWeight.w800,
-                                                  color: colorTextoOscuro,
-                                                ),
-                                              ),
-                                            ),
+                                        child: Text(
+                                          etiqueta,
+                                          style: GoogleFonts.poppins(
+                                            fontSize: 10,
+                                            fontWeight: FontWeight.w900,
+                                            color: colorBorde,
                                           ),
-                                          const SizedBox(width: 6),
-                                          IconButton(
-                                            tooltip: 'Cancelar Pedido',
-                                            onPressed:
-                                                () =>
-                                                    _mostrarModalCancelarPedidoCocina(
-                                                      doc.id,
-                                                      p,
-                                                    ),
-                                            icon: const Icon(
-                                              Icons.cancel_outlined,
-                                              color: Colors.redAccent,
-                                            ),
-                                          ),
-                                          ElevatedButton.icon(
-                                            style: ElevatedButton.styleFrom(
-                                              backgroundColor: colorBorde,
-                                              shape: RoundedRectangleBorder(
-                                                borderRadius:
-                                                    BorderRadius.circular(12),
-                                              ),
-                                              padding:
-                                                  const EdgeInsets.symmetric(
-                                                    horizontal: 12,
-                                                    vertical: 8,
-                                                  ),
-                                            ),
-                                            onPressed:
-                                                () => _avanzarEstadoPedido(
-                                                  doc.id,
-                                                  estado,
-                                                  codigo,
-                                                ),
-                                            icon: Icon(
-                                              estado == 0
-                                                  ? Icons
-                                                      .local_fire_department_rounded
-                                                  : (estado == 1
-                                                      ? Icons
-                                                          .notifications_active
-                                                      : Icons.done_all),
-                                              color: Colors.white,
-                                              size: 16,
-                                            ),
-                                            label: Text(
-                                              estado == 0
-                                                  ? 'Aceptar y Cocinar'
-                                                  : (estado == 1
-                                                      ? '¡Marcar Listo!'
-                                                      : 'Entregar'),
-                                              style: GoogleFonts.poppins(
-                                                color: Colors.white,
-                                                fontWeight: FontWeight.bold,
-                                                fontSize: 12,
-                                              ),
-                                            ),
-                                          ),
-                                        ],
+                                        ),
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Text(
+                                        codigo,
+                                        style: GoogleFonts.poppins(
+                                          fontWeight: FontWeight.w900,
+                                          fontSize: 14,
+                                          color: colorTextoOscuro,
+                                        ),
+                                      ),
+                                      const Spacer(),
+                                      Text(
+                                        '\$${total.toStringAsFixed(0)}',
+                                        style: GoogleFonts.poppins(
+                                          fontWeight: FontWeight.w900,
+                                          fontSize: 15,
+                                          color: colorVerdeTese,
+                                        ),
                                       ),
                                     ],
                                   ),
-                                ),
+                                  const SizedBox(height: 6),
+                                  Text(
+                                    alumno,
+                                    style: GoogleFonts.poppins(
+                                      fontWeight: FontWeight.w700,
+                                      fontSize: 13,
+                                      color: colorTextoOscuro,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    detalle,
+                                    maxLines: 3,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: GoogleFonts.poppins(
+                                      fontSize: 12.5,
+                                      color: colorTextoGris,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 10),
+                                  SizedBox(
+                                    width: double.infinity,
+                                    height: 42,
+                                    child: ElevatedButton(
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: colorBorde,
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(
+                                            12,
+                                          ),
+                                        ),
+                                      ),
+                                      onPressed:
+                                          () => _cambiarEstadoPedido(
+                                            doc.id,
+                                            est + 1,
+                                          ),
+                                      child: Text(
+                                        est == 0
+                                            ? 'Aceptar y Cocinar 🍳'
+                                            : (est == 1
+                                                ? '¡Marcar Listo! 🔔'
+                                                : 'Entregar y Cobrar ✅'),
+                                        style: GoogleFonts.poppins(
+                                          color: Colors.white,
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 13,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
                           );
@@ -2485,6 +1383,483 @@ class _DashboardLocalScreenState extends State<DashboardLocalScreen> {
     );
   }
 
+  // =========================================================================
+  // PESTAÑA 2: HISTORIAL Y CORTE DE CAJA INTERACTIVO (CON SUMA ACUMULADA)
+  // =========================================================================
+  Widget _construirTabHistorialInteractivo() {
+    return StreamBuilder<QuerySnapshot>(
+      stream:
+          FirebaseFirestore.instance
+              .collection('Pedidos')
+              .where('local', isEqualTo: widget.nombreLocal)
+              .snapshots(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(
+            child: CircularProgressIndicator(color: colorVerdeTese),
+          );
+        }
+
+        final ahora = DateTime.now();
+        final todosDocs =
+            (snapshot.data?.docs ?? []).where((d) {
+              final data = d.data() as Map<String, dynamic>;
+              final int est = (data['estado'] ?? 0) as int;
+              // Solo historial cerrado (Entregado = 3 o Cancelado = 4)
+              if (est != 3 && est != 4) return false;
+              if (_soloHoyCorte) {
+                final Timestamp? ts = data['horaLlegada'] as Timestamp?;
+                if (ts == null) return true;
+                final dt = ts.toDate();
+                return dt.year == ahora.year &&
+                    dt.month == ahora.month &&
+                    dt.day == ahora.day;
+              }
+              return true;
+            }).toList();
+
+        // Orden cronológico ascendente para calcular la suma acumulada real (transacción 1 + 2 + 3...)
+        todosDocs.sort((a, b) {
+          final ta =
+              (a.data() as Map<String, dynamic>)['horaLlegada'] as Timestamp?;
+          final tb =
+              (b.data() as Map<String, dynamic>)['horaLlegada'] as Timestamp?;
+          return (ta?.millisecondsSinceEpoch ?? 0).compareTo(
+            tb?.millisecondsSinceEpoch ?? 0,
+          );
+        });
+
+        double totalVendido = 0;
+        double totalEfectivo = 0;
+        double totalTarjeta = 0;
+        double totalCancelado = 0;
+        int countVendidos = 0;
+        int countEfectivo = 0;
+        int countTarjeta = 0;
+        int countCancelados = 0;
+
+        for (final doc in todosDocs) {
+          final data = doc.data() as Map<String, dynamic>;
+          final int est = (data['estado'] ?? 0) as int;
+          final double monto = (data['total'] ?? 0).toDouble();
+          final String metodo = (data['metodoPago'] ?? '').toString();
+
+          if (est == 3) {
+            totalVendido += monto;
+            countVendidos++;
+            if (metodo.contains('Tarjeta') || metodo.contains('Terminal')) {
+              totalTarjeta += monto;
+              countTarjeta++;
+            } else {
+              totalEfectivo += monto;
+              countEfectivo++;
+            }
+          } else if (est == 4) {
+            totalCancelado += monto;
+            countCancelados++;
+          }
+        }
+
+        // Filtramos la lista según la tarjeta que haya tocado el cajero
+        final listaFiltrada =
+            todosDocs.where((doc) {
+              final data = doc.data() as Map<String, dynamic>;
+              final int est = (data['estado'] ?? 0) as int;
+              final String metodo = (data['metodoPago'] ?? '').toString();
+              final bool esTarjeta =
+                  metodo.contains('Tarjeta') || metodo.contains('Terminal');
+
+              switch (_filtroCorte) {
+                case 'efectivo':
+                  return est == 3 && !esTarjeta;
+                case 'tarjeta':
+                  return est == 3 && esTarjeta;
+                case 'cancelados':
+                  return est == 4;
+                case 'vendidos':
+                default:
+                  return est == 3;
+              }
+            }).toList();
+
+        // Calculamos la suma acumulada progresiva en orden cronológico
+        final List<double> acumulados = [];
+        double sumaCorriente = 0;
+        for (final doc in listaFiltrada) {
+          final double monto =
+              ((doc.data() as Map<String, dynamic>)['total'] ?? 0).toDouble();
+          sumaCorriente += monto;
+          acumulados.add(sumaCorriente);
+        }
+
+        // Mostramos las más recientes arriba pero conservando su acumulado exacto
+        final int totalItems = listaFiltrada.length;
+
+        String tituloLista = 'Desglose Total Vendido';
+        if (_filtroCorte == 'efectivo') {
+          tituloLista = 'Transacciones en Efectivo 💵';
+        }
+        if (_filtroCorte == 'tarjeta') {
+          tituloLista = 'Transacciones con Tarjeta 💳';
+        }
+        if (_filtroCorte == 'cancelados') {
+          tituloLista = 'Pedidos Cancelados ❌';
+        }
+
+        return ListView(
+          padding: const EdgeInsets.fromLTRB(16, 2, 16, 28),
+          children: [
+            // Selector Hoy vs Todo el Historial
+            Row(
+              children: [
+                Text(
+                  'Corte de Caja Interactivo',
+                  style: GoogleFonts.poppins(
+                    fontWeight: FontWeight.w900,
+                    fontSize: 15,
+                    color: colorTextoOscuro,
+                  ),
+                ),
+                const Spacer(),
+                ChoiceChip(
+                  label: Text(
+                    'Hoy',
+                    style: GoogleFonts.poppins(
+                      fontSize: 11.5,
+                      fontWeight: FontWeight.bold,
+                      color: _soloHoyCorte ? Colors.white : colorTextoOscuro,
+                    ),
+                  ),
+                  selected: _soloHoyCorte,
+                  selectedColor: colorVerdeTese,
+                  backgroundColor: Colors.white,
+                  onSelected: (_) => setState(() => _soloHoyCorte = true),
+                ),
+                const SizedBox(width: 6),
+                ChoiceChip(
+                  label: Text(
+                    'Todo',
+                    style: GoogleFonts.poppins(
+                      fontSize: 11.5,
+                      fontWeight: FontWeight.bold,
+                      color: !_soloHoyCorte ? Colors.white : colorTextoOscuro,
+                    ),
+                  ),
+                  selected: !_soloHoyCorte,
+                  selectedColor: colorVerdeTese,
+                  backgroundColor: Colors.white,
+                  onSelected: (_) => setState(() => _soloHoyCorte = false),
+                ),
+              ],
+            ),
+            const SizedBox(height: 10),
+
+            // 4 TARJETAS INTERACTIVAS DE CORTE DE CAJA
+            FadeInDown(
+              duration: const Duration(milliseconds: 220),
+              child: Column(
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _TarjetaCorteInteractiva(
+                          titulo: 'Total Vendido',
+                          monto: '\$${totalVendido.toStringAsFixed(0)}',
+                          subtitulo: '$countVendidos órdenes',
+                          icono: Icons.point_of_sale_rounded,
+                          colorFondo: const Color(0xFFE8F5E9),
+                          colorAcento: colorVerdeTese,
+                          seleccionada: _filtroCorte == 'vendidos',
+                          onTap: () {
+                            HapticFeedback.selectionClick();
+                            setState(() => _filtroCorte = 'vendidos');
+                          },
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: _TarjetaCorteInteractiva(
+                          titulo: 'Efectivo 💵',
+                          monto: '\$${totalEfectivo.toStringAsFixed(0)}',
+                          subtitulo: '$countEfectivo cobros',
+                          icono: Icons.payments_outlined,
+                          colorFondo: const Color(0xFFFFF8E1),
+                          colorAcento: const Color(0xFFD97706),
+                          seleccionada: _filtroCorte == 'efectivo',
+                          onTap: () {
+                            HapticFeedback.selectionClick();
+                            setState(() => _filtroCorte = 'efectivo');
+                          },
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _TarjetaCorteInteractiva(
+                          titulo: 'Tarjeta 💳',
+                          monto: '\$${totalTarjeta.toStringAsFixed(0)}',
+                          subtitulo: '$countTarjeta cobros',
+                          icono: Icons.credit_card_rounded,
+                          colorFondo: const Color(0xFFE0F2FE),
+                          colorAcento: const Color(0xFF0284C7),
+                          seleccionada: _filtroCorte == 'tarjeta',
+                          onTap: () {
+                            HapticFeedback.selectionClick();
+                            setState(() => _filtroCorte = 'tarjeta');
+                          },
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: _TarjetaCorteInteractiva(
+                          titulo: 'Cancelados ❌',
+                          monto: '$countCancelados ord.',
+                          subtitulo:
+                              '\$${totalCancelado.toStringAsFixed(0)} no cobrado',
+                          icono: Icons.cancel_outlined,
+                          colorFondo: const Color(0xFFFFEBEE),
+                          colorAcento: Colors.redAccent,
+                          seleccionada: _filtroCorte == 'cancelados',
+                          onTap: () {
+                            HapticFeedback.selectionClick();
+                            setState(() => _filtroCorte = 'cancelados');
+                          },
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+
+            // Barra resumen de la categoría seleccionada
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: Colors.grey.shade200),
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      '$tituloLista ($totalItems)',
+                      style: GoogleFonts.poppins(
+                        fontWeight: FontWeight.w800,
+                        fontSize: 13,
+                        color: colorTextoOscuro,
+                      ),
+                    ),
+                  ),
+                  Text(
+                    'Suma: \$${sumaCorriente.toStringAsFixed(0)}',
+                    style: GoogleFonts.poppins(
+                      fontWeight: FontWeight.w900,
+                      fontSize: 13.5,
+                      color:
+                          _filtroCorte == 'cancelados'
+                              ? Colors.redAccent
+                              : colorVerdeTese,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 10),
+
+            if (totalItems == 0)
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 34),
+                child: Column(
+                  children: [
+                    const Icon(
+                      Icons.receipt_long_outlined,
+                      size: 46,
+                      color: colorTextoGris,
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Sin transacciones en este filtro',
+                      style: GoogleFonts.poppins(
+                        fontWeight: FontWeight.bold,
+                        color: colorTextoOscuro,
+                      ),
+                    ),
+                    Text(
+                      'Toca otra tarjeta arriba o cambia a "Todo".',
+                      style: GoogleFonts.poppins(
+                        fontSize: 12,
+                        color: colorTextoGris,
+                      ),
+                    ),
+                  ],
+                ),
+              )
+            else
+              ...List.generate(totalItems, (revIdx) {
+                final int idx = totalItems - 1 - revIdx;
+                final doc = listaFiltrada[idx];
+                final data = doc.data() as Map<String, dynamic>;
+                final String codigo = (data['idPedido'] ?? '#TESE').toString();
+                final String alumno =
+                    (data['alumno'] ?? 'Estudiante').toString();
+                final String detalle = (data['detalle'] ?? '').toString();
+                final String metodo = (data['metodoPago'] ?? '').toString();
+                final double monto = (data['total'] ?? 0).toDouble();
+                final double acumuladoAqui = acumulados[idx];
+                final Timestamp? ts = data['horaLlegada'] as Timestamp?;
+                final bool esCancelado = (data['estado'] ?? 0) == 4;
+                final bool esTarjeta =
+                    metodo.contains('Tarjeta') || metodo.contains('Terminal');
+
+                return GestureDetector(
+                  onTap:
+                      () =>
+                          _abrirDetalleComanda(doc.id, data, soloLectura: true),
+                  child: Container(
+                    margin: const EdgeInsets.only(bottom: 10),
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(18),
+                      border: Border.all(
+                        color:
+                            esCancelado
+                                ? Colors.redAccent.withValues(alpha: 0.3)
+                                : Colors.grey.shade100,
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.03),
+                          blurRadius: 8,
+                          offset: const Offset(0, 3),
+                        ),
+                      ],
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 3,
+                              ),
+                              decoration: BoxDecoration(
+                                color:
+                                    esCancelado
+                                        ? const Color(0xFFFFEBEE)
+                                        : const Color(0xFFE8F5E9),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Text(
+                                '#${idx + 1} • $codigo',
+                                style: GoogleFonts.poppins(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w900,
+                                  color:
+                                      esCancelado
+                                          ? Colors.redAccent
+                                          : colorVerdeTese,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                _formatearFechaHora(ts),
+                                overflow: TextOverflow.ellipsis,
+                                style: GoogleFonts.poppins(
+                                  fontSize: 11,
+                                  color: colorTextoGris,
+                                ),
+                              ),
+                            ),
+                            Text(
+                              esCancelado
+                                  ? '-\$${monto.toStringAsFixed(0)}'
+                                  : '+\$${monto.toStringAsFixed(0)}',
+                              style: GoogleFonts.poppins(
+                                fontWeight: FontWeight.w900,
+                                fontSize: 15,
+                                color:
+                                    esCancelado ? Colors.redAccent : colorExito,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          '$alumno  •  ${esTarjeta ? '💳 Tarjeta' : '💵 Efectivo'}',
+                          style: GoogleFonts.poppins(
+                            fontSize: 12.5,
+                            fontWeight: FontWeight.w700,
+                            color: colorTextoOscuro,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          detalle,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: GoogleFonts.poppins(
+                            fontSize: 11.5,
+                            color: colorTextoGris,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        // Línea de suma progresiva + acceso al ticket
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 10,
+                                vertical: 3,
+                              ),
+                              decoration: BoxDecoration(
+                                color: colorFondoCrema,
+                                borderRadius: BorderRadius.circular(9),
+                              ),
+                              child: Text(
+                                '∑ Acumulado: \$${acumuladoAqui.toStringAsFixed(0)} MXN',
+                                style: GoogleFonts.poppins(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w800,
+                                  color: colorTextoOscuro,
+                                ),
+                              ),
+                            ),
+                            Text(
+                              'Ver ticket →',
+                              style: GoogleFonts.poppins(
+                                fontSize: 11.5,
+                                fontWeight: FontWeight.w800,
+                                color: colorVerdeTese,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              }),
+          ],
+        );
+      },
+    );
+  }
+
+  // =========================================================================
+  // PESTAÑA 3: MENÚ E INVENTARIO DE LA SUCURSAL
+  // =========================================================================
   Widget _construirTabMenu() {
     return StreamBuilder<QuerySnapshot>(
       stream:
@@ -2500,236 +1875,146 @@ class _DashboardLocalScreenState extends State<DashboardLocalScreen> {
         }
 
         final docs = snapshot.data?.docs ?? [];
-        if (docs.isEmpty) {
-          return Center(
-            child: Padding(
-              padding: const EdgeInsets.all(28.0),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Icon(
-                    Icons.lunch_dining_outlined,
-                    size: 64,
-                    color: Colors.grey,
-                  ),
-                  const SizedBox(height: 12),
-                  Text(
-                    'Aún no tienes platillos en ${widget.nombreLocal}',
-                    textAlign: TextAlign.center,
-                    style: GoogleFonts.poppins(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      color: colorTextoOscuro,
-                    ),
-                  ),
-                  const SizedBox(height: 6),
-                  Text(
-                    'Toca el botón amarillo "+ Nuevo Platillo" para registrar tu menú.',
-                    textAlign: TextAlign.center,
-                    style: GoogleFonts.poppins(
-                      fontSize: 12.5,
-                      color: colorTextoGris,
-                    ),
-                  ),
-                ],
+
+        return Scaffold(
+          backgroundColor: Colors.transparent,
+          floatingActionButton: FloatingActionButton.extended(
+            backgroundColor: colorVerdeTese,
+            onPressed: _abrirModalNuevoPlatillo,
+            icon: const Icon(Icons.add_rounded, color: Colors.white),
+            label: Text(
+              'Nuevo Platillo',
+              style: GoogleFonts.poppins(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
               ),
             ),
-          );
-        }
-
-        return ListView.builder(
-          padding: const EdgeInsets.fromLTRB(14, 14, 14, 90),
-          itemCount: docs.length,
-          itemBuilder: (context, index) {
-            final doc = docs[index];
-            final platillo = Platillo.fromMap(
-              doc.data() as Map<String, dynamic>,
-              doc.id,
-            );
-
-            return Container(
-              margin: const EdgeInsets.only(bottom: 12),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(18),
-                boxShadow: [
-                  BoxShadow(
-                    color: colorVerdeTese.withValues(alpha: 0.05),
-                    blurRadius: 10,
-                    offset: const Offset(0, 4),
-                  ),
-                ],
-              ),
-              child: Padding(
-                padding: const EdgeInsets.all(12.0),
-                child: Row(
-                  children: [
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(12),
-                      child:
-                          platillo.fotos.isNotEmpty
-                              ? Image.memory(
-                                base64Decode(platillo.fotos.first),
-                                width: 64,
-                                height: 64,
-                                fit: BoxFit.cover,
-                                errorBuilder:
-                                    (_, __, ___) => _iconoPlatilloDefault(),
-                              )
-                              : _iconoPlatilloDefault(),
+          ),
+          body:
+              docs.isEmpty
+                  ? Center(
+                    child: Text(
+                      'Aún no hay platillos registrados en ${widget.nombreLocal}.',
+                      style: GoogleFonts.poppins(color: colorTextoGris),
                     ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            platillo.nombre,
-                            style: GoogleFonts.poppins(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 14.5,
-                              color: colorTextoOscuro,
-                            ),
-                          ),
-                          Text(
-                            '\$${platillo.precio.toStringAsFixed(0)} MXN • ${platillo.categoria}',
-                            style: GoogleFonts.poppins(
-                              fontSize: 12,
-                              color: colorVerdeTese,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                          const SizedBox(height: 6),
-                          Row(
-                            children: [
-                              InkWell(
-                                onTap: () {
-                                  if (platillo.existencias > 0) {
-                                    FirebaseFirestore.instance
-                                        .collection('Menu_Platillos')
-                                        .doc(platillo.id)
-                                        .update({
-                                          'existencias':
-                                              platillo.existencias - 1,
-                                        });
-                                  }
-                                },
-                                child: Container(
-                                  padding: const EdgeInsets.all(4),
-                                  decoration: BoxDecoration(
-                                    color: Colors.grey.shade200,
-                                    borderRadius: BorderRadius.circular(6),
-                                  ),
-                                  child: const Icon(Icons.remove, size: 16),
-                                ),
-                              ),
-                              Padding(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 10,
-                                ),
-                                child: Text(
-                                  platillo.existencias > 0
-                                      ? 'Stock: ${platillo.existencias}'
-                                      : 'AGOTADO',
-                                  style: GoogleFonts.poppins(
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.bold,
-                                    color:
-                                        platillo.existencias > 0
-                                            ? colorExito
-                                            : Colors.red,
-                                  ),
-                                ),
-                              ),
-                              InkWell(
-                                onTap: () {
-                                  FirebaseFirestore.instance
-                                      .collection('Menu_Platillos')
-                                      .doc(platillo.id)
-                                      .update({
-                                        'existencias': platillo.existencias + 1,
-                                      });
-                                },
-                                child: Container(
-                                  padding: const EdgeInsets.all(4),
-                                  decoration: BoxDecoration(
-                                    color: const Color(0xFFE8F5E9),
-                                    borderRadius: BorderRadius.circular(6),
-                                  ),
-                                  child: const Icon(
-                                    Icons.add,
-                                    size: 16,
-                                    color: colorVerdeTese,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ),
-                    Column(
-                      children: [
-                        IconButton(
-                          icon: const Icon(
-                            Icons.edit_outlined,
-                            color: colorVerdeTese,
-                          ),
-                          onPressed: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder:
-                                    (_) => AgregarPlatilloScreen(
-                                      platilloAEditar: platillo,
-                                      localAsignado: widget.nombreLocal,
+                  )
+                  : ListView.builder(
+                    padding: const EdgeInsets.fromLTRB(16, 4, 16, 84),
+                    itemCount: docs.length,
+                    itemBuilder: (_, idx) {
+                      final doc = docs[idx];
+                      final data = doc.data() as Map<String, dynamic>;
+                      final String nombre =
+                          (data['nombre'] ?? 'Platillo').toString();
+                      final double precio = (data['precio'] ?? 0).toDouble();
+                      final int stock = (data['existencias'] ?? 0) as int;
+
+                      return Container(
+                        margin: const EdgeInsets.only(bottom: 10),
+                        padding: const EdgeInsets.all(14),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(18),
+                          border: Border.all(color: Colors.grey.shade100),
+                        ),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    nombre,
+                                    style: GoogleFonts.poppins(
+                                      fontWeight: FontWeight.w800,
+                                      fontSize: 14,
+                                      color: colorTextoOscuro,
                                     ),
+                                  ),
+                                  Text(
+                                    '\$${precio.toStringAsFixed(0)} MXN  •  Stock: $stock',
+                                    style: GoogleFonts.poppins(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w600,
+                                      color:
+                                          stock > 0
+                                              ? colorVerdeTese
+                                              : Colors.redAccent,
+                                    ),
+                                  ),
+                                ],
                               ),
-                            );
-                          },
+                            ),
+                            Container(
+                              decoration: BoxDecoration(
+                                color: colorFondoCrema,
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  IconButton(
+                                    visualDensity: VisualDensity.compact,
+                                    onPressed:
+                                        stock > 0
+                                            ? () => FirebaseFirestore.instance
+                                                .collection('Menu_Platillos')
+                                                .doc(doc.id)
+                                                .update({
+                                                  'existencias':
+                                                      FieldValue.increment(-1),
+                                                })
+                                            : null,
+                                    icon: const Icon(
+                                      Icons.remove_rounded,
+                                      color: Colors.redAccent,
+                                      size: 18,
+                                    ),
+                                  ),
+                                  Text(
+                                    '$stock',
+                                    style: GoogleFonts.poppins(
+                                      fontWeight: FontWeight.w900,
+                                      fontSize: 13.5,
+                                    ),
+                                  ),
+                                  IconButton(
+                                    visualDensity: VisualDensity.compact,
+                                    onPressed:
+                                        () => FirebaseFirestore.instance
+                                            .collection('Menu_Platillos')
+                                            .doc(doc.id)
+                                            .update({
+                                              'existencias':
+                                                  FieldValue.increment(1),
+                                            }),
+                                    icon: const Icon(
+                                      Icons.add_rounded,
+                                      color: colorVerdeTese,
+                                      size: 18,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
                         ),
-                        IconButton(
-                          icon: const Icon(
-                            Icons.delete_outline,
-                            color: Colors.redAccent,
-                          ),
-                          onPressed: () {
-                            FirebaseFirestore.instance
-                                .collection('Menu_Platillos')
-                                .doc(platillo.id)
-                                .delete();
-                          },
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            );
-          },
+                      );
+                    },
+                  ),
         );
       },
     );
   }
 
-  Widget _iconoPlatilloDefault() {
-    return Container(
-      width: 64,
-      height: 64,
-      color: colorFondoCrema,
-      child: const Icon(
-        Icons.fastfood_rounded,
-        color: colorVerdeTese,
-        size: 30,
-      ),
-    );
-  }
-
-  Widget _construirTabHistorial() {
+  // =========================================================================
+  // PESTAÑA 4: OPINIONES Y ESTRELLAS
+  // =========================================================================
+  Widget _construirTabOpiniones() {
     return StreamBuilder<QuerySnapshot>(
       stream:
           FirebaseFirestore.instance
-              .collection('Pedidos')
+              .collection('Resenas')
               .where('local', isEqualTo: widget.nombreLocal)
               .snapshots(),
       builder: (context, snapshot) {
@@ -2740,93 +2025,51 @@ class _DashboardLocalScreenState extends State<DashboardLocalScreen> {
         }
 
         final docs = snapshot.data?.docs ?? [];
-        final List<QueryDocumentSnapshot> historial = [];
-
-        double totalVendido = 0.0;
-        double totalEfectivo = 0.0;
-        double totalTerminal = 0.0;
-        int entregadosCount = 0;
-        int canceladosCount = 0;
-
-        for (var doc in docs) {
-          final d = doc.data() as Map<String, dynamic>;
-          final int est = d['estado'] ?? 0;
-          if (est == 3 || est == 4) {
-            historial.add(doc);
-            final double monto = (d['total'] ?? 0.0).toDouble();
-            final String metodo = (d['metodoPago'] ?? 'Efectivo').toString();
-
-            if (est == 3) {
-              entregadosCount++;
-              totalVendido += monto;
-              if (metodo.contains('Efectivo')) {
-                totalEfectivo += monto;
-              } else {
-                totalTerminal += monto;
-              }
-            } else if (est == 4) {
-              canceladosCount++;
-            }
-          }
+        double promedio = 0;
+        if (docs.isNotEmpty) {
+          final suma = docs.fold<int>(
+            0,
+            (acc, d) => acc + (((d.data() as Map)['estrellas'] ?? 5) as int),
+          );
+          promedio = suma / docs.length;
         }
 
-        historial.sort((a, b) {
-          final da = a.data() as Map<String, dynamic>;
-          final db = b.data() as Map<String, dynamic>;
-          final ta = da['horaLlegada'] as Timestamp?;
-          final tb = db['horaLlegada'] as Timestamp?;
-          if (ta == null || tb == null) return 0;
-          return tb.compareTo(ta);
-        });
-
-        return Column(
+        return ListView(
+          padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
           children: [
             Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(14),
-              color: Colors.white,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFFF8E1),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: const Color(0xFFFFD54F)),
+              ),
+              child: Row(
                 children: [
-                  Text(
-                    'Corte de Caja • ${widget.nombreLocal}',
-                    style: GoogleFonts.poppins(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 13.5,
-                      color: colorTextoOscuro,
-                    ),
+                  const Icon(
+                    Icons.star_rounded,
+                    color: Color(0xFFF59E0B),
+                    size: 40,
                   ),
-                  const SizedBox(height: 8),
-                  Row(
+                  const SizedBox(width: 12),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Expanded(
-                        child: _TarjetaResumenCaja(
-                          titulo: 'Total Vendido',
-                          valor: '\$${totalVendido.toStringAsFixed(0)}',
-                          subtitulo: '$entregadosCount entregados',
-                          color: colorVerdeTese,
-                          icono: Icons.monetization_on_rounded,
+                      Text(
+                        docs.isEmpty
+                            ? 'Sin calificaciones aún'
+                            : '${promedio.toStringAsFixed(1)} / 5.0 Estrellas',
+                        style: GoogleFonts.poppins(
+                          fontWeight: FontWeight.w900,
+                          fontSize: 17,
+                          color: colorTextoOscuro,
                         ),
                       ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: _TarjetaResumenCaja(
-                          titulo: 'Efectivo / Tarjeta',
-                          valor:
-                              '\$${totalEfectivo.toStringAsFixed(0)} / \$${totalTerminal.toStringAsFixed(0)}',
-                          subtitulo: 'Desglose cobro',
-                          color: const Color(0xFF0077B6),
-                          icono: Icons.account_balance_wallet_rounded,
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: _TarjetaResumenCaja(
-                          titulo: 'Cancelados',
-                          valor: '$canceladosCount',
-                          subtitulo: 'Con stock devuelto',
-                          color: Colors.redAccent,
-                          icono: Icons.cancel_presentation_rounded,
+                      Text(
+                        '${docs.length} opiniones de estudiantes',
+                        style: GoogleFonts.poppins(
+                          fontSize: 12,
+                          color: colorTextoGris,
                         ),
                       ),
                     ],
@@ -2834,538 +2077,165 @@ class _DashboardLocalScreenState extends State<DashboardLocalScreen> {
                 ],
               ),
             ),
-            Expanded(
-              child:
-                  historial.isEmpty
-                      ? Center(
-                        child: Text(
-                          'Aún no hay pedidos finalizados o cancelados en esta sucursal.',
-                          style: GoogleFonts.poppins(
-                            color: colorTextoGris,
-                            fontSize: 13,
+            const SizedBox(height: 12),
+            ...docs.map((doc) {
+              final data = doc.data() as Map<String, dynamic>;
+              final int estrellas = (data['estrellas'] ?? 5) as int;
+              final bool esAnonimo = (data['esAnonimo'] ?? false) as bool;
+              final String alumno =
+                  esAnonimo
+                      ? 'Estudiante Anónimo 🕵️‍♂️'
+                      : (data['alumno'] ?? 'Estudiante TESE').toString();
+              final String platillo =
+                  (data['platilloNombre'] ?? 'Platillo').toString();
+              final String comentario = (data['comentario'] ?? '').toString();
+              final String fotoBase64 =
+                  (data['fotoEvidencia'] ?? '').toString();
+
+              Uint8List? bytesFoto;
+              if (fotoBase64.isNotEmpty) {
+                try {
+                  bytesFoto = base64Decode(fotoBase64);
+                } catch (_) {}
+              }
+
+              return Container(
+                margin: const EdgeInsets.only(bottom: 10),
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(18),
+                  border: Border.all(color: Colors.grey.shade100),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Expanded(
+                          child: Text(
+                            alumno,
+                            overflow: TextOverflow.ellipsis,
+                            style: GoogleFonts.poppins(
+                              fontWeight: FontWeight.w800,
+                              fontSize: 13,
+                              color: colorTextoOscuro,
+                            ),
                           ),
                         ),
-                      )
-                      : ListView.builder(
-                        padding: const EdgeInsets.all(14),
-                        itemCount: historial.length,
-                        itemBuilder: (context, index) {
-                          final p =
-                              historial[index].data() as Map<String, dynamic>;
-                          final int est = p['estado'] ?? 3;
-                          final bool fueCancelado = est == 4;
-
-                          return Container(
-                            margin: const EdgeInsets.only(bottom: 10),
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(16),
-                              border: Border.all(
-                                color:
-                                    fueCancelado
-                                        ? Colors.redAccent.withValues(
-                                          alpha: 0.35,
-                                        )
-                                        : colorExito.withValues(alpha: 0.35),
-                              ),
+                        Row(
+                          children: List.generate(
+                            5,
+                            (i) => Icon(
+                              i < estrellas
+                                  ? Icons.star_rounded
+                                  : Icons.star_border_rounded,
+                              size: 16,
+                              color: const Color(0xFFF59E0B),
                             ),
-                            child: ListTile(
-                              onTap:
-                                  () => _mostrarDetallePedido(
-                                    historial[index].id,
-                                    p,
-                                  ),
-                              leading: CircleAvatar(
-                                backgroundColor:
-                                    fueCancelado
-                                        ? Colors.red.shade50
-                                        : const Color(0xFFE8F5E9),
-                                child: Icon(
-                                  fueCancelado
-                                      ? Icons.cancel_outlined
-                                      : Icons.check_circle_outline,
-                                  color:
-                                      fueCancelado
-                                          ? Colors.redAccent
-                                          : colorExito,
-                                ),
-                              ),
-                              title: Row(
-                                mainAxisAlignment:
-                                    MainAxisAlignment.spaceBetween,
-                                children: [
-                                  Expanded(
-                                    child: Text(
-                                      '${p['idPedido'] ?? '#TESE'} • ${p['alumno'] ?? 'Alumno'}',
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                      style: GoogleFonts.poppins(
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 13,
-                                      ),
-                                    ),
-                                  ),
-                                  Text(
-                                    '\$${(p['total'] ?? 0).toStringAsFixed(0)}',
-                                    style: GoogleFonts.poppins(
-                                      fontWeight: FontWeight.w900,
-                                      fontSize: 14,
-                                      color:
-                                          fueCancelado
-                                              ? Colors.redAccent
-                                              : colorVerdeTese,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              subtitle: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    p['detalle'] ?? '',
-                                    maxLines: 2,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: GoogleFonts.poppins(fontSize: 11.5),
-                                  ),
-                                  if (fueCancelado)
-                                    Text(
-                                      'Cancelado por ${p['canceladoPor'] ?? 'Cocina'}: ${p['motivoCancelacion'] ?? ''}',
-                                      style: GoogleFonts.poppins(
-                                        fontSize: 11,
-                                        fontWeight: FontWeight.bold,
-                                        color: Colors.redAccent,
-                                      ),
-                                    ),
-                                ],
-                              ),
-                            ),
-                          );
-                        },
+                          ),
+                        ),
+                      ],
+                    ),
+                    Text(
+                      platillo,
+                      style: GoogleFonts.poppins(
+                        fontSize: 11.5,
+                        fontWeight: FontWeight.w700,
+                        color: colorVerdeTese,
                       ),
-            ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      comentario,
+                      style: GoogleFonts.poppins(
+                        fontSize: 12.5,
+                        color: colorTextoOscuro,
+                      ),
+                    ),
+                    if (bytesFoto != null) ...[
+                      const SizedBox(height: 8),
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(12),
+                        child: Image.memory(
+                          bytesFoto,
+                          height: 130,
+                          width: double.infinity,
+                          fit: BoxFit.cover,
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              );
+            }),
           ],
         );
       },
     );
   }
 
-  Widget _construirTabResenas() {
-    return StreamBuilder<QuerySnapshot>(
-      stream:
-          FirebaseFirestore.instance
-              .collection('Menu_Platillos')
-              .where('local', isEqualTo: widget.nombreLocal)
-              .snapshots(),
-      builder: (context, menuSnap) {
-        if (menuSnap.connectionState == ConnectionState.waiting) {
-          return const Center(
-            child: CircularProgressIndicator(color: colorVerdeTese),
-          );
-        }
-
-        final docsMenu = menuSnap.data?.docs ?? [];
-        final Set<String> idsDeMiSucursal = docsMenu.map((d) => d.id).toSet();
-        final Set<String> nombresDeMiSucursal =
-            docsMenu
-                .map(
-                  (d) =>
-                      ((d.data() as Map<String, dynamic>)['nombre'] ?? '')
-                          .toString(),
-                )
-                .toSet();
-
-        return StreamBuilder<QuerySnapshot>(
-          stream: FirebaseFirestore.instance.collection('Resenas').snapshots(),
-          builder: (context, resSnap) {
-            if (resSnap.connectionState == ConnectionState.waiting) {
-              return const Center(
-                child: CircularProgressIndicator(color: colorVerdeTese),
-              );
-            }
-
-            final todasLasResenas = resSnap.data?.docs ?? [];
-            final resenasSucursal =
-                todasLasResenas.where((doc) {
-                  final r = doc.data() as Map<String, dynamic>;
-                  final String localResena = (r['local'] ?? '').toString();
-                  final String platilloId = (r['platilloId'] ?? '').toString();
-                  final String platilloNombre =
-                      (r['platilloNombre'] ?? '').toString();
-
-                  if (localResena.isNotEmpty) {
-                    return localResena == widget.nombreLocal;
-                  }
-                  return idsDeMiSucursal.contains(platilloId) ||
-                      nombresDeMiSucursal.contains(platilloNombre);
-                }).toList();
-
-            if (resenasSucursal.isEmpty) {
-              return Center(
-                child: Padding(
-                  padding: const EdgeInsets.all(24.0),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const Icon(
-                        Icons.rate_review_outlined,
-                        size: 60,
-                        color: Colors.grey,
-                      ),
-                      const SizedBox(height: 10),
-                      Text(
-                        'Aún no hay reseñas para ${widget.nombreLocal}',
-                        textAlign: TextAlign.center,
-                        style: GoogleFonts.poppins(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 15,
-                          color: colorTextoGris,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              );
-            }
-
-            double sumaEstrellas = 0;
-            for (var doc in resenasSucursal) {
-              final r = doc.data() as Map<String, dynamic>;
-              sumaEstrellas += (r['estrellas'] ?? 5).toDouble();
-            }
-            final double promedioSucursal =
-                sumaEstrellas / resenasSucursal.length;
-
-            return Column(
-              children: [
-                Container(
-                  width: double.infinity,
-                  margin: const EdgeInsets.fromLTRB(14, 14, 14, 4),
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    gradient: const LinearGradient(
-                      colors: [Color(0xFFE8F5E9), Color(0xFFD7EFE0)],
-                    ),
-                    borderRadius: BorderRadius.circular(18),
-                    border: Border.all(
-                      color: colorVerdeTese.withValues(alpha: 0.25),
-                    ),
-                  ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Reputación de ${widget.nombreLocal}',
-                              style: GoogleFonts.poppins(
-                                color: colorTextoOscuro,
-                                fontWeight: FontWeight.bold,
-                                fontSize: 14,
-                              ),
-                            ),
-                            Text(
-                              'Basado en ${resenasSucursal.length} opiniones verificadas',
-                              style: GoogleFonts.poppins(
-                                color: colorTextoGris,
-                                fontSize: 11.5,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 6,
-                        ),
-                        decoration: BoxDecoration(
-                          color: colorAmarilloTese,
-                          borderRadius: BorderRadius.circular(14),
-                        ),
-                        child: Row(
-                          children: [
-                            const Icon(
-                              Icons.star_rounded,
-                              color: colorVerdeOscuro,
-                              size: 20,
-                            ),
-                            const SizedBox(width: 4),
-                            Text(
-                              promedioSucursal.toStringAsFixed(1),
-                              style: GoogleFonts.poppins(
-                                fontWeight: FontWeight.w900,
-                                fontSize: 16,
-                                color: colorVerdeOscuro,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                Expanded(
-                  child: ListView.builder(
-                    padding: const EdgeInsets.all(14),
-                    itemCount: resenasSucursal.length,
-                    itemBuilder: (context, index) {
-                      final r =
-                          resenasSucursal[index].data() as Map<String, dynamic>;
-                      final int estrellas = r['estrellas'] ?? 5;
-                      final String fotoEvidencia =
-                          (r['fotoEvidencia'] ?? '').toString();
-                      final bool esAnon =
-                          r['esAnonimo'] == true ||
-                          (r['alumno'] ?? '').toString().toLowerCase().contains(
-                            'anónimo',
-                          );
-
-                      return Container(
-                        margin: const EdgeInsets.only(bottom: 12),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(16),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.04),
-                              blurRadius: 8,
-                              offset: const Offset(0, 3),
-                            ),
-                          ],
-                        ),
-                        child: Padding(
-                          padding: const EdgeInsets.all(14.0),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                mainAxisAlignment:
-                                    MainAxisAlignment.spaceBetween,
-                                children: [
-                                  Expanded(
-                                    child: Text(
-                                      r['platilloNombre'] ?? 'Platillo',
-                                      style: GoogleFonts.poppins(
-                                        fontWeight: FontWeight.bold,
-                                        color: colorVerdeTese,
-                                      ),
-                                    ),
-                                  ),
-                                  Row(
-                                    children: List.generate(
-                                      5,
-                                      (i) => Icon(
-                                        i < estrellas
-                                            ? Icons.star_rounded
-                                            : Icons.star_border_rounded,
-                                        color: colorAmarilloTese,
-                                        size: 18,
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: 6),
-                              Text(
-                                r['comentario'] ?? '',
-                                style: GoogleFonts.poppins(
-                                  fontSize: 13,
-                                  color: colorTextoOscuro,
-                                ),
-                              ),
-                              if (fotoEvidencia.isNotEmpty) ...[
-                                const SizedBox(height: 8),
-                                ClipRRect(
-                                  borderRadius: BorderRadius.circular(12),
-                                  child: Image.memory(
-                                    base64Decode(fotoEvidencia),
-                                    height: 110,
-                                    width: double.infinity,
-                                    fit: BoxFit.cover,
-                                    errorBuilder:
-                                        (_, __, ___) => const SizedBox.shrink(),
-                                  ),
-                                ),
-                              ],
-                              const SizedBox(height: 6),
-                              Text(
-                                'Por: ${esAnon ? 'Estudiante Anónimo 🕵️‍♂️' : (r['alumno'] ?? 'Estudiante')} ${r['codigoPedido'] != null ? '• Orden ${r['codigoPedido']}' : ''}',
-                                style: GoogleFonts.poppins(
-                                  fontSize: 11,
-                                  color: colorTextoGris,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      );
-                    },
-                  ),
-                ),
-              ],
-            );
-          },
-        );
-      },
-    );
+  String _formatearFechaHora(Timestamp? ts) {
+    if (ts == null) return 'Reciente';
+    final dt = ts.toDate();
+    final d = dt.day.toString().padLeft(2, '0');
+    final m = dt.month.toString().padLeft(2, '0');
+    final h = dt.hour.toString().padLeft(2, '0');
+    final min = dt.minute.toString().padLeft(2, '0');
+    return '$d/$m $h:$min';
   }
 }
 
-class _TarjetaResumenCaja extends StatelessWidget {
+class _ChipContadorKds extends StatelessWidget {
   final String titulo;
-  final String valor;
-  final String subtitulo;
+  final int cuenta;
   final Color color;
-  final IconData icono;
-
-  const _TarjetaResumenCaja({
-    required this.titulo,
-    required this.valor,
-    required this.subtitulo,
-    required this.color,
-    required this.icono,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(10),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: color.withValues(alpha: 0.25)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(icono, size: 15, color: color),
-              const SizedBox(width: 4),
-              Expanded(
-                child: Text(
-                  titulo,
-                  overflow: TextOverflow.ellipsis,
-                  style: GoogleFonts.poppins(
-                    fontSize: 10,
-                    fontWeight: FontWeight.bold,
-                    color: color,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 4),
-          Text(
-            valor,
-            style: GoogleFonts.poppins(
-              fontSize: 13.5,
-              fontWeight: FontWeight.w900,
-              color: colorTextoOscuro,
-            ),
-          ),
-          Text(
-            subtitulo,
-            style: GoogleFonts.poppins(fontSize: 9.5, color: colorTextoGris),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _BadgeEstadoCocina extends StatelessWidget {
-  final int estado;
-  const _BadgeEstadoCocina({required this.estado});
-
-  @override
-  Widget build(BuildContext context) {
-    String texto = 'NUEVO';
-    Color color = const Color(0xFFE53935);
-    if (estado == 1) {
-      texto = 'EN COCINA';
-      color = const Color(0xFFF57C00);
-    } else if (estado == 2) {
-      texto = 'LISTO PARA RECOGER';
-      color = colorExito;
-    } else if (estado == 3) {
-      texto = 'ENTREGADO';
-      color = colorVerdeTese;
-    } else if (estado == 4) {
-      texto = 'CANCELADO';
-      color = Colors.red.shade900;
-    }
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: color.withValues(alpha: 0.5)),
-      ),
-      child: Text(
-        texto,
-        style: GoogleFonts.poppins(
-          fontSize: 10.5,
-          fontWeight: FontWeight.w800,
-          color: color,
-        ),
-      ),
-    );
-  }
-}
-
-class _ChipContadorKDS extends StatelessWidget {
-  final String titulo;
-  final int cantidad;
-  final Color color;
-  final bool seleccionado;
+  final bool activo;
   final VoidCallback onTap;
 
-  const _ChipContadorKDS({
+  const _ChipContadorKds({
     required this.titulo,
-    required this.cantidad,
+    required this.cuenta,
     required this.color,
-    required this.seleccionado,
+    required this.activo,
     required this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
     return Expanded(
-      child: InkWell(
+      child: GestureDetector(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 180),
           padding: const EdgeInsets.symmetric(vertical: 8),
           decoration: BoxDecoration(
-            color:
-                seleccionado ? color.withValues(alpha: 0.15) : colorFondoCrema,
-            borderRadius: BorderRadius.circular(12),
+            color: activo ? color : Colors.white,
+            borderRadius: BorderRadius.circular(14),
             border: Border.all(
-              color: seleccionado ? color : Colors.grey.shade200,
-              width: seleccionado ? 1.8 : 1.0,
+              color: activo ? color : Colors.grey.shade200,
+              width: 1.5,
             ),
           ),
           child: Column(
             children: [
               Text(
-                '$cantidad',
+                '$cuenta',
                 style: GoogleFonts.poppins(
-                  fontSize: 15,
                   fontWeight: FontWeight.w900,
-                  color: color,
+                  fontSize: 15,
+                  color: activo ? Colors.white : color,
                 ),
               ),
               Text(
                 titulo,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
                 style: GoogleFonts.poppins(
-                  fontSize: 10,
-                  fontWeight: FontWeight.bold,
-                  color: colorTextoOscuro,
+                  fontSize: 10.5,
+                  fontWeight: FontWeight.w700,
+                  color: activo ? Colors.white : colorTextoGris,
                 ),
               ),
             ],
@@ -3376,419 +2246,96 @@ class _ChipContadorKDS extends StatelessWidget {
   }
 }
 
-// ==========================================================
-// 3. ALTA Y EDICIÓN DE PLATILLOS
-// ==========================================================
-class AgregarPlatilloScreen extends StatefulWidget {
-  final Platillo? platilloAEditar;
-  final String localAsignado;
+class _TarjetaCorteInteractiva extends StatelessWidget {
+  final String titulo;
+  final String monto;
+  final String subtitulo;
+  final IconData icono;
+  final Color colorFondo;
+  final Color colorAcento;
+  final bool seleccionada;
+  final VoidCallback onTap;
 
-  const AgregarPlatilloScreen({
-    super.key,
-    this.platilloAEditar,
-    required this.localAsignado,
+  const _TarjetaCorteInteractiva({
+    required this.titulo,
+    required this.monto,
+    required this.subtitulo,
+    required this.icono,
+    required this.colorFondo,
+    required this.colorAcento,
+    required this.seleccionada,
+    required this.onTap,
   });
 
   @override
-  State<AgregarPlatilloScreen> createState() => _AgregarPlatilloScreenState();
-}
-
-class _AgregarPlatilloScreenState extends State<AgregarPlatilloScreen> {
-  final TextEditingController _nombreCtrl = TextEditingController();
-  final TextEditingController _precioCtrl = TextEditingController();
-  final TextEditingController _descCtrl = TextEditingController();
-  final TextEditingController _tiempoCtrl = TextEditingController();
-  final TextEditingController _stockCtrl = TextEditingController();
-  final TextEditingController _puntosCtrl = TextEditingController();
-  final TextEditingController _ingredienteExtraCtrl = TextEditingController();
-
-  String categoriaSeleccionada = 'Comida';
-  final List<String> categorias = ['Desayunos', 'Comida', 'Bebidas', 'Postres'];
-
-  List<String> _fotosBase64 = [];
-  List<String> _ingredientes = ['Queso', 'Crema', 'Salsa', 'Cebolla'];
-  bool _guardando = false;
-
-  final ImagePicker _picker = ImagePicker();
-
-  @override
-  void initState() {
-    super.initState();
-    if (widget.platilloAEditar != null) {
-      final p = widget.platilloAEditar!;
-      _nombreCtrl.text = p.nombre;
-      _precioCtrl.text = p.precio.toStringAsFixed(0);
-      _descCtrl.text = p.descripcion;
-      _tiempoCtrl.text = p.tiempo;
-      _stockCtrl.text = p.existencias.toString();
-      _puntosCtrl.text = p.puntos.toString();
-      if (categorias.contains(p.categoria)) {
-        categoriaSeleccionada = p.categoria;
-      }
-      _fotosBase64 = List<String>.from(p.fotos);
-      _ingredientes = List<String>.from(p.ingredientes);
-    } else {
-      _tiempoCtrl.text = '10 - 15 min';
-      _stockCtrl.text = '15';
-      _puntosCtrl.text = '10';
-    }
-  }
-
-  Future<void> _seleccionarImagen(ImageSource source) async {
-    if (_fotosBase64.length >= 3) return;
-    try {
-      final XFile? imagen = await _picker.pickImage(
-        source: source,
-        maxWidth: 600,
-        maxHeight: 600,
-        imageQuality: 55,
-      );
-      if (imagen != null) {
-        final bytes = await imagen.readAsBytes();
-        setState(() => _fotosBase64.add(base64Encode(bytes)));
-      }
-    } catch (_) {}
-  }
-
-  Future<void> _guardarPlatillo() async {
-    final nombre = _nombreCtrl.text.trim();
-    final double precio = double.tryParse(_precioCtrl.text.trim()) ?? 0.0;
-    final int stock = int.tryParse(_stockCtrl.text.trim()) ?? -1;
-    final int puntos = int.tryParse(_puntosCtrl.text.trim()) ?? 0;
-
-    if (nombre.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Escribe el nombre del platillo.')),
-      );
-      return;
-    }
-
-    if (precio <= 0) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('El precio debe ser mayor a \$0 MXN.'),
-          backgroundColor: Colors.redAccent,
-        ),
-      );
-      return;
-    }
-
-    if (stock < 0) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Las existencias no pueden ser negativas.'),
-          backgroundColor: Colors.redAccent,
-        ),
-      );
-      return;
-    }
-
-    setState(() => _guardando = true);
-
-    final datos = {
-      'nombre': nombre,
-      'local': widget.localAsignado,
-      'precio': precio,
-      'descripcion':
-          _descCtrl.text.trim().isEmpty
-              ? 'Preparado al momento en ${widget.localAsignado}'
-              : _descCtrl.text.trim(),
-      'tiempo':
-          _tiempoCtrl.text.trim().isEmpty ? '10 min' : _tiempoCtrl.text.trim(),
-      'tiempoPreparacion':
-          _tiempoCtrl.text.trim().isEmpty ? '10 min' : _tiempoCtrl.text.trim(),
-      'categoria': categoriaSeleccionada,
-      'existencias': stock,
-      'puntos': puntos <= 0 ? 10 : puntos,
-      'fotos': _fotosBase64,
-      'ingredientes': _ingredientes,
-      'calificacion': widget.platilloAEditar?.calificacion ?? 5.0,
-      'numCalificaciones': widget.platilloAEditar?.numCalificaciones ?? 1,
-    };
-
-    try {
-      if (widget.platilloAEditar == null) {
-        await FirebaseFirestore.instance
-            .collection('Menu_Platillos')
-            .add(datos);
-      } else {
-        await FirebaseFirestore.instance
-            .collection('Menu_Platillos')
-            .doc(widget.platilloAEditar!.id)
-            .update(datos);
-      }
-      if (!mounted) return;
-      Navigator.pop(context);
-    } catch (_) {
-      if (mounted) setState(() => _guardando = false);
-    }
-  }
-
-  @override
   Widget build(BuildContext context) {
-    final esEdicion = widget.platilloAEditar != null;
-
-    return Scaffold(
-      backgroundColor: colorFondoCrema,
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        elevation: 0,
-        iconTheme: const IconThemeData(color: colorVerdeTese),
-        title: Text(
-          esEdicion ? 'Editar Platillo' : 'Nuevo en ${widget.localAsignado}',
-          style: GoogleFonts.poppins(
-            color: colorVerdeTese,
-            fontWeight: FontWeight.bold,
-            fontSize: 16,
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: seleccionada ? colorFondo : Colors.white,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: seleccionada ? colorAcento : Colors.grey.shade200,
+            width: seleccionada ? 2.2 : 1.2,
           ),
+          boxShadow: [
+            BoxShadow(
+              color:
+                  seleccionada
+                      ? colorAcento.withValues(alpha: 0.14)
+                      : Colors.black.withValues(alpha: 0.03),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
+          ],
         ),
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              'Fotografías del Platillo (Máx. 3)',
-              style: GoogleFonts.poppins(
-                fontWeight: FontWeight.bold,
-                fontSize: 14,
-              ),
-            ),
-            const SizedBox(height: 10),
             Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                ..._fotosBase64.asMap().entries.map((entry) {
-                  return Stack(
-                    children: [
-                      Container(
-                        margin: const EdgeInsets.only(right: 10),
-                        width: 80,
-                        height: 80,
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(14),
-                          image: DecorationImage(
-                            image: MemoryImage(base64Decode(entry.value)),
-                            fit: BoxFit.cover,
-                          ),
-                        ),
-                      ),
-                      Positioned(
-                        top: 2,
-                        right: 12,
-                        child: GestureDetector(
-                          onTap:
-                              () => setState(
-                                () => _fotosBase64.removeAt(entry.key),
-                              ),
-                          child: const CircleAvatar(
-                            radius: 11,
-                            backgroundColor: Colors.red,
-                            child: Icon(
-                              Icons.close,
-                              size: 14,
-                              color: Colors.white,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
-                  );
-                }),
-                if (_fotosBase64.length < 3) ...[
-                  IconButton.filledTonal(
-                    onPressed: () => _seleccionarImagen(ImageSource.camera),
-                    icon: const Icon(Icons.camera_alt_outlined),
+                Icon(icono, color: colorAcento, size: 21),
+                if (seleccionada)
+                  Icon(
+                    Icons.check_circle_rounded,
+                    color: colorAcento,
+                    size: 17,
                   ),
-                  const SizedBox(width: 8),
-                  IconButton.filledTonal(
-                    onPressed: () => _seleccionarImagen(ImageSource.gallery),
-                    icon: const Icon(Icons.photo_library_outlined),
-                  ),
-                ],
               ],
-            ),
-            const SizedBox(height: 18),
-            TextField(
-              controller: _nombreCtrl,
-              decoration: InputDecoration(
-                labelText: 'Nombre del Platillo',
-                filled: true,
-                fillColor: Colors.white,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(14),
-                ),
-              ),
-            ),
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: _precioCtrl,
-                    keyboardType: TextInputType.number,
-                    decoration: InputDecoration(
-                      labelText: 'Precio (\$ MXN)',
-                      filled: true,
-                      fillColor: Colors.white,
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(14),
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: TextField(
-                    controller: _stockCtrl,
-                    keyboardType: TextInputType.number,
-                    decoration: InputDecoration(
-                      labelText: 'Existencias (Stock)',
-                      filled: true,
-                      fillColor: Colors.white,
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(14),
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                Expanded(
-                  child: DropdownButtonFormField<String>(
-                    value: categoriaSeleccionada,
-                    decoration: InputDecoration(
-                      labelText: 'Categoría',
-                      filled: true,
-                      fillColor: Colors.white,
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(14),
-                      ),
-                    ),
-                    items:
-                        categorias
-                            .map(
-                              (c) => DropdownMenuItem(value: c, child: Text(c)),
-                            )
-                            .toList(),
-                    onChanged:
-                        (v) => setState(() => categoriaSeleccionada = v!),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: TextField(
-                    controller: _puntosCtrl,
-                    keyboardType: TextInputType.number,
-                    decoration: InputDecoration(
-                      labelText: 'Puntos que otorga 🪙',
-                      filled: true,
-                      fillColor: Colors.white,
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(14),
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: _tiempoCtrl,
-              decoration: InputDecoration(
-                labelText: 'Tiempo estimado (ej. 10 - 15 min)',
-                filled: true,
-                fillColor: Colors.white,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(14),
-                ),
-              ),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: _descCtrl,
-              maxLines: 2,
-              decoration: InputDecoration(
-                labelText: 'Descripción del platillo',
-                filled: true,
-                fillColor: Colors.white,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(14),
-                ),
-              ),
-            ),
-            const SizedBox(height: 16),
-            Text(
-              'Ingredientes personalizables:',
-              style: GoogleFonts.poppins(
-                fontWeight: FontWeight.bold,
-                fontSize: 13.5,
-              ),
             ),
             const SizedBox(height: 6),
-            Wrap(
-              spacing: 8,
-              children:
-                  _ingredientes
-                      .map(
-                        (ing) => Chip(
-                          label: Text(ing),
-                          onDeleted:
-                              () => setState(() => _ingredientes.remove(ing)),
-                        ),
-                      )
-                      .toList(),
+            Text(
+              titulo,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: GoogleFonts.poppins(
+                fontSize: 11.5,
+                fontWeight: FontWeight.w700,
+                color: colorTextoGris,
+              ),
             ),
-            Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: _ingredienteExtraCtrl,
-                    decoration: const InputDecoration(
-                      hintText: 'Agregar ingrediente (ej. Aguacate)',
-                    ),
-                  ),
-                ),
-                IconButton(
-                  icon: const Icon(Icons.add_circle, color: colorVerdeTese),
-                  onPressed: () {
-                    final txt = _ingredienteExtraCtrl.text.trim();
-                    if (txt.isNotEmpty) {
-                      setState(() {
-                        _ingredientes.add(txt);
-                        _ingredienteExtraCtrl.clear();
-                      });
-                    }
-                  },
-                ),
-              ],
+            Text(
+              monto,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: GoogleFonts.poppins(
+                fontSize: 18,
+                fontWeight: FontWeight.w900,
+                color: colorTextoOscuro,
+              ),
             ),
-            const SizedBox(height: 24),
-            SizedBox(
-              width: double.infinity,
-              height: 54,
-              child: ElevatedButton.icon(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: colorVerdeTese,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                ),
-                onPressed: _guardando ? null : _guardarPlatillo,
-                icon: const Icon(Icons.save_outlined, color: Colors.white),
-                label: Text(
-                  esEdicion
-                      ? 'Guardar Cambios'
-                      : 'Publicar en ${widget.localAsignado}',
-                  style: GoogleFonts.poppins(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 15,
-                  ),
-                ),
+            Text(
+              subtitulo,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: GoogleFonts.poppins(
+                fontSize: 10.5,
+                fontWeight: FontWeight.w700,
+                color: colorAcento,
               ),
             ),
           ],

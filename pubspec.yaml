@@ -1,7 +1,7 @@
 name: tese_food_app
 description: Sistema integral de pedidos y gestión multi-kiosko para el campus TESE.
 publish_to: 'none'
-version: 1.1.0+2
+version: 1.2.0+3
 environment:
   sdk: ^3.7.2
 
@@ -34,6 +34,9 @@ dependencies:
   firebase_storage: ^11.7.7
   flutter_local_notifications: ^19.5.0
   google_sign_in: 6.2.2
+  qr_flutter: ^4.1.0
+  mobile_scanner: ^7.3.0
+  shared_preferences: ^2.5.3
   
 
 dev_dependencies:

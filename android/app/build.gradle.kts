@@ -9,7 +9,7 @@ plugins {
 android {
     ndkVersion = "27.0.12077973"
     namespace = "com.example.tese_food_app"
-    compileSdk = flutter.compileSdkVersion
+    compileSdk = 36
     
 
     compileOptions {
