@@ -8,6 +8,7 @@ import 'package:animate_do/animate_do.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'colores.dart';
+import 'cafeteria.dart';
 
 class DashboardAdminScreen extends StatefulWidget {
   const DashboardAdminScreen({super.key});
@@ -20,13 +21,9 @@ class _DashboardAdminScreenState extends State<DashboardAdminScreen>
     with SingleTickerProviderStateMixin {
   late final TabController _tabController;
 
-  // Filtros Pestaña 1 (Ventas)
   String _filtroSucursalVentas = 'Todas';
-
-  // Filtros Pestaña 2 (Quejas)
   String _filtroEstadoQuejas = 'Todas';
 
-  // Buscador Pestaña 4 (Alumnos)
   final TextEditingController _busquedaAlumnoCtrl = TextEditingController();
   String _queryAlumno = '';
 
@@ -143,7 +140,9 @@ class _DashboardAdminScreenState extends State<DashboardAdminScreen>
           'qrUsado': false,
         }, SetOptions(merge: true));
 
-    if (!mounted) return;
+    if (!mounted) {
+      return;
+    }
 
     showDialog(
       context: context,
@@ -205,7 +204,9 @@ class _DashboardAdminScreenState extends State<DashboardAdminScreen>
           ),
     );
 
-    if (confirmar != true) return;
+    if (confirmar != true) {
+      return;
+    }
     HapticFeedback.heavyImpact();
 
     await FirebaseFirestore.instance
@@ -219,7 +220,9 @@ class _DashboardAdminScreenState extends State<DashboardAdminScreen>
           'qrUsado': true,
         }, SetOptions(merge: true));
 
-    if (!mounted) return;
+    if (!mounted) {
+      return;
+    }
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(
@@ -479,8 +482,12 @@ class _DashboardAdminScreenState extends State<DashboardAdminScreen>
                                           'fechaRespuesta':
                                               FieldValue.serverTimestamp(),
                                         });
-                                    if (ctx.mounted) Navigator.pop(ctx);
-                                    if (!mounted) return;
+                                    if (ctx.mounted) {
+                                      Navigator.pop(ctx);
+                                    }
+                                    if (!mounted) {
+                                      return;
+                                    }
                                     ScaffoldMessenger.of(context).showSnackBar(
                                       SnackBar(
                                         content: Text(
@@ -522,14 +529,15 @@ class _DashboardAdminScreenState extends State<DashboardAdminScreen>
     return PopScope(
       canPop: false,
       onPopInvokedWithResult: (didPop, _) {
-        if (!didPop) _confirmarSalidaAdmin();
+        if (!didPop) {
+          _confirmarSalidaAdmin();
+        }
       },
       child: Scaffold(
         backgroundColor: colorFondoCrema,
         body: SafeArea(
           child: Column(
             children: [
-              // ENCABEZADO ADMINISTRATIVO PASTEL
               Container(
                 margin: const EdgeInsets.fromLTRB(16, 10, 16, 10),
                 padding: const EdgeInsets.all(16),
@@ -613,8 +621,6 @@ class _DashboardAdminScreenState extends State<DashboardAdminScreen>
                   ],
                 ),
               ),
-
-              // BARRA DE PESTAÑAS TIPO PÍLDORA
               Container(
                 margin: const EdgeInsets.symmetric(horizontal: 16),
                 padding: const EdgeInsets.all(4),
@@ -661,8 +667,6 @@ class _DashboardAdminScreenState extends State<DashboardAdminScreen>
                 ),
               ),
               const SizedBox(height: 10),
-
-              // CONTENIDO DE LAS 4 PESTAÑAS
               Expanded(
                 child: TabBarView(
                   controller: _tabController,
@@ -681,9 +685,6 @@ class _DashboardAdminScreenState extends State<DashboardAdminScreen>
     );
   }
 
-  // =========================================================================
-  // PESTAÑA 1: RESUMEN GLOBAL Y TRANSACCIONES
-  // =========================================================================
   Widget _construirTabVentas() {
     final List<String> sucursales = [
       'Todas',
@@ -709,7 +710,9 @@ class _DashboardAdminScreenState extends State<DashboardAdminScreen>
         final docs = snapshot.data?.docs ?? [];
         final filtrados =
             docs.where((d) {
-              if (_filtroSucursalVentas == 'Todas') return true;
+              if (_filtroSucursalVentas == 'Todas') {
+                return true;
+              }
               final data = d.data() as Map<String, dynamic>;
               return (data['local'] ?? '') == _filtroSucursalVentas;
             }).toList();
@@ -747,7 +750,6 @@ class _DashboardAdminScreenState extends State<DashboardAdminScreen>
         return ListView(
           padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
           children: [
-            // Chips filtro sucursal
             SizedBox(
               height: 38,
               child: ListView.separated(
@@ -782,8 +784,6 @@ class _DashboardAdminScreenState extends State<DashboardAdminScreen>
               ),
             ),
             const SizedBox(height: 12),
-
-            // Tarjetas KPI
             FadeInDown(
               duration: const Duration(milliseconds: 220),
               child: Row(
@@ -814,7 +814,6 @@ class _DashboardAdminScreenState extends State<DashboardAdminScreen>
               ),
             ),
             const SizedBox(height: 16),
-
             Text(
               'Historial de Transacciones (${filtrados.length})',
               style: GoogleFonts.poppins(
@@ -824,9 +823,8 @@ class _DashboardAdminScreenState extends State<DashboardAdminScreen>
               ),
             ),
             const SizedBox(height: 8),
-
             if (filtrados.isEmpty)
-              _EstadoVacioPastel(
+              const _EstadoVacioPastel(
                 icono: Icons.receipt_outlined,
                 titulo: 'Sin movimientos registrados',
                 subtitulo:
@@ -976,9 +974,6 @@ class _DashboardAdminScreenState extends State<DashboardAdminScreen>
     );
   }
 
-  // =========================================================================
-  // PESTAÑA 2: BUZÓN DE QUEJAS INDEPENDIENTE
-  // =========================================================================
   Widget _construirTabQuejas() {
     final estados = ['Todas', 'Pendiente', 'En Revisión', 'Resuelta'];
 
@@ -998,7 +993,9 @@ class _DashboardAdminScreenState extends State<DashboardAdminScreen>
         final docs = snapshot.data?.docs ?? [];
         final filtradas =
             docs.where((d) {
-              if (_filtroEstadoQuejas == 'Todas') return true;
+              if (_filtroEstadoQuejas == 'Todas') {
+                return true;
+              }
               final data = d.data() as Map<String, dynamic>;
               return (data['estado'] ?? 'Pendiente') == _filtroEstadoQuejas;
             }).toList();
@@ -1182,9 +1179,6 @@ class _DashboardAdminScreenState extends State<DashboardAdminScreen>
     );
   }
 
-  // =========================================================================
-  // PESTAÑA 3: SEGURIDAD DE TERMINALES (QR DE 1 SOLO USO + 1 DISPOSITIVO)
-  // =========================================================================
   Widget _construirTabTerminalesQR() {
     return StreamBuilder<QuerySnapshot>(
       stream:
@@ -1221,7 +1215,7 @@ class _DashboardAdminScreenState extends State<DashboardAdminScreen>
                   const SizedBox(width: 10),
                   Expanded(
                     child: Text(
-                      'Política de 1 sola terminal por sucursal: Cada QR caduca en 5 minutos o en cuanto se escanea. Si vinculas un equipo nuevo, el anterior queda expulsado automáticamente.',
+                      'Política de 1 sola terminal por sucursal: Cada QR caduca en 5 minutos o en cuanto se escanea. Como Admin puedes entrar a supervisar cualquier sucursal sin afectar su dispositivo vinculado.',
                       style: GoogleFonts.poppins(
                         fontSize: 11.5,
                         color: Colors.brown.shade900,
@@ -1235,7 +1229,7 @@ class _DashboardAdminScreenState extends State<DashboardAdminScreen>
             ),
             const SizedBox(height: 14),
             if (docs.isEmpty)
-              _EstadoVacioPastel(
+              const _EstadoVacioPastel(
                 icono: Icons.storefront_outlined,
                 titulo: 'Sin sucursales configuradas',
                 subtitulo:
@@ -1463,6 +1457,47 @@ class _DashboardAdminScreenState extends State<DashboardAdminScreen>
                           ],
                         ],
                       ),
+                      const SizedBox(height: 10),
+                      SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton.icon(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFFFFF8E1),
+                            foregroundColor: const Color(0xFFB45309),
+                            elevation: 0,
+                            padding: const EdgeInsets.symmetric(vertical: 11),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(14),
+                              side: const BorderSide(
+                                color: Color(0xFFFFD54F),
+                                width: 1.3,
+                              ),
+                            ),
+                          ),
+                          onPressed: () {
+                            HapticFeedback.selectionClick();
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder:
+                                    (_) => DashboardLocalScreen(
+                                      nombreLocal: nombre,
+                                      docIdLocal: doc.id,
+                                      esModoAdmin: true,
+                                    ),
+                              ),
+                            );
+                          },
+                          icon: const Icon(Icons.visibility_rounded, size: 19),
+                          label: Text(
+                            'Supervisar Sucursal (Entrar como Admin)',
+                            style: GoogleFonts.poppins(
+                              fontWeight: FontWeight.w800,
+                              fontSize: 12.5,
+                            ),
+                          ),
+                        ),
+                      ),
                     ],
                   ),
                 );
@@ -1473,9 +1508,6 @@ class _DashboardAdminScreenState extends State<DashboardAdminScreen>
     );
   }
 
-  // =========================================================================
-  // PESTAÑA 4: DIRECTORIO DE CUENTAS DE ESTUDIANTES
-  // =========================================================================
   Widget _construirTabAlumnos() {
     return StreamBuilder<QuerySnapshot>(
       stream: FirebaseFirestore.instance.collection('Usuarios').snapshots(),
@@ -1491,7 +1523,9 @@ class _DashboardAdminScreenState extends State<DashboardAdminScreen>
 
         final filtrados =
             docs.where((d) {
-              if (q.isEmpty) return true;
+              if (q.isEmpty) {
+                return true;
+              }
               final data = d.data() as Map<String, dynamic>;
               final nombre =
                   (data['nombre_completo'] ?? '').toString().toLowerCase();
@@ -1552,7 +1586,7 @@ class _DashboardAdminScreenState extends State<DashboardAdminScreen>
             Expanded(
               child:
                   filtrados.isEmpty
-                      ? _EstadoVacioPastel(
+                      ? const _EstadoVacioPastel(
                         icono: Icons.school_outlined,
                         titulo: 'No se encontraron cuentas',
                         subtitulo:
@@ -1669,7 +1703,9 @@ class _DashboardAdminScreenState extends State<DashboardAdminScreen>
   }
 
   String _formatearFecha(Timestamp? ts) {
-    if (ts == null) return 'Reciente';
+    if (ts == null) {
+      return 'Reciente';
+    }
     final dt = ts.toDate();
     final d = dt.day.toString().padLeft(2, '0');
     final m = dt.month.toString().padLeft(2, '0');
@@ -1679,9 +1715,6 @@ class _DashboardAdminScreenState extends State<DashboardAdminScreen>
   }
 }
 
-// =========================================================================
-// DIÁLOGO DE QR EFÍMERO DE 1 SOLO USO CON TEMPORIZADOR Y DETECCIÓN EN VIVO
-// =========================================================================
 class _DialogoQRVinculacion extends StatefulWidget {
   final String docId;
   final String nombreSucursal;
