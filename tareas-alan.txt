@@ -1,0 +1,15 @@
+Proyecto: TESEhambreados
+Integrante: Alan Prado Bravo
+Rama de trabajo: rama-alan
+
+APORTACIÓN AL PROYECTO
+
+Mi aportación consistió en desarrollar una clase Producto utilizando el lenguaje de programación Dart, tomando como referencia el diagrama UML del módulo de pedidos.
+
+Se creó el archivo modelo_producto.dart, incorporando los atributos id, nombre, precio y stock, así como un constructor para inicializar los datos de cada producto.
+
+También se implementó el método aplicarDescuento(double porcentaje), que permite calcular y aplicar descuentos al precio de un producto. Se agregó una validación para evitar porcentajes inferiores a 0 o superiores a 100.
+
+Para verificar el funcionamiento del código, se realizaron pruebas mediante DartPad. Se utilizó como ejemplo una torta de jamón con precio inicial de $40.00, a la cual se aplicó un descuento del 10 %, obteniendo correctamente un precio final de $36.00.
+
+Finalmente, el archivo modelo_producto.dart fue registrado en el repositorio de GitHub, manteniendo evidencia del desarrollo y aplicación de conceptos de programación orientada a objetos.
